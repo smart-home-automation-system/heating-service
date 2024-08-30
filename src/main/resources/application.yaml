@@ -18,6 +18,10 @@ logging:
   level:
     org.zalando.logbook: trace
 
+jobs:
+  hot-water:
+    poolingInterval: PT5s
+
 ---
 
 spring:
