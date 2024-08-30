@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: heating-service
+    version: @project.version@
+  profiles:
+    active: home
+  webflux:
+    base-path: "/home"
+
+server:
+  port: 6200
+
+logbook:
+  format:
+    style: http
+
+logging:
+  level:
+    org.zalando.logbook: trace
+
+---
+
+spring:
+  profiles:
+    active: local
+
+server:
+  port: 6002
+management:
+  server:
+    port: 8002
