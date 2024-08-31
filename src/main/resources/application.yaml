@@ -20,7 +20,13 @@ logging:
 
 jobs:
   hot-water:
-    poolingInterval: PT5s
+    poolingInterval: PT30s
+
+shelly:
+  sensor:
+    uni-hot-water:
+      scheme: http
+      host: 10.78.30.47
 
 ---
 
