@@ -22,7 +22,7 @@
 		<logbook.version>3.9.0</logbook.version>
 
 		<!--  internal dependencies versions-->
-		<shelly-client.version>0.0.1-SNAPSHOT</shelly-client.version>
+		<shelly-client.version>0.0.4</shelly-client.version>
 
 		<!--  plugins versions-->
 		<maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
@@ -34,7 +34,7 @@
 	<dependencies>
 		<!--  internal dependencies versions-->
 		<dependency>
-			<groupId>cholewa.cloud</groupId>
+			<groupId>cloud.cholewa</groupId>
 			<artifactId>shelly-client</artifactId>
 			<version>${shelly-client.version}</version>
 		</dependency>
