@@ -1,6 +1,7 @@
 package cloud.cholewa.heating.service.hot_water;
 
 import cloud.cholewa.heating.client.HotWaterSensorClient;
+import cloud.cholewa.shelly.model.ShellyUniStatusResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -12,7 +13,7 @@ public class HotWaterService {
 
     private final HotWaterSensorClient hotWaterSensorClient;
 
-    public Mono<ResponseEntity<Object>> getStatus() {
+    public Mono<ResponseEntity<ShellyUniStatusResponse>> getStatus() {
         return hotWaterSensorClient.getStatus();
     }
 }

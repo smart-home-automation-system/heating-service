@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.client;
 
+import cloud.cholewa.shelly.model.ShellyUniStatusResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +16,7 @@ public class HotWaterSensorClient {
     private final HotWaterSensorConfig config;
     private final WebClient hotWaterSensorClient;
 
-    public Mono<ResponseEntity<Object>> getStatus() {
+    public Mono<ResponseEntity<ShellyUniStatusResponse>> getStatus() {
         log.info("Getting status of hot-water sensor");
         return hotWaterSensorClient
             .get()
@@ -25,6 +26,6 @@ public class HotWaterSensorClient {
                 .build()
             )
             .retrieve()
-            .toEntity(Object.class);
+            .toEntity(ShellyUniStatusResponse.class);
     }
 }

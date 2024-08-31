@@ -22,7 +22,7 @@
 		<logbook.version>3.9.0</logbook.version>
 
 		<!--  internal dependencies versions-->
-		<shelly-client.version>0.0.2</shelly-client.version>
+		<shelly-client.version>0.0.1-SNAPSHOT</shelly-client.version>
 
 		<!--  plugins versions-->
 		<maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
