@@ -6,6 +6,19 @@ spring:
     active: home
   webflux:
     base-path: "/home"
+  datasource:
+    host: localhost
+    port: 1433
+    database: superName
+    username: secretUser
+    password: superPassword
+  flyway:
+    url: localhost
+    user: secretUser
+    password: superPassword
+    enabled: on
+  jpa:
+    show-sql: true
 
 server:
   port: 6200
@@ -20,7 +33,7 @@ logging:
 
 jobs:
   hot-water:
-    poolingInterval: PT30s
+    poolingInterval: PT60s
 
 shelly:
   sensor:
@@ -39,3 +52,12 @@ server:
 management:
   server:
     port: 8002
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: test
+  flyway:
+    enabled: false
