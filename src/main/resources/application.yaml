@@ -7,15 +7,15 @@ spring:
   webflux:
     base-path: "/home"
   datasource:
-    host: localhost
-    port: 1433
-    database: superName
-    username: secretUser
-    password: superPassword
+    host: ${database-host:localhost}
+    port: ${database-port:1433}
+    database: ${database-name:dummyName}
+    username: ${database-user:dummyUser}
+    password: ${database-password:dummyPassword}
   flyway:
-    url: localhost
-    user: secretUser
-    password: superPassword
+    url: ${flyway-url:localhost}
+    user: ${database-user:dummyUser}
+    password: ${database-password:dummyPassword}
     enabled: on
   jpa:
     show-sql: true
@@ -44,8 +44,9 @@ shelly:
 ---
 
 spring:
-  profiles:
-    active: local
+  config:
+    activate:
+      on-profile: local
 
 server:
   port: 6002
