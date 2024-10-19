@@ -21,6 +21,9 @@
 		<java.version>17</java.version>
 		<logbook.version>3.9.0</logbook.version>
 
+		<!--	this version is required 'cause 42.7.4 not working with flyway-->
+		<postgresql.version>42.7.3</postgresql.version>
+
 		<!--  internal dependencies versions-->
 		<shelly-client.version>0.0.5</shelly-client.version>
 
@@ -69,6 +72,7 @@
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
+			<version>${postgresql.version}</version>
 		</dependency>
 
 		<dependency>
