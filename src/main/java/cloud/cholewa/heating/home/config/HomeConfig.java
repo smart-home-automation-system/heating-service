@@ -1,15 +1,16 @@
-package cloud.cholewa.heating.config.home;
+package cloud.cholewa.heating.home.config;
 
 import cloud.cholewa.heating.model.BoilerRoom;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.HeatingSource;
+import cloud.cholewa.heating.model.Home;
 import cloud.cholewa.heating.model.OpeningSensor;
 import cloud.cholewa.heating.model.Pump;
 import cloud.cholewa.heating.model.PumpType;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.model.TemperatureSensor;
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
@@ -31,10 +32,18 @@ import static cloud.cholewa.heating.model.RoomNames.OFFICE;
 import static cloud.cholewa.heating.model.RoomNames.TOBI;
 import static cloud.cholewa.heating.model.RoomNames.WARDROBE;
 
-@NoArgsConstructor(access = AccessLevel.PRIVATE)
+@Configuration
 public class HomeConfig {
 
-    public static List<Room> getRoomsConfiguration() {
+    @Bean
+    public Home home() {
+        return new Home(
+            getRoomsConfiguration(),
+            getBoilerConfiguration()
+        );
+    }
+
+    private List<Room> getRoomsConfiguration() {
         return List.of(
             getOfficeConfiguration(),
             getTobiRoomConfiguration(),
@@ -45,7 +54,7 @@ public class HomeConfig {
         );
     }
 
-    public static BoilerRoom getBoilerRoomConfiguration() {
+    public BoilerRoom getBoilerConfiguration() {
         return BoilerRoom.builder()
             .heatingSources(List.of(
                 HeatingSource.builder().type(FURNACE).build()
@@ -59,7 +68,7 @@ public class HomeConfig {
             .build();
     }
 
-    private static Room getOfficeConfiguration() {
+    private Room getOfficeConfiguration() {
         return Room.builder()
             .name(OFFICE)
             .temperatureSensor(TemperatureSensor.builder().build())
@@ -73,7 +82,7 @@ public class HomeConfig {
             .build();
     }
 
-    private static Room getTobiRoomConfiguration() {
+    private Room getTobiRoomConfiguration() {
         return Room.builder()
             .name(TOBI)
             .temperatureSensor(TemperatureSensor.builder().build())
@@ -87,7 +96,7 @@ public class HomeConfig {
             .build();
     }
 
-    private static Room getLiviaRoomConfiguration() {
+    private Room getLiviaRoomConfiguration() {
         return Room.builder()
             .name(LIVIA)
             .temperatureSensor(TemperatureSensor.builder().build())
@@ -101,7 +110,7 @@ public class HomeConfig {
             .build();
     }
 
-    private static Room getBedroomConfiguration() {
+    private Room getBedroomConfiguration() {
         return Room.builder()
             .name(BEDROOM)
             .temperatureSensor(TemperatureSensor.builder().build())
@@ -116,7 +125,7 @@ public class HomeConfig {
             .build();
     }
 
-    private static Room getWardrobeConfiguration() {
+    private Room getWardrobeConfiguration() {
         return Room.builder()
             .name(WARDROBE)
             .temperatureSensor(TemperatureSensor.builder().build())
@@ -130,7 +139,7 @@ public class HomeConfig {
             .build();
     }
 
-    private static Room getBathroomUpConfiguration() {
+    private Room getBathroomUpConfiguration() {
         return Room.builder()
             .name(BATHROOM_UP)
             .temperatureSensor(TemperatureSensor.builder().build())
