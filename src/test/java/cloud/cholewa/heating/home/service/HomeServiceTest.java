@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.home.service;
 
+import cloud.cholewa.heating.error.RoomNotFoundException;
 import cloud.cholewa.heating.model.BoilerRoom;
 import cloud.cholewa.heating.model.Home;
 import cloud.cholewa.heating.model.Room;
@@ -45,6 +46,7 @@ class HomeServiceTest {
 
         sut.getRoomConfiguration("dummy")
             .as(StepVerifier::create)
-            .verifyComplete();
+            .expectError(RoomNotFoundException.class)
+            .verify();
     }
 }
