@@ -25,6 +25,7 @@
 		<postgresql.version>42.7.3</postgresql.version>
 
 		<!--  internal dependencies versions-->
+		<cholewa-commons.version>0.1.0</cholewa-commons.version>
 		<shelly-client.version>0.0.5</shelly-client.version>
 
 		<!--  plugins versions-->
@@ -36,6 +37,12 @@
 
 	<dependencies>
 		<!--  internal dependencies versions-->
+		<dependency>
+			<groupId>cloud.cholewa</groupId>
+			<artifactId>cholewa-commons</artifactId>
+			<version>${cholewa-commons.version}</version>
+		</dependency>
+
 		<dependency>
 			<groupId>cloud.cholewa</groupId>
 			<artifactId>shelly-client</artifactId>
