@@ -17,6 +17,8 @@ public class HomeService {
     private final Home home;
 
     public Mono<RoomConfigurationResponse> getRoomConfiguration(final String roomName) {
+        log.info("Requesting of room configuration for room {}", roomName);
+
         return Mono.justOrEmpty(
                 home.getRooms().stream()
                     .filter(room -> room.getName().name().equalsIgnoreCase(roomName))
