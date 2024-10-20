@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.home.service;
 
+import cloud.cholewa.heating.error.RoomNotFoundException;
 import cloud.cholewa.heating.home.RoomMapper;
 import cloud.cholewa.heating.home.model.HomeConfigurationResponse;
 import cloud.cholewa.heating.home.model.RoomConfigurationResponse;
@@ -19,11 +20,13 @@ public class HomeService {
     public Mono<RoomConfigurationResponse> getRoomConfiguration(final String roomName) {
         log.info("Requesting of room configuration for room {}", roomName);
 
-        return Mono.justOrEmpty(
+        return Mono.just(
                 home.getRooms().stream()
                     .filter(room -> room.getName().name().equalsIgnoreCase(roomName))
                     .findAny()
             )
+            .flatMap(room -> room.map(Mono::just)
+                .orElseThrow(() -> new RoomNotFoundException(roomName)))
             .map(RoomMapper::map);
     }
 

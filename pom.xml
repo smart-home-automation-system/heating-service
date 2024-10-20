@@ -38,6 +38,12 @@
 		<!--  internal dependencies versions-->
 		<dependency>
 			<groupId>cloud.cholewa</groupId>
+			<artifactId>cholewa-commons</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+
+		<dependency>
+			<groupId>cloud.cholewa</groupId>
 			<artifactId>shelly-client</artifactId>
 			<version>${shelly-client.version}</version>
 		</dependency>
