@@ -23,8 +23,8 @@ public class HomeController {
 
     @GetMapping("configuration/room")
     Mono<ResponseEntity<RoomConfigurationResponse>> getRoomConfiguration(
-        @RequestBody(required = false) String fakeRequestDueLoggingIssue,
-        @RequestParam String roomName
+        @RequestBody(required = false) final String fakeRequestDueLoggingIssue,
+        @RequestParam final String roomName
     ) {
         log.info("Getting room configuration for room {}", roomName);
         return homeService.getRoomConfiguration(roomName)
@@ -34,7 +34,7 @@ public class HomeController {
 
     @GetMapping("configuration/home")
     Mono<ResponseEntity<HomeConfigurationResponse>> getHomeConfiguration(
-        @RequestBody(required = false) String fakeRequestDueLoggingIssue
+        @RequestBody(required = false) final String fakeRequestDueLoggingIssue
     ) {
         log.info("Getting home configuration");
         return homeService.getHomeConfiguration().map(ResponseEntity::ok);

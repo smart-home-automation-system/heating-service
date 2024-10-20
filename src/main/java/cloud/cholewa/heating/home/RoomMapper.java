@@ -21,12 +21,12 @@ public class RoomMapper {
             .build();
     }
 
-    private static boolean isAnyOpeningOpened(List<OpeningSensor> sensors) {
-        return sensors.stream()
+    private static boolean isAnyOpeningOpened(final List<OpeningSensor> sensors) {
+        return sensors != null && sensors.stream()
             .anyMatch(OpeningSensor::isOpen);
     }
 
-    private static String getTemperature(TemperatureSensor sensor) {
+    private static String getTemperature(final TemperatureSensor sensor) {
         return sensor.getUpdateTime() != null
             ? String.valueOf(sensor.getTemperature())
             : "unknown";

@@ -18,6 +18,9 @@ import static cloud.cholewa.heating.model.HeaterType.FLOOR;
 import static cloud.cholewa.heating.model.HeaterType.RADIATOR;
 import static cloud.cholewa.heating.model.HeatingSourceType.FURNACE;
 import static cloud.cholewa.heating.model.OpeningType.DOOR;
+import static cloud.cholewa.heating.model.OpeningType.ENTRANCE_DOOR;
+import static cloud.cholewa.heating.model.OpeningType.GATE_KATE;
+import static cloud.cholewa.heating.model.OpeningType.GATE_KRIS;
 import static cloud.cholewa.heating.model.OpeningType.ROOF;
 import static cloud.cholewa.heating.model.OpeningType.ROOF2;
 import static cloud.cholewa.heating.model.OpeningType.WINDOW;
@@ -25,9 +28,14 @@ import static cloud.cholewa.heating.model.OpeningType.WINDOW2;
 import static cloud.cholewa.heating.model.PumpType.FIREPLACE_PUMP;
 import static cloud.cholewa.heating.model.PumpType.HEATING_PUMP;
 import static cloud.cholewa.heating.model.PumpType.HOT_WATER_PUMP;
+import static cloud.cholewa.heating.model.RoomNames.BATHROOM_DOWN;
 import static cloud.cholewa.heating.model.RoomNames.BATHROOM_UP;
 import static cloud.cholewa.heating.model.RoomNames.BEDROOM;
+import static cloud.cholewa.heating.model.RoomNames.CINEMA;
+import static cloud.cholewa.heating.model.RoomNames.ENTRANCE;
+import static cloud.cholewa.heating.model.RoomNames.GARAGE;
 import static cloud.cholewa.heating.model.RoomNames.LIVIA;
+import static cloud.cholewa.heating.model.RoomNames.MAIN;
 import static cloud.cholewa.heating.model.RoomNames.OFFICE;
 import static cloud.cholewa.heating.model.RoomNames.TOBI;
 import static cloud.cholewa.heating.model.RoomNames.WARDROBE;
@@ -50,7 +58,12 @@ public class HomeConfig {
             getLiviaRoomConfiguration(),
             getBedroomConfiguration(),
             getWardrobeConfiguration(),
-            getBathroomUpConfiguration()
+            getBathroomUpConfiguration(),
+            getMainConfiguration(),
+            getCinemaConfiguration(),
+            getBathroomDownConfiguration(),
+            getEntranceConfiguration(),
+            getGarageConfiguration()
         );
     }
 
@@ -148,6 +161,75 @@ public class HomeConfig {
             ))
             .heaterActors(List.of(
                 HeaterActor.builder().type(FLOOR).build(),
+                HeaterActor.builder().type(RADIATOR).build()
+            ))
+            .build();
+    }
+
+    private Room getMainConfiguration() {
+        return Room.builder()
+            .name(MAIN)
+            .temperatureSensor(TemperatureSensor.builder().build())
+            .openingSensors(List.of(
+                OpeningSensor.builder().openingType(DOOR).build(),
+                OpeningSensor.builder().openingType(WINDOW).build(),
+                OpeningSensor.builder().openingType(WINDOW2).build(),
+                OpeningSensor.builder().openingType(ENTRANCE_DOOR).build()
+            ))
+            .heaterActors(List.of(
+                HeaterActor.builder().type(FLOOR).build(),
+                HeaterActor.builder().type(RADIATOR).build()
+            ))
+            .build();
+    }
+
+    private Room getBathroomDownConfiguration() {
+        return Room.builder()
+            .name(BATHROOM_DOWN)
+            .temperatureSensor(TemperatureSensor.builder().build())
+            .heaterActors(List.of(
+                HeaterActor.builder().type(FLOOR).build(),
+                HeaterActor.builder().type(RADIATOR).build()
+            ))
+            .build();
+    }
+
+    private Room getCinemaConfiguration() {
+        return Room.builder()
+            .name(CINEMA)
+            .temperatureSensor(TemperatureSensor.builder().build())
+            .openingSensors(List.of(
+                OpeningSensor.builder().openingType(WINDOW).build(),
+                OpeningSensor.builder().openingType(WINDOW2).build()
+            ))
+            .heaterActors(List.of(
+                HeaterActor.builder().type(RADIATOR).build()
+            ))
+            .build();
+    }
+
+    private Room getEntranceConfiguration() {
+        return Room.builder()
+            .name(ENTRANCE)
+            .temperatureSensor(TemperatureSensor.builder().build())
+            .openingSensors(List.of(
+                OpeningSensor.builder().openingType(ENTRANCE_DOOR).build()
+            ))
+            .heaterActors(List.of(
+                HeaterActor.builder().type(RADIATOR).build()
+            ))
+            .build();
+    }
+
+    private Room getGarageConfiguration() {
+        return Room.builder()
+            .name(GARAGE)
+            .temperatureSensor(TemperatureSensor.builder().build())
+            .openingSensors(List.of(
+                OpeningSensor.builder().openingType(GATE_KATE).build(),
+                OpeningSensor.builder().openingType(GATE_KRIS).build()
+            ))
+            .heaterActors(List.of(
                 HeaterActor.builder().type(RADIATOR).build()
             ))
             .build();
