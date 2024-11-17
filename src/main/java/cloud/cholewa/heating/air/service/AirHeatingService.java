@@ -3,7 +3,10 @@ package cloud.cholewa.heating.air.service;
 import cloud.cholewa.heating.air.client.AirShellyProClient;
 import cloud.cholewa.heating.model.HeatingSourceType;
 import cloud.cholewa.heating.model.Home;
+import cloud.cholewa.heating.model.Pump;
+import cloud.cholewa.heating.model.PumpType;
 import cloud.cholewa.heating.model.Room;
+import cloud.cholewa.home.model.RoomName;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,7 +32,30 @@ public class AirHeatingService {
             case LIVIA -> updateLivia(room);
             case TOBI -> updateTobi(room);
             case OFFICE -> updateOffice(room);
+            case WARDROBE -> updateWardrobe(room);
         }
+    }
+
+    private void updateWardrobe(final Room room) {
+        if (LocalTime.now().isAfter(LocalTime.of(5, 0)) && LocalTime.now().isBefore(LocalTime.of(23, 0))) {
+            if (home.isHeatingAllowed() || isFireplaceWorking()) {
+                if (room.getTemperatureSensor().getTemperature() < 19.5 && !room.isHeatingActive()) {
+                    room.setHeatingActive(true);
+                    airShellyProClient.controlFloorFloorWardrobe(true).subscribe();
+                    logStatus(room);
+                } else if (room.getTemperatureSensor().getTemperature() > 19.5 && room.isHeatingActive()) {
+                    room.setHeatingActive(false);
+                    airShellyProClient.controlFloorFloorWardrobe(false).subscribe();
+                    logStatus(room);
+                }
+            }
+        } else {
+            if (room.isHeatingActive()) {
+                room.setHeatingActive(false);
+                airShellyProClient.controlFloorFloorWardrobe(false).subscribe();
+            }
+        }
+        controlFloorPump();
     }
 
     private void updateOffice(final Room room) {
@@ -135,6 +161,7 @@ public class AirHeatingService {
                 airShellyProClient.controlFloorBathUp(false).subscribe();
             }
         }
+        controlFloorPump();
     }
 
     private void updateCinema(final Room room) {
@@ -212,5 +239,27 @@ public class AirHeatingService {
         return home.getBoiler().getHeatingSources().stream()
             .filter(heatingSource -> heatingSource.getType().equals(HeatingSourceType.FIREPLACE))
             .anyMatch(heatingSource -> heatingSource.getTemperature() > 35);
+    }
+
+    private void controlFloorPump() {
+        Pump floorPump = home.getBoiler().getPumps().stream()
+            .filter(pump -> pump.getType().equals(PumpType.FLOOR_PUMP))
+            .findFirst().orElseThrow();
+
+        final boolean isAnyPumpActive = home.getRooms().stream()
+            .filter(room -> (room.getName().equals(RoomName.BATHROOM_UP) || room.getName().equals(RoomName.WARDROBE)))
+            .map(Room::isHeatingActive)
+            .filter(heating -> heating)
+            .anyMatch(aBoolean -> true);
+
+        if (isAnyPumpActive && !floorPump.isRunning()) {
+            floorPump.setRunning(true);
+            airShellyProClient.controlPumpFloor(true).subscribe();
+        } else if (!isAnyPumpActive) {
+            if (floorPump.isRunning()) {
+                floorPump.setRunning(false);
+                airShellyProClient.controlPumpFloor(false).subscribe();
+            }
+        }
     }
 }
