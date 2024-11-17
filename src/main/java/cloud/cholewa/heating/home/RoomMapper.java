@@ -3,7 +3,6 @@ package cloud.cholewa.heating.home;
 import cloud.cholewa.heating.home.model.RoomConfigurationResponse;
 import cloud.cholewa.heating.model.OpeningSensor;
 import cloud.cholewa.heating.model.Room;
-import cloud.cholewa.heating.model.TemperatureSensor;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -17,7 +16,7 @@ public class RoomMapper {
             .name(room.getName().name())
             .isHeatingActive(room.isHeatingActive())
             .isAnyOpeningOpened(isAnyOpeningOpened(room.getOpeningSensors()))
-            .temperature(getTemperature(room.getTemperatureSensor()))
+            .temperature(room.getTemperatureSensor())
             .build();
     }
 
@@ -26,9 +25,14 @@ public class RoomMapper {
             .anyMatch(OpeningSensor::isOpen);
     }
 
-    private static String getTemperature(final TemperatureSensor sensor) {
-        return sensor.getUpdateTime() != null
-            ? String.valueOf(sensor.getTemperature())
-            : "unknown";
-    }
+//    private static TemperatureSensor getTemperature(final TemperatureSensor sensor) {
+//        return TemperatureSensor.builder()
+//            .temperature(sensor.getUpdateTime() != null
+//                ? String.valueOf(sensor.getTemperature())
+//                : "unknown")
+//            .build();
+//
+//
+//        return ;
+//    }
 }

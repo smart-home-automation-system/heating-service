@@ -1,4 +1,4 @@
-package cloud.cholewa.heating.client;
+package cloud.cholewa.heating.water.client;
 
 import jakarta.validation.constraints.NotNull;
 import org.springframework.boot.context.properties.ConfigurationProperties;

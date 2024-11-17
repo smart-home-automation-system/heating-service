@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.home.model;
 
+import cloud.cholewa.heating.model.BoilerRoom;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,6 +16,7 @@ import java.util.List;
 @SuperBuilder
 public class HomeConfigurationResponse {
 
+    private BoilerRoom boilerRoom;
     private int roomNumber;
     private List<RoomConfigurationResponse> rooms;
 }

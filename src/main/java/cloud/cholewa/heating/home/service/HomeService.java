@@ -35,6 +35,7 @@ public class HomeService {
 
         return Mono.justOrEmpty(
             HomeConfigurationResponse.builder()
+                .boilerRoom(home.getBoiler())
                 .roomNumber(home.getRooms().size())
                 .rooms(home.getRooms().stream()
                     .map(RoomMapper::map)

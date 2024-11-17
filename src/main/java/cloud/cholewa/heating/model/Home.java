@@ -7,7 +7,7 @@ import java.util.List;
 @Data
 public class Home {
 
-    private final List<Room> rooms;
     private final BoilerRoom boiler;
+    private final List<Room> rooms;
     private boolean isHeatingAllowed = false;
 }

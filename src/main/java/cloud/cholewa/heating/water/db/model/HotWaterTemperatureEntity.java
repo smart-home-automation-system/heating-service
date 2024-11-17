@@ -1,4 +1,4 @@
-package cloud.cholewa.heating.db.model;
+package cloud.cholewa.heating.water.db.model;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;

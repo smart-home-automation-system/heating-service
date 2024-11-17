@@ -4,8 +4,8 @@ import cloud.cholewa.heating.error.RoomNotFoundException;
 import cloud.cholewa.heating.model.BoilerRoom;
 import cloud.cholewa.heating.model.Home;
 import cloud.cholewa.heating.model.Room;
-import cloud.cholewa.heating.model.RoomNames;
 import cloud.cholewa.heating.model.TemperatureSensor;
+import cloud.cholewa.home.model.RoomName;
 import org.junit.jupiter.api.Test;
 import reactor.test.StepVerifier;
 
@@ -14,13 +14,13 @@ import java.util.List;
 class HomeServiceTest {
 
     List<Room> rooms = List.of(
-        Room.builder().name(RoomNames.CINEMA).temperatureSensor(TemperatureSensor.builder().build()).build(),
-        Room.builder().name(RoomNames.GARAGE).temperatureSensor(TemperatureSensor.builder().build()).build()
+        Room.builder().name(RoomName.CINEMA).temperatureSensor(TemperatureSensor.builder().build()).build(),
+        Room.builder().name(RoomName.GARAGE).temperatureSensor(TemperatureSensor.builder().build()).build()
     );
 
     BoilerRoom boilerRoom = BoilerRoom.builder().build();
 
-    private final Home home = new Home(rooms, boilerRoom);
+    private final Home home = new Home(boilerRoom, rooms);
 
     private final HomeService sut = new HomeService(home);
 

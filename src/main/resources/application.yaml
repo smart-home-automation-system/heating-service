@@ -34,6 +34,8 @@ logging:
 jobs:
   hot-water:
     poolingInterval: PT60s
+  pumps:
+    poolingInterval: PT5s
 
 shelly:
   sensor:

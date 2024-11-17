@@ -1,4 +1,4 @@
-package cloud.cholewa.heating.client;
+package cloud.cholewa.heating.water.client;
 
 import cloud.cholewa.shelly.model.ShellyUniStatusResponse;
 import lombok.RequiredArgsConstructor;
