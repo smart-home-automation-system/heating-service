@@ -38,17 +38,11 @@ public class AirHeatingService {
                 if (room.getTemperatureSensor().getTemperature() < 20.5 && !room.isHeatingActive()) {
                     room.setHeatingActive(true);
                     airShellyProClient.controlOffice(true).subscribe();
-                    log.info(
-                        "Office heating is active, current temperature is [{}C]",
-                        room.getTemperatureSensor().getTemperature()
-                    );
+                    logStatus(room);
                 } else if (room.getTemperatureSensor().getTemperature() > 20.5 && room.isHeatingActive()) {
                     room.setHeatingActive(false);
                     airShellyProClient.controlOffice(false).subscribe();
-                    log.info(
-                        "Office heating is disabled, current temperature is [{}C]",
-                        room.getTemperatureSensor().getTemperature()
-                    );
+                    logStatus(room);
                 }
             }
         } else {
@@ -65,17 +59,11 @@ public class AirHeatingService {
                 if (room.getTemperatureSensor().getTemperature() < 20.5 && !room.isHeatingActive()) {
                     room.setHeatingActive(true);
                     airShellyProClient.controlTobi(true).subscribe();
-                    log.info(
-                        "Tobi heating is active, current temperature is [{}C]",
-                        room.getTemperatureSensor().getTemperature()
-                    );
+                    logStatus(room);
                 } else if (room.getTemperatureSensor().getTemperature() > 20.5 && room.isHeatingActive()) {
                     room.setHeatingActive(false);
                     airShellyProClient.controlTobi(false).subscribe();
-                    log.info(
-                        "Tobi heating is disabled, current temperature is [{}C]",
-                        room.getTemperatureSensor().getTemperature()
-                    );
+                    logStatus(room);
                 }
             }
         } else {
@@ -92,17 +80,11 @@ public class AirHeatingService {
                 if (room.getTemperatureSensor().getTemperature() < 20.5 && !room.isHeatingActive()) {
                     room.setHeatingActive(true);
                     airShellyProClient.controlLivia(true).subscribe();
-                    log.info(
-                        "Livia heating is active, current temperature is [{}C]",
-                        room.getTemperatureSensor().getTemperature()
-                    );
+                    logStatus(room);
                 } else if (room.getTemperatureSensor().getTemperature() > 20.5 && room.isHeatingActive()) {
                     room.setHeatingActive(false);
                     airShellyProClient.controlLivia(false).subscribe();
-                    log.info(
-                        "Livia heating is disabled, current temperature is [{}C]",
-                        room.getTemperatureSensor().getTemperature()
-                    );
+                    logStatus(room);
                 }
             }
         } else {
@@ -119,17 +101,11 @@ public class AirHeatingService {
                 if (room.getTemperatureSensor().getTemperature() < 20.5 && !room.isHeatingActive()) {
                     room.setHeatingActive(true);
                     airShellyProClient.controlBedroom(true).subscribe();
-                    log.info(
-                        "Bedroom heating is active, current temperature is [{}C]",
-                        room.getTemperatureSensor().getTemperature()
-                    );
+                    logStatus(room);
                 } else if (room.getTemperatureSensor().getTemperature() > 20.5 && room.isHeatingActive()) {
                     room.setHeatingActive(false);
                     airShellyProClient.controlBedroom(false).subscribe();
-                    log.info(
-                        "Bedroom heating is disabled, current temperature is [{}C]",
-                        room.getTemperatureSensor().getTemperature()
-                    );
+                    logStatus(room);
                 }
             }
         } else {
@@ -145,24 +121,18 @@ public class AirHeatingService {
             if (home.isHeatingAllowed() || isFireplaceWorking()) {
                 if (room.getTemperatureSensor().getTemperature() < 20.5 && !room.isHeatingActive()) {
                     room.setHeatingActive(true);
-                    airShellyProClient.controlBathUp(true).subscribe();
-                    log.info(
-                        "Bathroom up heating is active, current temperature is [{}C]",
-                        room.getTemperatureSensor().getTemperature()
-                    );
+                    airShellyProClient.controlFloorBathUp(true).subscribe();
+                    logStatus(room);
                 } else if (room.getTemperatureSensor().getTemperature() > 20.5 && room.isHeatingActive()) {
                     room.setHeatingActive(false);
-                    airShellyProClient.controlBathUp(false).subscribe();
-                    log.info(
-                        "Bathroom up heating is disabled, current temperature is [{}C]",
-                        room.getTemperatureSensor().getTemperature()
-                    );
+                    airShellyProClient.controlFloorBathUp(false).subscribe();
+                    logStatus(room);
                 }
             }
         } else {
             if (room.isHeatingActive()) {
                 room.setHeatingActive(false);
-                airShellyProClient.controlBathUp(false).subscribe();
+                airShellyProClient.controlFloorBathUp(false).subscribe();
             }
         }
     }
@@ -173,17 +143,11 @@ public class AirHeatingService {
                 if (room.getTemperatureSensor().getTemperature() < 20.5 && !room.isHeatingActive()) {
                     room.setHeatingActive(true);
                     airShellyProClient.controlCinema(true).subscribe();
-                    log.info(
-                        "Cinema heating is active, current temperature is [{}C]",
-                        room.getTemperatureSensor().getTemperature()
-                    );
+                    logStatus(room);
                 } else if (room.getTemperatureSensor().getTemperature() > 20.5 && room.isHeatingActive()) {
                     room.setHeatingActive(false);
                     airShellyProClient.controlCinema(false).subscribe();
-                    log.info(
-                        "Cinema heating is disabled, current temperature is [{}C]",
-                        room.getTemperatureSensor().getTemperature()
-                    );
+                    logStatus(room);
                 }
             }
         } else {
@@ -199,24 +163,18 @@ public class AirHeatingService {
             if (home.isHeatingAllowed() || isFireplaceWorking()) {
                 if (room.getTemperatureSensor().getTemperature() < 20.5 && !room.isHeatingActive()) {
                     room.setHeatingActive(true);
-                    airShellyProClient.controlBathDown(true).subscribe();
-                    log.info(
-                        "Bathroom down heating is active, current temperature is [{}C]",
-                        room.getTemperatureSensor().getTemperature()
-                    );
+                    airShellyProClient.controlFloorBathDown(true).subscribe();
+                    logStatus(room);
                 } else if (room.getTemperatureSensor().getTemperature() > 20.5 && room.isHeatingActive()) {
                     room.setHeatingActive(false);
-                    airShellyProClient.controlBathDown(false).subscribe();
-                    log.info(
-                        "Bathroom down heating is disabled, current temperature is [{}C]",
-                        room.getTemperatureSensor().getTemperature()
-                    );
+                    airShellyProClient.controlFloorBathDown(false).subscribe();
+                    logStatus(room);
                 }
             }
         } else {
             if (room.isHeatingActive()) {
                 room.setHeatingActive(false);
-                airShellyProClient.controlBathDown(false).subscribe();
+                airShellyProClient.controlFloorBathDown(false).subscribe();
             }
         }
     }
@@ -226,26 +184,28 @@ public class AirHeatingService {
             if (home.isHeatingAllowed() || isFireplaceWorking()) {
                 if (room.getTemperatureSensor().getTemperature() < 20.5 && !room.isHeatingActive()) {
                     room.setHeatingActive(true);
-                    airShellyProClient.controlLivingRoom(true).subscribe();
-                    log.info(
-                        "Living Room heating is active, current temperature is [{}C]",
-                        room.getTemperatureSensor().getTemperature()
-                    );
+                    airShellyProClient.controlFloorKitchen(true).subscribe();
+                    logStatus(room);
                 } else if (room.getTemperatureSensor().getTemperature() > 20.5 && room.isHeatingActive()) {
                     room.setHeatingActive(false);
-                    airShellyProClient.controlLivingRoom(false).subscribe();
-                    log.info(
-                        "Living Room heating is disabled, current temperature is [{}C]",
-                        room.getTemperatureSensor().getTemperature()
-                    );
+                    airShellyProClient.controlFloorKitchen(false).subscribe();
+                    logStatus(room);
                 }
             }
         } else {
             if (room.isHeatingActive()) {
                 room.setHeatingActive(false);
-                airShellyProClient.controlLivingRoom(false).subscribe();
+                airShellyProClient.controlFloorKitchen(false).subscribe();
             }
         }
+    }
+
+    private static void logStatus(final Room room) {
+        log.info(
+            "{} heating is disabled, current temperature is [{}C]",
+            room.getName().name(),
+            room.getTemperatureSensor().getTemperature()
+        );
     }
 
     private boolean isFireplaceWorking() {
