@@ -16,6 +16,7 @@ import java.util.List;
 @SuperBuilder
 public class HomeConfigurationResponse {
 
+    private boolean isHeatingAllowed;
     private BoilerRoom boilerRoom;
     private int roomNumber;
     private List<RoomConfigurationResponse> rooms;

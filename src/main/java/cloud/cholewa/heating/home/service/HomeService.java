@@ -35,6 +35,25 @@ public class HomeService {
 
         return Mono.justOrEmpty(
             HomeConfigurationResponse.builder()
+                .isHeatingAllowed(home.isHeatingAllowed())
+                .boilerRoom(home.getBoiler())
+                .roomNumber(home.getRooms().size())
+                .rooms(home.getRooms().stream()
+                    .map(RoomMapper::map)
+                    .toList())
+                .build()
+        );
+    }
+
+    public Mono<HomeConfigurationResponse> changeHomeHeatingState(final String mode) {
+        switch (mode) {
+            case "on" -> home.setHeatingAllowed(true);
+            case "off" -> home.setHeatingAllowed(false);
+        }
+
+        return Mono.justOrEmpty(
+            HomeConfigurationResponse.builder()
+                .isHeatingAllowed(home.isHeatingAllowed())
                 .boilerRoom(home.getBoiler())
                 .roomNumber(home.getRooms().size())
                 .rooms(home.getRooms().stream()

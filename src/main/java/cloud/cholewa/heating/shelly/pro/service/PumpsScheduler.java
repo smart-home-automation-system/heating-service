@@ -1,6 +1,5 @@
 package cloud.cholewa.heating.shelly.pro.service;
 
-import cloud.cholewa.heating.config.job.PumpsPoolingJobConfig;
 import cloud.cholewa.heating.model.BoilerRoom;
 import cloud.cholewa.heating.model.HeatingSource;
 import cloud.cholewa.heating.model.HeatingSourceType;
@@ -21,7 +20,6 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class PumpsScheduler {
 
-    private final PumpsPoolingJobConfig pumpsPoolingJobConfig;
     private final Home home;
     private final ShellyProClient shellyProClient;
 
@@ -84,7 +82,7 @@ public class PumpsScheduler {
         }
 
         if (!home.isHeatingAllowed()) {
-            if (furnace.isActive()) {
+            if (furnace.isActive() && !hotWaterPump.isRunning()) {
                 shellyProClient.controlHeatingPump(false).subscribe();
                 heatingPump.setRunning(false);
                 shellyProClient.controlFurnace(false).subscribe();

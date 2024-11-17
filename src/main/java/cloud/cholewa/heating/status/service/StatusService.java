@@ -30,7 +30,7 @@ public class StatusService {
     public Mono<ResponseEntity<Void>> updateStatusFromAmx(final DeviceStatusUpdate deviceStatus) {
         updateStatus(deviceStatus);
 
-        return Mono.just(ResponseEntity.ok().<Void>build());
+        return Mono.just(ResponseEntity.ok().build());
     }
 
     private void updateStatus(final DeviceStatusUpdate deviceStatus) {
@@ -52,7 +52,9 @@ public class StatusService {
 
             roomUpdate.setTemperatureSensor(TemperatureSensor.builder()
                 .updateTime(LocalDateTime.now())
-                .temperature(Double.parseDouble(deviceStatus.getValue()))
+                .temperature(roomUpdate.getName().equals(RoomName.BATHROOM_DOWN)
+                    ? Double.parseDouble(deviceStatus.getValue()) + 3 //due to sensor failure temp inc by 3
+                    : Double.parseDouble(deviceStatus.getValue()))
                 .build());
 
             airHeatingService.controlHeaterSource(roomUpdate);

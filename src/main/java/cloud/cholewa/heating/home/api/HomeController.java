@@ -39,4 +39,13 @@ public class HomeController {
         log.info("Getting home configuration");
         return homeService.getHomeConfiguration().map(ResponseEntity::ok);
     }
+
+    @GetMapping
+    Mono<ResponseEntity<HomeConfigurationResponse>> changeHeatingAllowed(@RequestParam final String heating) {
+        log.info("Changing heating allowed to: {}", heating);
+
+        return heating.equals("on") || heating.equals("off")
+            ? homeService.changeHomeHeatingState(heating).map(ResponseEntity::ok)
+            : Mono.error(new RuntimeException("Invalid heating value: " + heating));
+    }
 }
