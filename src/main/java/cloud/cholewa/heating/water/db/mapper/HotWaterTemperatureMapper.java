@@ -1,6 +1,6 @@
-package cloud.cholewa.heating.db.mapper;
+package cloud.cholewa.heating.water.db.mapper;
 
-import cloud.cholewa.heating.db.model.HotWaterTemperatureEntity;
+import cloud.cholewa.heating.water.db.model.HotWaterTemperatureEntity;
 import cloud.cholewa.shelly.model.ShellyUniStatusResponse;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -24,8 +24,7 @@ public class HotWaterTemperatureMapper {
     }
 
     private static LocalDateTime getLocalDateTime(final int unixTime) {
-        LocalDateTime localDateTime = LocalDateTime.ofInstant(Instant.ofEpochSecond(unixTime), ZoneId.systemDefault());
-        log.info("LocalDateTime: {}", localDateTime);
-        return localDateTime;
+        //log.info("LocalDateTime: {}", localDateTime);
+        return LocalDateTime.ofInstant(Instant.ofEpochSecond(unixTime), ZoneId.systemDefault());
     }
 }

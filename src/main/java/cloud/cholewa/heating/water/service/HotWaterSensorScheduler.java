@@ -1,4 +1,4 @@
-package cloud.cholewa.heating.service.hot_water;
+package cloud.cholewa.heating.water.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;

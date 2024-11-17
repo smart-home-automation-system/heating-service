@@ -4,6 +4,7 @@ import cloud.cholewa.heating.model.BoilerRoom;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.HeatingSource;
 import cloud.cholewa.heating.model.Home;
+import cloud.cholewa.heating.model.HotWater;
 import cloud.cholewa.heating.model.OpeningSensor;
 import cloud.cholewa.heating.model.Pump;
 import cloud.cholewa.heating.model.PumpType;
@@ -16,6 +17,7 @@ import java.util.List;
 
 import static cloud.cholewa.heating.model.HeaterType.FLOOR;
 import static cloud.cholewa.heating.model.HeaterType.RADIATOR;
+import static cloud.cholewa.heating.model.HeatingSourceType.FIREPLACE;
 import static cloud.cholewa.heating.model.HeatingSourceType.FURNACE;
 import static cloud.cholewa.heating.model.OpeningType.DOOR;
 import static cloud.cholewa.heating.model.OpeningType.ENTRANCE_DOOR;
@@ -28,17 +30,17 @@ import static cloud.cholewa.heating.model.OpeningType.WINDOW2;
 import static cloud.cholewa.heating.model.PumpType.FIREPLACE_PUMP;
 import static cloud.cholewa.heating.model.PumpType.HEATING_PUMP;
 import static cloud.cholewa.heating.model.PumpType.HOT_WATER_PUMP;
-import static cloud.cholewa.heating.model.RoomNames.BATHROOM_DOWN;
-import static cloud.cholewa.heating.model.RoomNames.BATHROOM_UP;
-import static cloud.cholewa.heating.model.RoomNames.BEDROOM;
-import static cloud.cholewa.heating.model.RoomNames.CINEMA;
-import static cloud.cholewa.heating.model.RoomNames.ENTRANCE;
-import static cloud.cholewa.heating.model.RoomNames.GARAGE;
-import static cloud.cholewa.heating.model.RoomNames.LIVIA;
-import static cloud.cholewa.heating.model.RoomNames.MAIN;
-import static cloud.cholewa.heating.model.RoomNames.OFFICE;
-import static cloud.cholewa.heating.model.RoomNames.TOBI;
-import static cloud.cholewa.heating.model.RoomNames.WARDROBE;
+import static cloud.cholewa.home.model.RoomName.BATHROOM_DOWN;
+import static cloud.cholewa.home.model.RoomName.BATHROOM_UP;
+import static cloud.cholewa.home.model.RoomName.BEDROOM;
+import static cloud.cholewa.home.model.RoomName.CINEMA;
+import static cloud.cholewa.home.model.RoomName.ENTRANCE;
+import static cloud.cholewa.home.model.RoomName.GARAGE;
+import static cloud.cholewa.home.model.RoomName.LIVIA;
+import static cloud.cholewa.home.model.RoomName.LIVING_ROOM;
+import static cloud.cholewa.home.model.RoomName.OFFICE;
+import static cloud.cholewa.home.model.RoomName.TOBI;
+import static cloud.cholewa.home.model.RoomName.WARDROBE;
 
 @Configuration
 public class HomeConfig {
@@ -46,8 +48,8 @@ public class HomeConfig {
     @Bean
     public Home home() {
         return new Home(
-            getRoomsConfiguration(),
-            getBoilerConfiguration()
+            getBoilerConfiguration(),
+            getRoomsConfiguration()
         );
     }
 
@@ -70,8 +72,10 @@ public class HomeConfig {
     public BoilerRoom getBoilerConfiguration() {
         return BoilerRoom.builder()
             .heatingSources(List.of(
-                HeatingSource.builder().type(FURNACE).build()
+                HeatingSource.builder().type(FURNACE).build(),
+                HeatingSource.builder().type(FIREPLACE).build()
             ))
+            .hotWater(new HotWater())
             .pumps(List.of(
                 Pump.builder().type(HEATING_PUMP).build(),
                 Pump.builder().type(FIREPLACE_PUMP).build(),
@@ -168,7 +172,7 @@ public class HomeConfig {
 
     private Room getMainConfiguration() {
         return Room.builder()
-            .name(MAIN)
+            .name(LIVING_ROOM)
             .temperatureSensor(TemperatureSensor.builder().build())
             .openingSensors(List.of(
                 OpeningSensor.builder().openingType(DOOR).build(),

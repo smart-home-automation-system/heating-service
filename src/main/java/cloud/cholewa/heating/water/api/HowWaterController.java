@@ -1,7 +1,7 @@
-package cloud.cholewa.heating.api;
+package cloud.cholewa.heating.water.api;
 
-import cloud.cholewa.heating.db.model.HotWaterTemperatureEntity;
-import cloud.cholewa.heating.service.hot_water.HotWaterService;
+import cloud.cholewa.heating.water.db.model.HotWaterTemperatureEntity;
+import cloud.cholewa.heating.water.service.HotWaterService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
