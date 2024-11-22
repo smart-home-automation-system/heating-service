@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.3.5</version>
+		<version>3.3.6</version>
 		<relativePath/>
 		<!-- lookup parent from repository -->
 	</parent>
@@ -19,7 +19,7 @@
 
 	<properties>
 		<java.version>17</java.version>
-		<logbook.version>3.9.0</logbook.version>
+		<logbook.version>3.10.0</logbook.version>
 
 		<!--	this version is required 'cause 42.7.4 not working with flyway-->
 		<postgresql.version>42.7.3</postgresql.version>
