@@ -9,7 +9,7 @@ import java.util.List;
 @SuperBuilder
 public class BoilerRoom {
 
-    private final List<HeatingSource> heatingSources;
-    private final HotWater hotWater;
-    private final List<Pump> pumps;
+//    private final List<HeatingSource> heatingSources;
+//    private final HotWater hotWater;
+//    private final List<Pump> pumps;
 }
