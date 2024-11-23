@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.home.api;
 
+import cloud.cholewa.heating.home.api.model.HomeShortResponse;
 import cloud.cholewa.heating.home.service.HomeService;
 import cloud.cholewa.heating.model.BoilerRoom;
 import cloud.cholewa.heating.model.Home;
@@ -26,9 +27,9 @@ public class HomeController {
     }
 
     @GetMapping("/status:short")
-    Mono<ResponseEntity<Void>> getHomeShortStatus(@RequestBody(required = false) final String fakeRequestBody) {
+    Mono<ResponseEntity<HomeShortResponse>> getHomeShortStatus(@RequestBody(required = false) final String fakeRequestBody) {
         log.info("Requesting short home status");
-        return Mono.just(new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED));
+        return homeService.getHomeShortStats().map(ResponseEntity::ok);
     }
 
     @GetMapping("/status/boiler")

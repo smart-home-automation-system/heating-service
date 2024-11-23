@@ -1,5 +1,7 @@
 package cloud.cholewa.heating.home.service;
 
+import cloud.cholewa.heating.home.api.mapper.HomeMapper;
+import cloud.cholewa.heating.home.api.model.HomeShortResponse;
 import cloud.cholewa.heating.model.Home;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,10 @@ public class HomeService {
 
     public Mono<Home> getHomeStats() {
         return Mono.just(home);
+    }
+
+    public Mono<HomeShortResponse> getHomeShortStats() {
+        return Mono.justOrEmpty(HomeMapper.toHomeShortResponse(home));
     }
 
 //    public Mono<RoomConfigurationResponse> getRoomConfiguration(final String roomName) {
