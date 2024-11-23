@@ -1,27 +1,30 @@
-//package cloud.cholewa.heating.status.service;
+package cloud.cholewa.heating.amx.service;
+
+import cloud.cholewa.heating.amx.handler.TemperatureSensorHandler;
+import cloud.cholewa.heating.infrastructure.error.DeviceException;
+import cloud.cholewa.home.model.DeviceStatusUpdate;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class AmxStatusService {
+
+    private final TemperatureSensorHandler temperatureSensorHandler;
+
+    public Mono<Void> updateStatus(final DeviceStatusUpdate deviceStatus) {
+        return Mono.just(deviceStatus)
+            .flatMap(device -> switch (device.getDeviceType()) {
+                case TEMPERATURE_SENSOR -> temperatureSensorHandler.handle(device);
+                default -> Mono.error(new DeviceException("Unknown device type: " + device.getDeviceType()));
+            })
+            .then();
+    }
+
 //
-//import cloud.cholewa.heating.air.service.AirHeatingService;
-//import cloud.cholewa.heating.model.HeatingSource;
-//import cloud.cholewa.heating.model.Home;
-//import cloud.cholewa.heating.model.Room;
-//import cloud.cholewa.heating.model.TemperatureSensor;
-//import cloud.cholewa.heating.shelly.pro.service.ShellyProService;
-//import cloud.cholewa.home.model.DeviceStatusUpdate;
-//import cloud.cholewa.home.model.RoomName;
-//import lombok.RequiredArgsConstructor;
-//import lombok.extern.slf4j.Slf4j;
-//import org.springframework.http.ResponseEntity;
-//import org.springframework.stereotype.Service;
-//import reactor.core.publisher.Mono;
-//
-//import java.time.LocalDateTime;
-//
-//import static cloud.cholewa.heating.model.HeatingSourceType.FIREPLACE;
-//
-//@Slf4j
-//@Service
-//@RequiredArgsConstructor
-//public class StatusService {
 //
 //    private final Home home;
 //    private final ShellyProService shellyProService;
@@ -60,4 +63,4 @@
 //            airHeatingService.controlHeaterSource(roomUpdate);
 //        }
 //    }
-//}
+}
