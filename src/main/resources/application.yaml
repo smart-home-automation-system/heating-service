@@ -33,15 +33,15 @@ logging:
 
 jobs:
   hot-water:
-    poolingInterval: PT60s
+    poolingInterval: PT2m
   pumps:
     poolingInterval: PT5s
 
 shelly:
   sensor:
-    uni-hot-water:
-      scheme: http
-      host: 10.78.30.47
+    uni:
+      hot-water:
+        host: 10.78.30.47
 
 ---
 

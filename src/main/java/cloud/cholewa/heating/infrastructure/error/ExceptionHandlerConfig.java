@@ -2,6 +2,7 @@ package cloud.cholewa.heating.infrastructure.error;
 
 import cloud.cholewa.commons.error.GlobalErrorExceptionHandler;
 import cloud.cholewa.heating.infrastructure.error.processor.DeviceExceptionProcessor;
+import cloud.cholewa.heating.infrastructure.error.processor.HotWaterExceptionProcessor;
 import cloud.cholewa.heating.infrastructure.error.processor.RoomNotFoundExceptionProcessor;
 import org.springframework.boot.autoconfigure.web.WebProperties;
 import org.springframework.boot.web.reactive.error.ErrorAttributes;
@@ -31,7 +32,8 @@ public class ExceptionHandlerConfig {
         globalErrorExceptionHandler.withCustomErrorProcessor(
             Map.ofEntries(
                 Map.entry(RoomNotFoundException.class, new RoomNotFoundExceptionProcessor()),
-                Map.entry(DeviceException.class, new DeviceExceptionProcessor())
+                Map.entry(DeviceException.class, new DeviceExceptionProcessor()),
+                Map.entry(HotWaterException.class, new HotWaterExceptionProcessor())
             )
         );
 
