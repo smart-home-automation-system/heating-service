@@ -3,6 +3,7 @@ package cloud.cholewa.heating.amx.handler;
 import cloud.cholewa.heating.model.Fireplace;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.home.model.DeviceStatusUpdate;
+import cloud.cholewa.home.model.RoomName;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -67,6 +68,12 @@ public class TemperatureSensorHandler {
 
     private void handleRoom(final Room room, final DeviceStatusUpdate device) {
         room.getTemperature().setUpdatedAt(LocalDateTime.now());
-        room.getTemperature().setValue(Double.parseDouble(device.getValue()));
+
+        if (room.getName().equalsIgnoreCase(RoomName.BATHROOM_DOWN.name())) {
+            //This is necessary due to failure of bathroom down sensor
+            room.getTemperature().setValue(Double.parseDouble(device.getValue()) + 3);
+        } else {
+            room.getTemperature().setValue(Double.parseDouble(device.getValue()));
+        }
     }
 }
