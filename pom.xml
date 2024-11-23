@@ -21,8 +21,7 @@
 		<java.version>17</java.version>
 		<logbook.version>3.10.0</logbook.version>
 
-		<!--	this version is required 'cause 42.7.4 not working with flyway-->
-		<postgresql.version>42.7.3</postgresql.version>
+		<postgresql.version>42.7.4</postgresql.version>
 
 		<!--  internal dependencies versions-->
 		<cholewa-commons.version>0.1.2</cholewa-commons.version>
