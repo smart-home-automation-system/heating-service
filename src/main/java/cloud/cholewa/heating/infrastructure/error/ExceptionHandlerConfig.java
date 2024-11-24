@@ -1,6 +1,7 @@
 package cloud.cholewa.heating.infrastructure.error;
 
 import cloud.cholewa.commons.error.GlobalErrorExceptionHandler;
+import cloud.cholewa.heating.infrastructure.error.processor.BoilerExceptionProcessor;
 import cloud.cholewa.heating.infrastructure.error.processor.DeviceExceptionProcessor;
 import cloud.cholewa.heating.infrastructure.error.processor.HotWaterExceptionProcessor;
 import cloud.cholewa.heating.infrastructure.error.processor.RoomNotFoundExceptionProcessor;
@@ -33,7 +34,8 @@ public class ExceptionHandlerConfig {
             Map.ofEntries(
                 Map.entry(RoomNotFoundException.class, new RoomNotFoundExceptionProcessor()),
                 Map.entry(DeviceException.class, new DeviceExceptionProcessor()),
-                Map.entry(HotWaterException.class, new HotWaterExceptionProcessor())
+                Map.entry(HotWaterException.class, new HotWaterExceptionProcessor()),
+                Map.entry(BoilerException.class, new BoilerExceptionProcessor())
             )
         );
 

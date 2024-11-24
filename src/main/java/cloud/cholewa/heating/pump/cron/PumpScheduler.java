@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.pump.cron;
 
+import cloud.cholewa.heating.model.Furnace;
 import cloud.cholewa.heating.model.HotWater;
 import cloud.cholewa.heating.model.Pump;
 import cloud.cholewa.heating.shelly.actor.BoilerPro4Client;
@@ -21,8 +22,13 @@ public class PumpScheduler {
     private static final double HOT_WATER_HIGH_TEMPERATURE = 42;
 
     private final HotWater hotWater;
+    private final Pump fireplacePump;
+    private final Pump floorPump;
+    private final Pump heatingPump;
+    private final Pump hotWaterPump;
 
     private final BoilerPro4Client boilerPro4Client;
+    private final Furnace furnace;
 
 //    private final Home home;
 //    private final ShellyProClient shellyProClient;
@@ -32,7 +38,6 @@ public class PumpScheduler {
         Pump circulationPump = hotWater.circulation().pump();
 
         queryPumpStatus();
-
 
 //        BoilerRoom boilerRoom = home.getBoiler();
 //        Pump hotWaterPump = boilerRoom.getPumps().stream()
@@ -102,30 +107,49 @@ public class PumpScheduler {
     }
 
     private void queryPumpStatus() {
+        log.info("Querying pump status for Boiler");
         Flux.interval(Duration.ofSeconds(3))
             .take(5)
             .flatMap(i ->
-                 switch (i.intValue()) {
+                switch (i.intValue()) {
                     case 1 -> queryHotWaterPumpStatus();
                     case 2 -> queryHeatingPumpStatus();
                     case 3 -> queryFireplacePumpStatus();
                     case 4 -> queryFloorPumpStatus();
                     case 5 -> queryFurnaceStatus();
                     default -> Mono.empty();
-            })
+                })
             .subscribe();
     }
 
     private Mono<Void> queryHotWaterPumpStatus() {
-        return Mono.empty();
+        return boilerPro4Client.getHotWaterPumpStatus()
+            .doOnError(throwable -> log.error("Error while querying hot water pump status", throwable))
+            .flatMap(response -> {
+                    hotWaterPump.setRunning(Boolean.TRUE.equals(response.getOutput()));
+                    return Mono.empty();
+                }
+            );
     }
 
     private Mono<Void> queryHeatingPumpStatus() {
-        return Mono.empty();
+        return boilerPro4Client.getHeatingPumpStatus()
+            .doOnError(throwable -> log.error("Error while querying hot water pump status", throwable))
+            .flatMap(response -> {
+                    heatingPump.setRunning(Boolean.TRUE.equals(response.getOutput()));
+                    return Mono.empty();
+                }
+            );
     }
 
     private Mono<Void> queryFireplacePumpStatus() {
-        return Mono.empty();
+        return boilerPro4Client.getFireplacePumpStatus()
+            .doOnError(throwable -> log.error("Error while querying fireplace pump status", throwable))
+            .flatMap(response -> {
+                    fireplacePump.setRunning(Boolean.TRUE.equals(response.getOutput()));
+                    return Mono.empty();
+                }
+            );
     }
 
     private Mono<Void> queryFloorPumpStatus() {
@@ -133,6 +157,12 @@ public class PumpScheduler {
     }
 
     private Mono<Void> queryFurnaceStatus() {
-        return Mono.empty();
+        return boilerPro4Client.getFurnaceStatus()
+            .doOnError(throwable -> log.error("Error while querying furnace status", throwable))
+            .flatMap(response -> {
+                    furnace.setRunning(Boolean.TRUE.equals(response.getOutput()));
+                    return Mono.empty();
+                }
+            );
     }
 }

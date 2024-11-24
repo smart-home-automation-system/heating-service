@@ -1,9 +1,12 @@
 package cloud.cholewa.heating.shelly.actor;
 
+import cloud.cholewa.heating.infrastructure.error.BoilerException;
+import cloud.cholewa.shelly.model.ShellyPro4StatusResponse;
 import cloud.cholewa.shelly.model.ShellyProRelayResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -28,7 +31,20 @@ public class BoilerPro4Client {
             .bodyToMono(ShellyProRelayResponse.class);
     }
 
-
+    public Mono<ShellyPro4StatusResponse> getFireplacePumpStatus() {
+        return webClient.get()
+            .uri(uriBuilder -> uriBuilder.scheme("http").host(SHELLY_PRO4_BOILER_HOST)
+                .path("rpc/Switch.GetStatus")
+                .queryParam("id", "3")
+                .build())
+            .retrieve()
+            .onStatus(
+                HttpStatusCode::isError, clientResponse -> Mono.error(
+                    new BoilerException("Problem with communication with Shelly Pro4 in boiler, detail: " + clientResponse.statusCode())
+                )
+            )
+            .bodyToMono(ShellyPro4StatusResponse.class);
+    }
 
     public Mono<ShellyProRelayResponse> controlFurnace(final boolean enable) {
         return webClient.get()
@@ -38,6 +54,21 @@ public class BoilerPro4Client {
                 .build())
             .retrieve()
             .bodyToMono(ShellyProRelayResponse.class);
+    }
+
+    public Mono<ShellyPro4StatusResponse> getFurnaceStatus() {
+        return webClient.get()
+            .uri(uriBuilder -> uriBuilder.scheme("http").host(SHELLY_PRO4_BOILER_HOST)
+                .path("rpc/Switch.GetStatus")
+                .queryParam("id", "0")
+                .build())
+            .retrieve()
+            .onStatus(
+                HttpStatusCode::isError, clientResponse -> Mono.error(
+                    new BoilerException("Problem with communication with Shelly Pro4 in boiler, detail: " + clientResponse.statusCode())
+                )
+            )
+            .bodyToMono(ShellyPro4StatusResponse.class);
     }
 
     public Mono<ShellyProRelayResponse> controlHotWaterPump(final boolean enable) {
@@ -50,6 +81,21 @@ public class BoilerPro4Client {
             .bodyToMono(ShellyProRelayResponse.class);
     }
 
+    public Mono<ShellyPro4StatusResponse> getHotWaterPumpStatus() {
+        return webClient.get()
+            .uri(uriBuilder -> uriBuilder.scheme("http").host(SHELLY_PRO4_BOILER_HOST)
+                .path("rpc/Switch.GetStatus")
+                .queryParam("id", "1")
+                .build())
+            .retrieve()
+            .onStatus(
+                HttpStatusCode::isError, clientResponse -> Mono.error(
+                    new BoilerException("Problem with communication with Shelly Pro4 in boiler, detail: " + clientResponse.statusCode())
+                )
+            )
+            .bodyToMono(ShellyPro4StatusResponse.class);
+    }
+
     public Mono<ShellyProRelayResponse> controlHeatingPump(final boolean enable) {
         return webClient.get()
             .uri(uriBuilder -> uriBuilder.scheme("http").host(SHELLY_PRO4_BOILER_HOST)
@@ -58,6 +104,21 @@ public class BoilerPro4Client {
                 .build())
             .retrieve()
             .bodyToMono(ShellyProRelayResponse.class);
+    }
+
+    public Mono<ShellyPro4StatusResponse> getHeatingPumpStatus() {
+        return webClient.get()
+            .uri(uriBuilder -> uriBuilder.scheme("http").host(SHELLY_PRO4_BOILER_HOST)
+                .path("rpc/Switch.GetStatus")
+                .queryParam("id", "2")
+                .build())
+            .retrieve()
+            .onStatus(
+                HttpStatusCode::isError, clientResponse -> Mono.error(
+                    new BoilerException("Problem with communication with Shelly Pro4 in boiler, detail: " + clientResponse.statusCode())
+                )
+            )
+            .bodyToMono(ShellyPro4StatusResponse.class);
     }
 }
 
