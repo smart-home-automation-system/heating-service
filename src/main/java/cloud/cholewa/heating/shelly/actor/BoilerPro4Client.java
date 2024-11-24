@@ -121,5 +121,3 @@ public class BoilerPro4Client {
             .bodyToMono(ShellyPro4StatusResponse.class);
     }
 }
-
-//http://10.78.30.20/rpc/Switch.GetStatus?id=0

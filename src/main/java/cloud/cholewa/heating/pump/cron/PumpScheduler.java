@@ -1,8 +1,11 @@
 package cloud.cholewa.heating.pump.cron;
 
 import cloud.cholewa.heating.model.Furnace;
-import cloud.cholewa.heating.model.HotWater;
 import cloud.cholewa.heating.model.Pump;
+import cloud.cholewa.heating.pump.service.FireplacePumpService;
+import cloud.cholewa.heating.pump.service.FurnaceService;
+import cloud.cholewa.heating.pump.service.HeatingPumpService;
+import cloud.cholewa.heating.pump.service.HotWaterPumpService;
 import cloud.cholewa.heating.shelly.actor.BoilerPro4Client;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,100 +21,33 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class PumpScheduler {
 
-    private static final double HOT_WATER_LOW_TEMPERATURE = 38;
-    private static final double HOT_WATER_HIGH_TEMPERATURE = 42;
-
-    private final HotWater hotWater;
+    private final Furnace furnace;
     private final Pump fireplacePump;
     private final Pump floorPump;
     private final Pump heatingPump;
     private final Pump hotWaterPump;
 
     private final BoilerPro4Client boilerPro4Client;
-    private final Furnace furnace;
 
-//    private final Home home;
-//    private final ShellyProClient shellyProClient;
+    private final HotWaterPumpService hotWaterPumpService;
+    private final FireplacePumpService fireplacePumpService;
+    private final HeatingPumpService heatingPumpService;
+    private final FurnaceService furnaceService;
 
     @Scheduled(fixedRateString = "${jobs.pumps.poolingInterval}", initialDelayString = "PT5s")
     void handleBoiler() {
-        Pump circulationPump = hotWater.circulation().pump();
-
         queryPumpStatus();
-
-//        BoilerRoom boilerRoom = home.getBoiler();
-//        Pump hotWaterPump = boilerRoom.getPumps().stream()
-//            .filter(pump -> pump.getType().equals(PumpType.HOT_WATER_PUMP))
-//            .findFirst().orElseThrow();
-//        Pump fireplacePump = boilerRoom.getPumps().stream()
-//            .filter(pump -> pump.getType().equals(PumpType.FIREPLACE_PUMP))
-//            .findFirst().orElseThrow();
-//        Pump heatingPump = boilerRoom.getPumps().stream()
-//            .filter(pump -> pump.getType().equals(PumpType.HEATING_PUMP))
-//            .findFirst().orElseThrow();
-//
-//        HeatingSource furnace = boilerRoom.getHeatingSources().stream()
-//            .filter(heatingSource -> heatingSource.getType().equals(HeatingSourceType.FURNACE))
-//            .findFirst().orElseThrow();
-
-        //hot water has the highest priority
-//        if (hotWaterPump.isRunning()) {
-//            shellyProClient.controlHotWaterPump().subscribe();
-//        }
-
-//        shellyProClient.controlHotWaterPump(hotWaterPump.isRunning()).subscribe();
-
-//        if (hotWaterPump.isRunning() || heatingPump.isRunning()) {
-//            if (!furnace.isActive()) {
-//                furnace.setActive(true);
-//                shellyProClient.controlFurnace(true).subscribe();
-//            }
-//        }
-//
-//        if (!hotWaterPump.isRunning() && fireplacePump.isRunning()) {
-//            if (furnace.isActive()) {
-//                furnace.setActive(false);
-//                shellyProClient.controlFurnace(false).subscribe();
-//            }
-//        }
-//
-//        if (home.isHeatingAllowed()) {
-//            if (home.getRooms().stream().anyMatch(Room::isHeatingActive)) {
-//                if (!furnace.isActive()) {
-//                    shellyProClient.controlHeatingPump(true).subscribe();
-//                    heatingPump.setRunning(true);
-//                    shellyProClient.controlFurnace(true).subscribe();
-//                    furnace.setActive(true);
-//                    furnace.setUpdateTime(LocalDateTime.now());
-//                }
-//            } else {
-//                if (furnace.isActive()) {
-//                    shellyProClient.controlHeatingPump(false).subscribe();
-//                    heatingPump.setRunning(false);
-//                    shellyProClient.controlFurnace(false).subscribe();
-//                    furnace.setActive(false);
-//                    furnace.setUpdateTime(LocalDateTime.now());
-//                }
-//            }
-//        }
-//
-//        if (!home.isHeatingAllowed()) {
-//            if (furnace.isActive() && !hotWaterPump.isRunning()) {
-//                shellyProClient.controlHeatingPump(false).subscribe();
-//                heatingPump.setRunning(false);
-//                shellyProClient.controlFurnace(false).subscribe();
-//                furnace.setActive(false);
-//                furnace.setUpdateTime(LocalDateTime.now());
-//            }
-//        }
+        hotWaterPumpService.handleHotWaterPump();
+        fireplacePumpService.handleFireplacePump();
+        heatingPumpService.handleHeatingPump();
+        furnaceService.handleFurnace();
     }
 
     private void queryPumpStatus() {
-        log.info("Querying pump status for Boiler");
         Flux.interval(Duration.ofSeconds(3))
             .take(5)
             .flatMap(i ->
-                switch (i.intValue()) {
+                switch (i.intValue() + 1) {
                     case 1 -> queryHotWaterPumpStatus();
                     case 2 -> queryHeatingPumpStatus();
                     case 3 -> queryFireplacePumpStatus();

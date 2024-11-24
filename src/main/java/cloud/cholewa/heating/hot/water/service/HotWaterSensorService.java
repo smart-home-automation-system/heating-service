@@ -17,12 +17,10 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class HotWaterSensorService {
 
-    private static final double CIRCULATION_TEMPERATURE_MAX = 25;
+    private static final double CIRCULATION_TEMPERATURE_MAX = 22;
+    private final HotWater hotWater;
 
     private final HotWaterSensorClient hotWaterSensorClient;
-
-    private final HotWater hotWater;
-    private final Pump hotWaterPump;
 
     public void querySensorStatus() {
         Pump circulationPump = hotWater.circulation().pump();
@@ -52,45 +50,13 @@ public class HotWaterSensorService {
                 )
             )
             .flatMap(response -> {
-                updatePumpStatus();
+                optionallyTurnOnCirculationPump();
                 return Mono.just(response);
             })
             .subscribe();
-//
-//        client.getStatus().flatMap(
-//                entity -> entity.getBody() != null
-//                    ? Mono.just(HotWaterTemperatureMapper.toEntity(entity.getBody()))
-//                    : Mono.error(() -> new IllegalArgumentException("Invalid Shelly Response"))
-//            )
-//            .flatMap(repository::save)
-//            .publishOn(Schedulers.boundedElastic())
-//            .doOnNext(entity -> {
-//                log.info(
-//                    "Updated hot water temperature is: [{}], a time: {}",
-//                    entity.getWaterTemperature(),
-//                    entity.getTimestamp().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-//                );
-//
-//                if (entity.getWaterTemperature() < HOT_WATER_LOW_TEMPERATURE) {
-//                    if (!hotWaterPump.isRunning()) {
-//                        hotWaterPump.setRunning(true);
-//                        shellyProClient.controlHotWaterPump(true).subscribe();
-//                    }
-//                }
-//                if (entity.getWaterTemperature() > HOT_WATER_HIGH_TEMPERATURE) {
-//                    if (hotWaterPump.isRunning()) {
-//                        hotWaterPump.setRunning(false);
-//                        shellyProClient.controlHotWaterPump(false).subscribe();
-//                    }
-//                }
-//
-//                hotWater.setUpdateTime(entity.getTimestamp());
-//                hotWater.setTemperature(entity.getWaterTemperature());
-//            })
-//            .subscribe();
     }
 
-    private void updatePumpStatus() {
+    private void optionallyTurnOnCirculationPump() {
         if (LocalTime.now().isAfter(LocalTime.of(5, 0))
             && LocalTime.now().isBefore(LocalTime.of(23, 59))
         ) {
