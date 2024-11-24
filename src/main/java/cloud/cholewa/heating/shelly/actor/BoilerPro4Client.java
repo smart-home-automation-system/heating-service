@@ -28,6 +28,11 @@ public class BoilerPro4Client {
                 .queryParam("turn", enable ? "on" : "off")
                 .build())
             .retrieve()
+            .onStatus(
+                HttpStatusCode::isError, clientResponse -> Mono.error(
+                    new BoilerException("Problem with communication with Shelly Pro4 in boiler, detail: " + clientResponse.statusCode())
+                )
+            )
             .bodyToMono(ShellyProRelayResponse.class);
     }
 
@@ -53,6 +58,11 @@ public class BoilerPro4Client {
                 .queryParam("turn", enable ? "on" : "off")
                 .build())
             .retrieve()
+            .onStatus(
+                HttpStatusCode::isError, clientResponse -> Mono.error(
+                    new BoilerException("Problem with communication with Shelly Pro4 in boiler, detail: " + clientResponse.statusCode())
+                )
+            )
             .bodyToMono(ShellyProRelayResponse.class);
     }
 
@@ -78,6 +88,11 @@ public class BoilerPro4Client {
                 .queryParam("turn", enable ? "on" : "off")
                 .build())
             .retrieve()
+            .onStatus(
+                HttpStatusCode::isError, clientResponse -> Mono.error(
+                    new BoilerException("Problem with communication with Shelly Pro4 in boiler, detail: " + clientResponse.statusCode())
+                )
+            )
             .bodyToMono(ShellyProRelayResponse.class);
     }
 
@@ -103,6 +118,11 @@ public class BoilerPro4Client {
                 .queryParam("turn", enable ? "on" : "off")
                 .build())
             .retrieve()
+            .onStatus(
+                HttpStatusCode::isError, clientResponse -> Mono.error(
+                    new BoilerException("Problem with communication with Shelly Pro4 in boiler, detail: " + clientResponse.statusCode())
+                )
+            )
             .bodyToMono(ShellyProRelayResponse.class);
     }
 

@@ -7,6 +7,7 @@ import cloud.cholewa.heating.pump.service.FurnaceService;
 import cloud.cholewa.heating.pump.service.HeatingPumpService;
 import cloud.cholewa.heating.pump.service.HotWaterPumpService;
 import cloud.cholewa.heating.shelly.actor.BoilerPro4Client;
+import cloud.cholewa.heating.shelly.actor.HeaterPro4Client;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -28,6 +29,7 @@ public class PumpScheduler {
     private final Pump hotWaterPump;
 
     private final BoilerPro4Client boilerPro4Client;
+    private final HeaterPro4Client heaterPro4Client;
 
     private final HotWaterPumpService hotWaterPumpService;
     private final FireplacePumpService fireplacePumpService;
@@ -89,7 +91,13 @@ public class PumpScheduler {
     }
 
     private Mono<Void> queryFloorPumpStatus() {
-        return Mono.empty();
+        return heaterPro4Client.getFloorPumpStatus()
+            .doOnError(throwable -> log.error("Error while querying floor pump status", throwable))
+            .flatMap(response -> {
+                    floorPump.setRunning(Boolean.TRUE.equals(response.getOutput()));
+                    return Mono.empty();
+                }
+            );
     }
 
     private Mono<Void> queryFurnaceStatus() {

@@ -35,8 +35,6 @@ public class TemperatureSensorHandler {
     private final Room garden;
 
     public Mono<Void> handle(final DeviceStatusUpdate device) {
-        log.info("Handling temperature sensor for room: [{}]", device.getRoomName().name());
-
         switch (device.getRoomName()) {
             case OFFICE -> handleRoom(office, device);
             case TOBI -> handleRoom(tobi, device);

@@ -33,7 +33,7 @@ public class HeatingPumpService {
                     boilerPro4Client.controlHeatingPump(true)
                         .doOnError(throwable -> log.error("Error while turning on heating pump", throwable))
                         .doOnNext(response -> {
-                            log.info("Heating pump turned on - some rooms ready to heat");
+                            log.info("Heating pump turned on - some rooms are ready to heat");
                             heatingPump.setStartedAt(LocalDateTime.now());
                         })
                         .subscribe();

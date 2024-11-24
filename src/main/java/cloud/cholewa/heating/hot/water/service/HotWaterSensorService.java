@@ -25,8 +25,6 @@ public class HotWaterSensorService {
     public void querySensorStatus() {
         Pump circulationPump = hotWater.circulation().pump();
 
-        log.info("Querying water temperatures sensor status");
-
         hotWaterSensorClient.getStatus()
             .flatMap(response -> {
                 hotWater.temperature().setUpdatedAt(LocalDateTime.now());

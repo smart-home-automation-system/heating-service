@@ -36,6 +36,8 @@ jobs:
     poolingInterval: PT5m
   pumps:
     poolingInterval: PT30s
+  rooms:
+    poolingInterval: PT5m
 
 shelly:
   sensor:
@@ -46,6 +48,14 @@ shelly:
     pro4:
       boiler:
         host: 10.78.30.20
+      down_left:
+        host: 10.78.30.39
+      down_right:
+        host: 10.78.30.19
+      up_left:
+        host: 10.78.30.89
+      up_right:
+        host: 10.78.30.26
 
 
 ---
