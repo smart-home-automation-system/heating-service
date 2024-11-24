@@ -33,15 +33,20 @@ logging:
 
 jobs:
   hot-water:
-    poolingInterval: PT2m
+    poolingInterval: PT5m
   pumps:
-    poolingInterval: PT5s
+    poolingInterval: PT30s
 
 shelly:
   sensor:
     uni:
       hot-water:
         host: 10.78.30.47
+  actor:
+    pro4:
+      boiler:
+        host: 10.78.30.20
+
 
 ---
 

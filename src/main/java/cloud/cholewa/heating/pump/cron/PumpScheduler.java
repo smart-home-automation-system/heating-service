@@ -1,30 +1,39 @@
-//package cloud.cholewa.heating.shelly.pro.service;
-//
-//import cloud.cholewa.heating.model.BoilerRoom;
-//import cloud.cholewa.heating.model.HeatingSource;
-//import cloud.cholewa.heating.model.HeatingSourceType;
-//import cloud.cholewa.heating.model.Home;
-//import cloud.cholewa.heating.model.Pump;
-//import cloud.cholewa.heating.model.PumpType;
-//import cloud.cholewa.heating.model.Room;
-//import cloud.cholewa.heating.shelly.pro.client.ShellyProClient;
-//import lombok.RequiredArgsConstructor;
-//import lombok.extern.slf4j.Slf4j;
-//import org.springframework.scheduling.annotation.Scheduled;
-//import org.springframework.stereotype.Component;
-//
-//import java.time.LocalDateTime;
-//
-//@Slf4j
-//@Component
-//@RequiredArgsConstructor
-//public class PumpsScheduler {
-//
+package cloud.cholewa.heating.pump.cron;
+
+import cloud.cholewa.heating.model.HotWater;
+import cloud.cholewa.heating.model.Pump;
+import cloud.cholewa.heating.shelly.actor.BoilerPro4Client;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.time.Duration;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class PumpScheduler {
+
+    private static final double HOT_WATER_LOW_TEMPERATURE = 38;
+    private static final double HOT_WATER_HIGH_TEMPERATURE = 42;
+
+    private final HotWater hotWater;
+
+    private final BoilerPro4Client boilerPro4Client;
+
 //    private final Home home;
 //    private final ShellyProClient shellyProClient;
-//
-//    @Scheduled(fixedRateString = "${jobs.pumps.poolingInterval}")
-//    void handlePumps() {
+
+    @Scheduled(fixedRateString = "${jobs.pumps.poolingInterval}", initialDelayString = "PT5s")
+    void handleBoiler() {
+        Pump circulationPump = hotWater.circulation().pump();
+
+        queryPumpStatus();
+
+
 //        BoilerRoom boilerRoom = home.getBoiler();
 //        Pump hotWaterPump = boilerRoom.getPumps().stream()
 //            .filter(pump -> pump.getType().equals(PumpType.HOT_WATER_PUMP))
@@ -39,14 +48,14 @@
 //        HeatingSource furnace = boilerRoom.getHeatingSources().stream()
 //            .filter(heatingSource -> heatingSource.getType().equals(HeatingSourceType.FURNACE))
 //            .findFirst().orElseThrow();
-//
-//        //hot water has the highest priority
-////        if (hotWaterPump.isRunning()) {
-////            shellyProClient.controlHotWaterPump().subscribe();
-////        }
-//
-////        shellyProClient.controlHotWaterPump(hotWaterPump.isRunning()).subscribe();
-//
+
+        //hot water has the highest priority
+//        if (hotWaterPump.isRunning()) {
+//            shellyProClient.controlHotWaterPump().subscribe();
+//        }
+
+//        shellyProClient.controlHotWaterPump(hotWaterPump.isRunning()).subscribe();
+
 //        if (hotWaterPump.isRunning() || heatingPump.isRunning()) {
 //            if (!furnace.isActive()) {
 //                furnace.setActive(true);
@@ -90,5 +99,40 @@
 //                furnace.setUpdateTime(LocalDateTime.now());
 //            }
 //        }
-//    }
-//}
+    }
+
+    private void queryPumpStatus() {
+        Flux.interval(Duration.ofSeconds(3))
+            .take(5)
+            .flatMap(i ->
+                 switch (i.intValue()) {
+                    case 1 -> queryHotWaterPumpStatus();
+                    case 2 -> queryHeatingPumpStatus();
+                    case 3 -> queryFireplacePumpStatus();
+                    case 4 -> queryFloorPumpStatus();
+                    case 5 -> queryFurnaceStatus();
+                    default -> Mono.empty();
+            })
+            .subscribe();
+    }
+
+    private Mono<Void> queryHotWaterPumpStatus() {
+        return Mono.empty();
+    }
+
+    private Mono<Void> queryHeatingPumpStatus() {
+        return Mono.empty();
+    }
+
+    private Mono<Void> queryFireplacePumpStatus() {
+        return Mono.empty();
+    }
+
+    private Mono<Void> queryFloorPumpStatus() {
+        return Mono.empty();
+    }
+
+    private Mono<Void> queryFurnaceStatus() {
+        return Mono.empty();
+    }
+}

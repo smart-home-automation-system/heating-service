@@ -1,13 +1,15 @@
 package cloud.cholewa.heating.hot.water.service;
 
-import cloud.cholewa.heating.hot.water.client.HotWaterSensorClient;
 import cloud.cholewa.heating.model.HotWater;
+import cloud.cholewa.heating.model.Pump;
+import cloud.cholewa.heating.shelly.sensor.HotWaterSensorClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Objects;
 
 @Slf4j
@@ -15,15 +17,16 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class HotWaterSensorService {
 
-    private static final double HOT_WATER_LOW_TEMPERATURE = 38;
-    private static final double HOT_WATER_HIGH_TEMPERATURE = 42;
     private static final double CIRCULATION_TEMPERATURE_MAX = 25;
 
     private final HotWaterSensorClient hotWaterSensorClient;
 
     private final HotWater hotWater;
+    private final Pump hotWaterPump;
 
     public void querySensorStatus() {
+        Pump circulationPump = hotWater.circulation().pump();
+
         log.info("Querying water temperatures sensor status");
 
         hotWaterSensorClient.getStatus()
@@ -36,6 +39,9 @@ public class HotWaterSensorService {
                 hotWater.circulation().temperature().setValue(Objects.requireNonNull(
                     Objects.requireNonNull(response.getExtTemperature()).get("1").gettC()));
 
+                circulationPump.setRunning(Boolean.TRUE.equals(Objects.requireNonNull(
+                    response.getRelays()).get(1).getIson()));
+
                 return Mono.just(response);
             })
             .doOnNext(response ->
@@ -45,6 +51,10 @@ public class HotWaterSensorService {
                     hotWater.circulation().temperature().getValue()
                 )
             )
+            .flatMap(response -> {
+                updatePumpStatus();
+                return Mono.just(response);
+            })
             .subscribe();
 //
 //        client.getStatus().flatMap(
@@ -78,5 +88,17 @@ public class HotWaterSensorService {
 //                hotWater.setTemperature(entity.getWaterTemperature());
 //            })
 //            .subscribe();
+    }
+
+    private void updatePumpStatus() {
+        if (LocalTime.now().isAfter(LocalTime.of(5, 0))
+            && LocalTime.now().isBefore(LocalTime.of(23, 59))
+        ) {
+            if (hotWater.circulation().temperature().getValue() < CIRCULATION_TEMPERATURE_MAX) {
+                if (!hotWater.circulation().pump().isRunning()) {
+                    hotWaterSensorClient.enableCirculationPump().subscribe();
+                }
+            }
+        }
     }
 }

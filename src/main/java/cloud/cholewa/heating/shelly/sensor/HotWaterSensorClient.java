@@ -1,4 +1,4 @@
-package cloud.cholewa.heating.hot.water.client;
+package cloud.cholewa.heating.shelly.sensor;
 
 import cloud.cholewa.heating.infrastructure.error.HotWaterException;
 import cloud.cholewa.shelly.model.ShellyUniStatusResponse;
@@ -32,11 +32,31 @@ public class HotWaterSensorClient {
             )
             .retrieve()
             .onStatus(
-                HttpStatusCode::is5xxServerError,
+                HttpStatusCode::isError,
                 clientResponse -> Mono.error(
                     new HotWaterException("Problem with communication with hot water sensor, detail: " + clientResponse.statusCode())
                 )
             )
             .bodyToMono(ShellyUniStatusResponse.class);
+    }
+
+    public Mono<Void> enableCirculationPump() {
+        log.info("Enabling circulation pump");
+
+        return hotWaterSensorClient.get()
+            .uri(uriBuilder -> uriBuilder.scheme("http").host(hotWaterSensorHost)
+                .path("relay/1")
+                .queryParam("turn", "on")
+                .build()
+            )
+            .retrieve()
+            .onStatus(
+                HttpStatusCode::isError, clientResponse -> Mono.error(
+                    new HotWaterException(
+                        "Problem with communication with hot water sensor (can't turn on circulation pump," +
+                            " detail: " + clientResponse.statusCode())
+                )
+            )
+            .bodyToMono(Void.class);
     }
 }
