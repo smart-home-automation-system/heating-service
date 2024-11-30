@@ -12,12 +12,13 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Objects;
 
+import static cloud.cholewa.heating.model.HeatingTemperatures.CIRCULATION_TEMPERATURE_MAX;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class HotWaterSensorService {
 
-    private static final double CIRCULATION_TEMPERATURE_MAX = 22;
     private final HotWater hotWater;
 
     private final HotWaterSensorClient hotWaterSensorClient;

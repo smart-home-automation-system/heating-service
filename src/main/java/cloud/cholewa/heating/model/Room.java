@@ -19,6 +19,7 @@ public class Room {
     private final Humidity humidity;
     private final List<HeaterActor> heaterActors;
     private final List<OpeningSensor> openingSensors;
+    private final List<Schedule> schedules;
 
     public String getName() {
         return name.name();

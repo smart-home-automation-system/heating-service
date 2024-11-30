@@ -252,4 +252,19 @@ public class HeaterPro4Client {
             )
             .bodyToMono(ShellyProRelayResponse.class);
     }
+
+    public Mono<ShellyPro4StatusResponse> getOfficeStatus() {
+        return webClient.get()
+            .uri(uriBuilder -> uriBuilder.scheme("http").host(SHELLY_PRO4_UP_RIGHT)
+                .path("rpc/Switch.GetStatus")
+                .queryParam("id", "3")
+                .build())
+            .retrieve()
+            .onStatus(
+                HttpStatusCode::isError, clientResponse -> Mono.error(
+                    new BoilerException("Problem with communication with Shelly Pro4 [UP LEFT], detail: " + clientResponse.statusCode())
+                )
+            )
+            .bodyToMono(ShellyPro4StatusResponse.class);
+    }
 }
