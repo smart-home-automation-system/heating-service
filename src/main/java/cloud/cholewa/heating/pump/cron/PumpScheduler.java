@@ -3,6 +3,7 @@ package cloud.cholewa.heating.pump.cron;
 import cloud.cholewa.heating.model.Furnace;
 import cloud.cholewa.heating.model.Pump;
 import cloud.cholewa.heating.pump.service.FireplacePumpService;
+import cloud.cholewa.heating.pump.service.FloorPumpService;
 import cloud.cholewa.heating.pump.service.FurnaceService;
 import cloud.cholewa.heating.pump.service.HeatingPumpService;
 import cloud.cholewa.heating.pump.service.HotWaterPumpService;
@@ -36,17 +37,11 @@ public class PumpScheduler {
     private final FireplacePumpService fireplacePumpService;
     private final HeatingPumpService heatingPumpService;
     private final FurnaceService furnaceService;
+    private final FloorPumpService floorPumpService;
 
     @Scheduled(fixedRateString = "${jobs.pumps.poolingInterval}", initialDelayString = "PT5s")
     void handleBoiler() {
-        queryPumpStatus();
-        hotWaterPumpService.handleHotWaterPump();
-        fireplacePumpService.handleFireplacePump();
-        heatingPumpService.handleHeatingPump();
-        furnaceService.handleFurnace();
-    }
-
-    private void queryPumpStatus() {
+        log.info("Updating boiler devices status ...");
         Flux.interval(Duration.ofSeconds(3))
             .take(5)
             .flatMap(i ->
@@ -64,6 +59,11 @@ public class PumpScheduler {
     private Mono<Void> queryHotWaterPumpStatus() {
         return boilerPro4Client.getHotWaterPumpStatus()
             .doOnError(throwable -> log.error("Error while querying hot water pump status", throwable))
+            .doOnNext(response ->
+                log.info(
+                    "Received pump status [HOT_WATER] isWorking: {}",
+                    response.getOutput()
+                ))
             .flatMap(response -> {
                     hotWaterPump.setRunning(Boolean.TRUE.equals(response.getOutput()));
                     if (Boolean.TRUE.equals(response.getOutput())) {
@@ -71,14 +71,20 @@ public class PumpScheduler {
                     } else {
                         hotWaterPump.setStoppedAt(LocalDateTime.now());
                     }
-                    return Mono.empty();
+                    return Mono.just(response);
                 }
-            );
+            )
+            .flatMap(o -> hotWaterPumpService.handleHotWaterPump());
     }
 
     private Mono<Void> queryHeatingPumpStatus() {
         return boilerPro4Client.getHeatingPumpStatus()
             .doOnError(throwable -> log.error("Error while querying hot water pump status", throwable))
+            .doOnNext(response ->
+                log.info(
+                    "Received pump status [HEATING] isWorking: {}",
+                    response.getOutput()
+                ))
             .flatMap(response -> {
                     heatingPump.setRunning(Boolean.TRUE.equals(response.getOutput()));
                     if (Boolean.TRUE.equals(response.getOutput())) {
@@ -86,14 +92,20 @@ public class PumpScheduler {
                     } else {
                         heatingPump.setStoppedAt(LocalDateTime.now());
                     }
-                    return Mono.empty();
+                    return Mono.just(response);
                 }
-            );
+            )
+            .flatMap(o -> heatingPumpService.handleHeatingPump());
     }
 
     private Mono<Void> queryFireplacePumpStatus() {
         return boilerPro4Client.getFireplacePumpStatus()
             .doOnError(throwable -> log.error("Error while querying fireplace pump status", throwable))
+            .doOnNext(response ->
+                log.info(
+                    "Received pump status [FIREPLACE] isWorking: {}",
+                    response.getOutput()
+                ))
             .flatMap(response -> {
                     fireplacePump.setRunning(Boolean.TRUE.equals(response.getOutput()));
                     if (Boolean.TRUE.equals(response.getOutput())) {
@@ -101,14 +113,20 @@ public class PumpScheduler {
                     } else {
                         fireplacePump.setStoppedAt(LocalDateTime.now());
                     }
-                    return Mono.empty();
+                    return Mono.just(response);
                 }
-            );
+            )
+            .flatMap(o -> fireplacePumpService.handleFireplacePump());
     }
 
     private Mono<Void> queryFloorPumpStatus() {
         return heaterPro4Client.getFloorPumpStatus()
             .doOnError(throwable -> log.error("Error while querying floor pump status", throwable))
+            .doOnNext(response ->
+                log.info(
+                    "Received pump status [FLOOR] isWorking: {}",
+                    response.getOutput()
+                ))
             .flatMap(response -> {
                     floorPump.setRunning(Boolean.TRUE.equals(response.getOutput()));
                     if (Boolean.TRUE.equals(response.getOutput())) {
@@ -116,14 +134,20 @@ public class PumpScheduler {
                     } else {
                         floorPump.setStoppedAt(LocalDateTime.now());
                     }
-                    return Mono.empty();
+                    return Mono.just(response);
                 }
-            );
+            )
+            .flatMap(o -> floorPumpService.handleFloorPump());
     }
 
     private Mono<Void> queryFurnaceStatus() {
         return boilerPro4Client.getFurnaceStatus()
             .doOnError(throwable -> log.error("Error while querying furnace status", throwable))
+            .doOnNext(response ->
+                log.info(
+                    "Received status [FURNACE] isWorking: {}",
+                    response.getOutput()
+                ))
             .flatMap(response -> {
                     furnace.setRunning(Boolean.TRUE.equals(response.getOutput()));
                     if (Boolean.TRUE.equals(response.getOutput())) {
@@ -131,8 +155,9 @@ public class PumpScheduler {
                     } else {
                         furnace.setStoppedAt(LocalDateTime.now());
                     }
-                    return Mono.empty();
+                    return Mono.just(response);
                 }
-            );
+            )
+            .flatMap(o -> furnaceService.handleFurnace());
     }
 }

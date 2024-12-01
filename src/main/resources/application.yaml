@@ -35,7 +35,7 @@ jobs:
   hot-water:
     poolingInterval: PT5m
   pumps:
-    poolingInterval: PT30s
+    poolingInterval: PT60s
   rooms:
     poolingInterval: PT5m
 

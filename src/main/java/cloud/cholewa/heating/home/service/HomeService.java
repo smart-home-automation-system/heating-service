@@ -35,4 +35,9 @@ public class HomeService {
             .singleOrEmpty()
             .switchIfEmpty(Mono.error(new RoomNotFoundException("[ " + name.toUpperCase() + " ]" + " not found")));
     }
+
+    public Mono<Home> setHomeHeating(final boolean heatingEnable) {
+        home.boilerRoom().setHeatingEnabled(heatingEnable);
+        return Mono.just(home);
+    }
 }

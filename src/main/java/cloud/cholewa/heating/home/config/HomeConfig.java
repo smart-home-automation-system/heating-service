@@ -46,8 +46,10 @@ public class HomeConfig {
         final Room sauna,
         final Room garden
     ) {
-        return List.of(office, tobi, livia, bedroom, wardrobe, bathroomUp, loft,
-            livingRoom, cinema, bathroomDown, entrance, garage, sanctum, sauna, garden);
+        return List.of(
+            office, tobi, livia, bedroom, wardrobe, bathroomUp, loft,
+            livingRoom, cinema, bathroomDown, entrance, garage, sanctum, sauna, garden
+        );
     }
 
     @Bean
@@ -312,7 +314,7 @@ public class HomeConfig {
                     .type(ScheduleType.HEATING)
                     .temperature(18)
                     .startTime(LocalTime.of(5, 0))
-                    .endTime(LocalTime.of(8, 0))
+                    .endTime(LocalTime.of(21, 0))
                     .build()
             ))
             .build();
@@ -337,7 +339,7 @@ public class HomeConfig {
                     .type(ScheduleType.HEATING)
                     .temperature(13)
                     .startTime(LocalTime.of(5, 0))
-                    .endTime(LocalTime.of(8, 0))
+                    .endTime(LocalTime.of(20, 0))
                     .build()
             ))
             .build();

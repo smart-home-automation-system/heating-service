@@ -43,7 +43,7 @@ public class HotWaterSensorService {
             })
             .doOnNext(response ->
                 log.info(
-                    "Received updated water temperature: [{} C] and circulation temperature: [{} C]",
+                    "Received updated [HOT WATER] temperature: [{} C] and [CIRCULATION] temperature: [{} C]",
                     hotWater.temperature().getValue(),
                     hotWater.circulation().temperature().getValue()
                 )

@@ -6,6 +6,7 @@ import cloud.cholewa.heating.shelly.actor.BoilerPro4Client;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 
@@ -22,33 +23,49 @@ public class FireplacePumpService {
 
     private final BoilerPro4Client boilerPro4Client;
 
-    public void handleFireplacePump() {
+    public Mono<Void> handleFireplacePump() {
         if (fireplace.temperature().getValue() >= FIREPLACE_START_TEMPERATURE) {
-            if (!fireplacePump.isRunning()) {
-                boilerPro4Client.controlFireplacePump(true)
-                    .doOnError(throwable -> log.error("Error while turning on fireplace pump", throwable))
-                    .doOnNext(response -> {
-                        log.info("Fireplace pump turned on, temperature is: [{} C]", fireplace.temperature().getValue());
-                        fireplacePump.setStartedAt(LocalDateTime.now());
-                    })
-                    .subscribe();
-            }
+            turnOnFireplacePump();
         } else if (fireplace.temperature().getValue() < FIREPLACE_START_TEMPERATURE) {
-            if (fireplacePump.isRunning()) {
-                boilerPro4Client.controlFireplacePump(false)
-                    .doOnError(throwable -> log.error("Error while turning off fireplace pump", throwable))
-                    .doOnNext(response -> {
-                        log.info("Fireplace pump turned off, temperature is: [{} C]", fireplace.temperature().getValue());
-                        fireplacePump.setStoppedAt(LocalDateTime.now());
-                    })
-                    .subscribe();
-            }
+            turnOffFireplacePump();
         }
 
         if (fireplace.temperature().getValue() > FIREPLACE_ALERT_TEMPERATURE) {
             log.error("ALERT!!! --- Boiler has exceeded alert temperature: [{} C]", fireplace.temperature().getValue());
             //TODO send notify and open heater valves???
             //TODO open heaters in bathrooms
+        }
+
+        return Mono.empty();
+    }
+
+    private void turnOnFireplacePump() {
+        if (!fireplacePump.isRunning()) {
+            boilerPro4Client.controlFireplacePump(true)
+                .doOnError(throwable -> log.error("Error while turning on fireplace pump", throwable))
+                .doOnNext(response -> {
+                    log.info(
+                        "Fireplace pump turned on, temperature is: [{} C]",
+                        fireplace.temperature().getValue()
+                    );
+                    fireplacePump.setStartedAt(LocalDateTime.now());
+                })
+                .subscribe();
+        }
+    }
+
+    private void turnOffFireplacePump() {
+        if (fireplacePump.isRunning() && fireplace.temperature().getUpdatedAt() != null) {
+            boilerPro4Client.controlFireplacePump(false)
+                .doOnError(throwable -> log.error("Error while turning off fireplace pump", throwable))
+                .doOnNext(response -> {
+                    log.info(
+                        "Fireplace pump turned off, temperature is: [{} C]",
+                        fireplace.temperature().getValue()
+                    );
+                    fireplacePump.setStoppedAt(LocalDateTime.now());
+                })
+                .subscribe();
         }
     }
 }

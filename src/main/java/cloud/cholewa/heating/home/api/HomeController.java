@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
@@ -47,5 +48,11 @@ public class HomeController {
     ) {
         log.info("Requesting status for room: [{}]", name.toUpperCase());
         return homeService.getRoomStatusByName(name).map(ResponseEntity::ok);
+    }
+
+    @GetMapping
+    Mono<ResponseEntity<Home>> setHomeHeating(@RequestParam boolean heatingEnable) {
+        log.info("Setting home heating to: [{}]", heatingEnable);
+        return homeService.setHomeHeating(heatingEnable).map(ResponseEntity::ok);
     }
 }

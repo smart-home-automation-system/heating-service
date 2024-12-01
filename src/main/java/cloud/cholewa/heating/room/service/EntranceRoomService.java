@@ -12,50 +12,50 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import static cloud.cholewa.heating.model.HeatingTemperatures.ROOM_MIN_TEMP_TURN_ON_HEATING_BY_FIREPLACE;
-import static cloud.cholewa.home.model.RoomName.OFFICE;
+import static cloud.cholewa.home.model.RoomName.ENTRANCE;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class OfficeRoomService {
+public class EntranceRoomService {
 
-    private final Room office;
+    private final Room entrance;
 
     private final ScheduleService scheduleService;
     private final RoomHeatingService roomHeatingService;
     private final HeaterPro4Config heaterPro4Config;
     private final HeaterPro4Client heaterPro4Client;
 
-    public Mono<Void> handleOfficeRoom() {
-        Schedule activeSchedule = scheduleService.findSchedule(office);
-        HeaterActor radiatorActor = roomHeatingService.getRadiatorActor(office);
+    public Mono<Void> handleEntranceRoom() {
+        Schedule activeSchedule = scheduleService.findSchedule(entrance);
+        HeaterActor radiatorActor = roomHeatingService.getRadiatorActor(entrance);
 
-        if (roomHeatingService.shouldTurnOnRadiatorBySchedule(office, activeSchedule, radiatorActor)) {
-            turnOnOfficeHeater(activeSchedule);
-        } else if (roomHeatingService.shouldTurnOnRadiatorByFireplace(office, radiatorActor)) {
-            turnOnOfficeHeater(null);
-        } else if (roomHeatingService.shouldTurnOffHeater(office, activeSchedule, radiatorActor)) {
-            turnOffOfficeHeater();
+        if (roomHeatingService.shouldTurnOnRadiatorBySchedule(entrance, activeSchedule, radiatorActor)) {
+            turnOnEntranceHeater(activeSchedule);
+//        } else if (roomHeatingService.shouldTurnOnRadiatorByFireplace(entrance, radiatorActor)) {
+//            turnOnEntranceHeater(null);
+        } else if (roomHeatingService.shouldTurnOffHeater(entrance, activeSchedule, radiatorActor)) {
+            turnOffEntranceHeater();
         }
 
-        office.setHeatingActive(office.getHeaterActors().stream().anyMatch(HeaterActor::isWorking));
+        entrance.setHeatingActive(entrance.getHeaterActors().stream().anyMatch(HeaterActor::isWorking));
         return Mono.empty();
     }
 
-    private void turnOnOfficeHeater(final Schedule schedule) {
-        heaterPro4Client.controlHeatingActor(heaterPro4Config.getShellyPro4HeaterHost(OFFICE), true)
-            .doOnError(throwable -> log.error("Error while turning on office heater", throwable))
+    private void turnOnEntranceHeater(final Schedule schedule) {
+        heaterPro4Client.controlHeatingActor(heaterPro4Config.getShellyPro4HeaterHost(ENTRANCE), true)
+            .doOnError(throwable -> log.error("Error while turning on ENTRANCE heater", throwable))
             .doOnNext(response -> {
                 if (schedule != null) {
                     log.info(
                         "[{}] heater turned on due to schedule and temperature less than [{} C]",
-                        RoomName.fromValue(office.getName()),
+                        RoomName.fromValue(entrance.getName()),
                         schedule.getTemperature()
                     );
                 } else {
                     log.info(
                         "[{}] heater turned on due to fireplace is working and temperature less than [{} C]",
-                        RoomName.fromValue(office.getName()),
+                        RoomName.fromValue(entrance.getName()),
                         ROOM_MIN_TEMP_TURN_ON_HEATING_BY_FIREPLACE
                     );
                 }
@@ -63,13 +63,13 @@ public class OfficeRoomService {
             .subscribe();
     }
 
-    private void turnOffOfficeHeater() {
-        heaterPro4Client.controlHeatingActor(heaterPro4Config.getShellyPro4HeaterHost(OFFICE), false)
-            .doOnError(throwable -> log.error("Error while turning off office heater", throwable))
+    private void turnOffEntranceHeater() {
+        heaterPro4Client.controlHeatingActor(heaterPro4Config.getShellyPro4HeaterHost(ENTRANCE), false)
+            .doOnError(throwable -> log.error("Error while turning off ENTRANCE heater", throwable))
             .doOnNext(response -> {
                 log.info(
                     "[{}] heater turned off due no active schedule or fireplace not working",
-                    RoomName.fromValue(office.getName())
+                    RoomName.fromValue(entrance.getName())
                 );
             })
             .subscribe();

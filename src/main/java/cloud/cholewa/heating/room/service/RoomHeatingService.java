@@ -41,7 +41,11 @@ public class RoomHeatingService {
             && !heaterActor.isWorking();
     }
 
-    public boolean shouldTurnOnRadiatorBySchedule(final Room room, final Schedule schedule, final HeaterActor heaterActor) {
+    public boolean shouldTurnOnRadiatorBySchedule(
+        final Room room,
+        final Schedule schedule,
+        final HeaterActor heaterActor
+    ) {
         return schedule != null
             && boilerRoom.isHeatingEnabled()
             && !isFireplaceActive()
