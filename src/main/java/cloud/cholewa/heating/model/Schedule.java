@@ -13,5 +13,5 @@ public class Schedule {
     private ScheduleType type;
     private LocalTime startTime;
     private LocalTime endTime;
-    private int temperature;
+    private double temperature;
 }
