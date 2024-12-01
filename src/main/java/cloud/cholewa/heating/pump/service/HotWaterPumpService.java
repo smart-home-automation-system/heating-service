@@ -27,7 +27,7 @@ public class HotWaterPumpService {
                 boilerPro4Client.controlHotWaterPump(true)
                     .doOnError(throwable -> log.error("Error while turning on hot water pump", throwable))
                     .doOnNext(response -> {
-                        log.info("Hot water pump turned on");
+                        log.info("[{}] pump turned on", hotWaterPump.getName());
                         hotWaterPump.setStartedAt(LocalDateTime.now());
                     })
                     .subscribe();
@@ -37,7 +37,7 @@ public class HotWaterPumpService {
                 boilerPro4Client.controlHotWaterPump(false)
                     .doOnError(throwable -> log.error("Error while turning off hot water pump", throwable))
                     .doOnNext(response -> {
-                        log.info("Hot water pump turned off");
+                        log.info("[{}] pump turned off", hotWaterPump.getName());
                         hotWaterPump.setStoppedAt(LocalDateTime.now());
                     })
                     .subscribe();

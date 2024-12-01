@@ -45,7 +45,7 @@ public class HomeController {
         @PathVariable String name,
         @RequestBody(required = false) final String fakeRequestBody
     ) {
-        log.info("Requesting status for room: {}", name);
+        log.info("Requesting status for room: [{}]", name.toUpperCase());
         return homeService.getRoomStatusByName(name).map(ResponseEntity::ok);
     }
 }

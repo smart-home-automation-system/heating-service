@@ -16,6 +16,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 
 @Slf4j
 @Component
@@ -65,6 +66,11 @@ public class PumpScheduler {
             .doOnError(throwable -> log.error("Error while querying hot water pump status", throwable))
             .flatMap(response -> {
                     hotWaterPump.setRunning(Boolean.TRUE.equals(response.getOutput()));
+                    if (Boolean.TRUE.equals(response.getOutput())) {
+                        hotWaterPump.setStartedAt(LocalDateTime.now());
+                    } else {
+                        hotWaterPump.setStoppedAt(LocalDateTime.now());
+                    }
                     return Mono.empty();
                 }
             );
@@ -75,6 +81,11 @@ public class PumpScheduler {
             .doOnError(throwable -> log.error("Error while querying hot water pump status", throwable))
             .flatMap(response -> {
                     heatingPump.setRunning(Boolean.TRUE.equals(response.getOutput()));
+                    if (Boolean.TRUE.equals(response.getOutput())) {
+                        heatingPump.setStartedAt(LocalDateTime.now());
+                    } else {
+                        heatingPump.setStoppedAt(LocalDateTime.now());
+                    }
                     return Mono.empty();
                 }
             );
@@ -85,6 +96,11 @@ public class PumpScheduler {
             .doOnError(throwable -> log.error("Error while querying fireplace pump status", throwable))
             .flatMap(response -> {
                     fireplacePump.setRunning(Boolean.TRUE.equals(response.getOutput()));
+                    if (Boolean.TRUE.equals(response.getOutput())) {
+                        fireplacePump.setStartedAt(LocalDateTime.now());
+                    } else {
+                        fireplacePump.setStoppedAt(LocalDateTime.now());
+                    }
                     return Mono.empty();
                 }
             );
@@ -95,6 +111,11 @@ public class PumpScheduler {
             .doOnError(throwable -> log.error("Error while querying floor pump status", throwable))
             .flatMap(response -> {
                     floorPump.setRunning(Boolean.TRUE.equals(response.getOutput()));
+                    if (Boolean.TRUE.equals(response.getOutput())) {
+                        floorPump.setStartedAt(LocalDateTime.now());
+                    } else {
+                        floorPump.setStoppedAt(LocalDateTime.now());
+                    }
                     return Mono.empty();
                 }
             );
@@ -105,6 +126,11 @@ public class PumpScheduler {
             .doOnError(throwable -> log.error("Error while querying furnace status", throwable))
             .flatMap(response -> {
                     furnace.setRunning(Boolean.TRUE.equals(response.getOutput()));
+                    if (Boolean.TRUE.equals(response.getOutput())) {
+                        furnace.setStartedAt(LocalDateTime.now());
+                    } else {
+                        furnace.setStoppedAt(LocalDateTime.now());
+                    }
                     return Mono.empty();
                 }
             );
