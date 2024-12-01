@@ -9,11 +9,14 @@ import cloud.cholewa.heating.model.OpeningSensor;
 import cloud.cholewa.heating.model.OpeningType;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.model.RoomMode;
+import cloud.cholewa.heating.model.Schedule;
+import cloud.cholewa.heating.model.ScheduleType;
 import cloud.cholewa.heating.model.Temperature;
 import cloud.cholewa.home.model.RoomName;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.LocalTime;
 import java.util.List;
 
 @Configuration
@@ -61,6 +64,14 @@ public class HomeConfig {
                 OpeningSensor.builder().name(OpeningType.DOOR).build(),
                 OpeningSensor.builder().name(OpeningType.WINDOW).build()
             ))
+            .schedules(List.of(
+                Schedule.builder()
+                    .type(ScheduleType.HEATING)
+                    .temperature(20)
+                    .startTime(LocalTime.of(7, 0))
+                    .endTime(LocalTime.of(22, 0))
+                    .build()
+            ))
             .build();
     }
 
@@ -78,6 +89,20 @@ public class HomeConfig {
                 OpeningSensor.builder().name(OpeningType.DOOR).build(),
                 OpeningSensor.builder().name(OpeningType.WINDOW).build()
             ))
+            .schedules(List.of(
+                Schedule.builder()
+                    .type(ScheduleType.HEATING)
+                    .temperature(20)
+                    .startTime(LocalTime.of(5, 0))
+                    .endTime(LocalTime.of(8, 0))
+                    .build(),
+                Schedule.builder()
+                    .type(ScheduleType.HEATING)
+                    .temperature(20)
+                    .startTime(LocalTime.of(17, 0))
+                    .endTime(LocalTime.of(22, 0))
+                    .build()
+            ))
             .build();
     }
 
@@ -94,6 +119,20 @@ public class HomeConfig {
             .openingSensors(List.of(
                 OpeningSensor.builder().name(OpeningType.ROOF).build(),
                 OpeningSensor.builder().name(OpeningType.WINDOW).build()
+            ))
+            .schedules(List.of(
+                Schedule.builder()
+                    .type(ScheduleType.HEATING)
+                    .temperature(20)
+                    .startTime(LocalTime.of(5, 0))
+                    .endTime(LocalTime.of(8, 0))
+                    .build(),
+                Schedule.builder()
+                    .type(ScheduleType.HEATING)
+                    .temperature(20)
+                    .startTime(LocalTime.of(17, 0))
+                    .endTime(LocalTime.of(22, 0))
+                    .build()
             ))
             .build();
     }
@@ -113,6 +152,14 @@ public class HomeConfig {
                 OpeningSensor.builder().name(OpeningType.DOOR).build(),
                 OpeningSensor.builder().name(OpeningType.WINDOW2).build()
             ))
+            .schedules(List.of(
+                Schedule.builder()
+                    .type(ScheduleType.HEATING)
+                    .temperature(20)
+                    .startTime(LocalTime.of(7, 0))
+                    .endTime(LocalTime.of(8, 0))
+                    .build()
+            ))
             .build();
     }
 
@@ -130,6 +177,14 @@ public class HomeConfig {
                 OpeningSensor.builder().name(OpeningType.ROOF_LEFT).build(),
                 OpeningSensor.builder().name(OpeningType.ROOF_RIGHT).build()
             ))
+            .schedules(List.of(
+                Schedule.builder()
+                    .type(ScheduleType.HEATING)
+                    .temperature(18.5)
+                    .startTime(LocalTime.of(5, 0))
+                    .endTime(LocalTime.of(20, 0))
+                    .build()
+            ))
             .build();
     }
 
@@ -146,6 +201,14 @@ public class HomeConfig {
             ))
             .openingSensors(List.of(
                 OpeningSensor.builder().name(OpeningType.ROOF).build()
+            ))
+            .schedules(List.of(
+                Schedule.builder()
+                    .type(ScheduleType.HEATING)
+                    .temperature(22)
+                    .startTime(LocalTime.of(16, 0))
+                    .endTime(LocalTime.of(19, 0))
+                    .build()
             ))
             .build();
     }
@@ -173,6 +236,14 @@ public class HomeConfig {
                 OpeningSensor.builder().name(OpeningType.DOOR).build(),
                 OpeningSensor.builder().name(OpeningType.ENTRANCE_DOOR).build()
             ))
+            .schedules(List.of(
+                Schedule.builder()
+                    .type(ScheduleType.HEATING)
+                    .temperature(19.5)
+                    .startTime(LocalTime.of(8, 0))
+                    .endTime(LocalTime.of(20, 0))
+                    .build()
+            ))
             .build();
     }
 
@@ -190,6 +261,14 @@ public class HomeConfig {
                 OpeningSensor.builder().name(OpeningType.WINDOW).build(),
                 OpeningSensor.builder().name(OpeningType.WINDOW2).build()
             ))
+            .schedules(List.of(
+                Schedule.builder()
+                    .type(ScheduleType.HEATING)
+                    .temperature(20)
+                    .startTime(LocalTime.of(5, 0))
+                    .endTime(LocalTime.of(8, 0))
+                    .build()
+            ))
             .build();
     }
 
@@ -203,6 +282,14 @@ public class HomeConfig {
             .heaterActors(List.of(
                 HeaterActor.builder().name(HeaterType.RADIATOR).build(),
                 HeaterActor.builder().name(HeaterType.FLOOR).build()
+            ))
+            .schedules(List.of(
+                Schedule.builder()
+                    .type(ScheduleType.HEATING)
+                    .temperature(22)
+                    .startTime(LocalTime.of(16, 0))
+                    .endTime(LocalTime.of(19, 0))
+                    .build()
             ))
             .build();
     }
@@ -220,6 +307,14 @@ public class HomeConfig {
             .openingSensors(List.of(
                 OpeningSensor.builder().name(OpeningType.ENTRANCE_DOOR).build()
             ))
+            .schedules(List.of(
+                Schedule.builder()
+                    .type(ScheduleType.HEATING)
+                    .temperature(18)
+                    .startTime(LocalTime.of(5, 0))
+                    .endTime(LocalTime.of(8, 0))
+                    .build()
+            ))
             .build();
     }
 
@@ -236,6 +331,14 @@ public class HomeConfig {
             .openingSensors(List.of(
                 OpeningSensor.builder().name(OpeningType.GATE_KATE).build(),
                 OpeningSensor.builder().name(OpeningType.GATE_KRIS).build()
+            ))
+            .schedules(List.of(
+                Schedule.builder()
+                    .type(ScheduleType.HEATING)
+                    .temperature(13)
+                    .startTime(LocalTime.of(5, 0))
+                    .endTime(LocalTime.of(8, 0))
+                    .build()
             ))
             .build();
     }
