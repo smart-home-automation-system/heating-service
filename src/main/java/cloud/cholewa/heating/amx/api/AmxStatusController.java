@@ -22,13 +22,6 @@ public class AmxStatusController {
 
     @PostMapping("/amx/status:update")
     Mono<ResponseEntity<Void>> receiveStatusFromAmx(@Valid @RequestBody final DeviceStatusUpdate deviceStatusUpdate) {
-        log.info(
-            "Received device status update for room: [{}], device: [{}], with value: [{}]",
-            deviceStatusUpdate.getRoomName().name(),
-            deviceStatusUpdate.getDeviceType().name(),
-            deviceStatusUpdate.getValue()
-        );
-
         return amxStatusService.updateStatus(deviceStatusUpdate).then(Mono.just(ResponseEntity.ok().build()));
     }
 }

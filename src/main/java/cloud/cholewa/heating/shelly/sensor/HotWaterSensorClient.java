@@ -21,7 +21,6 @@ public class HotWaterSensorClient {
     private final WebClient hotWaterSensorClient;
 
     public Mono<ShellyUniStatusResponse> getStatus() {
-        log.info("Getting status from hot water sensor");
         return hotWaterSensorClient
             .get()
             .uri(uriBuilder -> uriBuilder

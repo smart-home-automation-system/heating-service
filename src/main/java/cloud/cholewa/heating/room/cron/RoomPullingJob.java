@@ -70,7 +70,7 @@ public class RoomPullingJob {
     private final HeaterPro4Config heaterPro4Config;
     private final HeaterPro4Client heaterPro4Client;
 
-    @Scheduled(fixedRateString = "${jobs.rooms.poolingInterval}", initialDelayString = "PT15s")
+//    @Scheduled(fixedRateString = "${jobs.rooms.poolingInterval}", initialDelayString = "PT15s")
     void updateRoomsHeatersStatus() {
         log.info("Updating rooms heaters status ...");
 

@@ -39,7 +39,7 @@ public class PumpScheduler {
     private final FurnaceService furnaceService;
     private final FloorPumpService floorPumpService;
 
-    @Scheduled(fixedRateString = "${jobs.pumps.poolingInterval}", initialDelayString = "PT5s")
+//    @Scheduled(fixedRateString = "${jobs.pumps.poolingInterval}", initialDelayString = "PT5s")
     void handleBoiler() {
         log.info("Updating boiler devices status ...");
         Flux.interval(Duration.ofSeconds(3))

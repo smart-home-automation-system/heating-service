@@ -1,77 +1,77 @@
 package cloud.cholewa.heating.amx.handler;
 
+import cloud.cholewa.heating.model.BoilerRoom;
 import cloud.cholewa.heating.model.Fireplace;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.home.model.DeviceStatusUpdate;
-import cloud.cholewa.home.model.RoomName;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.util.List;
+
+import static cloud.cholewa.home.model.RoomName.BOILER;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class TemperatureSensorHandler {
 
+    private final BoilerRoom boilerRoom;
     private final Fireplace fireplace;
-
-    private final Room office;
-    private final Room tobi;
-    private final Room livia;
-    private final Room bedroom;
-    private final Room wardrobe;
-    private final Room bathroomUp;
-    private final Room loft;
-    private final Room livingRoom;
-    private final Room cinema;
-    private final Room bathroomDown;
-    private final Room entrance;
-    private final Room garage;
-    private final Room sanctum;
-    private final Room sauna;
-    private final Room garden;
+    private final List<Room> rooms;
 
     public Mono<Void> handle(final DeviceStatusUpdate device) {
-        switch (device.getRoomName()) {
-            case OFFICE -> handleRoom(office, device);
-            case TOBI -> handleRoom(tobi, device);
-            case LIVIA -> handleRoom(livia, device);
-            case BEDROOM -> handleRoom(bedroom, device);
-            case WARDROBE -> handleRoom(wardrobe, device);
-            case BATHROOM_UP -> handleRoom(bathroomUp, device);
-            case LOFT -> handleRoom(loft, device);
-            case LIVING_ROOM -> handleRoom(livingRoom, device);
-            case CINEMA -> handleRoom(cinema, device);
-            case BATHROOM_DOWN -> handleRoom(bathroomDown, device);
-            case ENTRANCE -> handleRoom(entrance, device);
-            case GARAGE -> handleRoom(garage, device);
-            case SANCTUM -> handleRoom(sanctum, device);
-            case SAUNA -> handleRoom(sauna, device);
-            case GARDEN -> handleRoom(garden, device);
-            case BOILER -> handleBoiler(device);
-
-            default -> log.error("No handler for room: [{}]", device.getRoomName().name());
+        if (device.getRoomName().equals(BOILER)) {
+            return handleBoiler(device)
+                .doOnNext(boiler -> {
+                    fireplace.temperature().setUpdatedAt(LocalDateTime.now());
+                    fireplace.temperature().setValue(Double.parseDouble(device.getValue()));
+                    logStatusUpdate(device);
+                })
+                .then();
         }
 
-        return Mono.empty();
+        return Flux.fromIterable(rooms)
+            .filter(room -> room.getName().equalsIgnoreCase(device.getRoomName().name()))
+            .flatMap(room -> handleRoom(room, device))
+            .single()
+            .doOnNext(room -> logStatusUpdate(device))
+            .doOnError(throwable -> log.error(
+                "Unknown Room [{}] while handling temperature sensor",
+                device.getRoomName(), throwable
+            ))
+            .then();
     }
 
-    private void handleBoiler(final DeviceStatusUpdate device) {
+    private Mono<BoilerRoom> handleBoiler(final DeviceStatusUpdate device) {
         fireplace.temperature().setUpdatedAt(LocalDateTime.now());
         fireplace.temperature().setValue(Double.parseDouble(device.getValue()));
+        return Mono.just(boilerRoom);
     }
 
-    private void handleRoom(final Room room, final DeviceStatusUpdate device) {
+    private Mono<Room> handleRoom(final Room room, final DeviceStatusUpdate device) {
         room.getTemperature().setUpdatedAt(LocalDateTime.now());
 
-        if (room.getName().equalsIgnoreCase(RoomName.BATHROOM_DOWN.name())) {
-            //This is necessary due to failure of bathroom down sensor
-            room.getTemperature().setValue(Double.parseDouble(device.getValue()) + 3);
-        } else {
-            room.getTemperature().setValue(Double.parseDouble(device.getValue()));
+        //adding temperature offset due to sensor issue
+        switch (device.getRoomName()) {
+            case OFFICE -> room.getTemperature().setValue(Double.parseDouble(device.getValue()) + 1);
+            case LIVIA, TOBI -> room.getTemperature().setValue(Double.parseDouble(device.getValue()) + 0.5);
+            case BATHROOM_DOWN -> room.getTemperature().setValue(Double.parseDouble(device.getValue()) + 2);
+            default -> room.getTemperature().setValue(Double.parseDouble(device.getValue()));
         }
+        return Mono.just(room);
+    }
+
+    private void logStatusUpdate(final DeviceStatusUpdate deviceStatusUpdate) {
+        log.info(
+            "Status update, room: [{}], device: [{}], value: [{}]",
+            deviceStatusUpdate.getRoomName().name(),
+            deviceStatusUpdate.getDeviceType().name(),
+            deviceStatusUpdate.getValue()
+        );
     }
 }
