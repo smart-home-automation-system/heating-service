@@ -13,6 +13,6 @@ public class HotWaterSensorScheduler {
 
     @Scheduled(fixedRateString = "${jobs.hot-water.poolingInterval}", initialDelayString = "PT10s")
     void schedule() {
-        hotWaterSensorService.querySensorStatus();
+        hotWaterSensorService.querySensorStatus().subscribe();
     }
 }
