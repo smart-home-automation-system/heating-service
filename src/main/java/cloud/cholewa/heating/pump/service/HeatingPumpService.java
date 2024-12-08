@@ -6,6 +6,7 @@ import cloud.cholewa.heating.model.HeatingTemperatures;
 import cloud.cholewa.heating.model.Pump;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.shelly.actor.BoilerPro4Client;
+import cloud.cholewa.shelly.model.ShellyPro4StatusResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,17 +29,24 @@ public class HeatingPumpService {
     private final BoilerPro4Client boilerPro4Client;
 
     public Mono<Void> handleHeatingPump() {
-        log.info("handleHeatingPump: heatingStatus: [{}]", boilerRoom.isHeatingEnabled());
-        if (boilerRoom.isHeatingEnabled()) {
-            if (isAnyRoomHeatingActive() && isFireplaceNotActive() && !hotWaterPump.isRunning()) {
-                turnOnHeatingPump();
-            } else {
-                turnOffHeatingPump("no rooms to heat");
-            }
+        return queryHeatingPumpStatus()
+            .flatMap(response -> controlHeatingPump());
+    }
+
+    public Mono<ShellyPro4StatusResponse> queryHeatingPumpStatus() {
+        return boilerPro4Client.getHeatingPumpStatus()
+            .doOnNext(response -> {
+                heatingPump.setRunning(Boolean.TRUE.equals(response.getOutput()));
+                log.info("Pump status [HEATING PUMP] isWorking: [{}]", response.getOutput());
+            });
+    }
+
+    private Mono<Void> controlHeatingPump() {
+        if (boilerRoom.isHeatingEnabled() && isFireplaceNotActive() && isAnyRoomHeatingActive() && !hotWaterPump.isRunning()) {
+            return turnOnHeatingPump();
         } else {
-            turnOffHeatingPump("heating is disabled");
+            return turnOffHeatingPump("no room to heat");
         }
-        return Mono.empty();
     }
 
     private boolean isAnyRoomHeatingActive() {
@@ -54,27 +62,29 @@ public class HeatingPumpService {
         return fireplace.temperature().getValue() < HeatingTemperatures.FIREPLACE_TEMPERATURE_VALID_TO_ENABLE_FURNACE;
     }
 
-    private void turnOnHeatingPump() {
+    private Mono<Void> turnOnHeatingPump() {
         if (!heatingPump.isRunning()) {
-            boilerPro4Client.controlHeatingPump(true)
+            return boilerPro4Client.controlHeatingPump(true)
                 .doOnError(throwable -> log.error("Error while turning on heating pump", throwable))
                 .doOnNext(response -> {
                     log.info("Heating pump turned on - some rooms are ready to heat");
                     heatingPump.setStartedAt(LocalDateTime.now());
                 })
-                .subscribe();
+                .then();
         }
+        return Mono.empty();
     }
 
-    private void turnOffHeatingPump(final String messageReason) {
+    public Mono<Void> turnOffHeatingPump(final String messageReason) {
         if (heatingPump.isRunning()) {
-            boilerPro4Client.controlHeatingPump(false)
+            return boilerPro4Client.controlHeatingPump(false)
                 .doOnError(throwable -> log.error("Error while turning off heating pump", throwable))
                 .doOnNext(response -> {
                     log.info("Heating pump turned off - {}", messageReason);
                     heatingPump.setStoppedAt(LocalDateTime.now());
                 })
-                .subscribe();
+                .then();
         }
+        return Mono.empty();
     }
 }

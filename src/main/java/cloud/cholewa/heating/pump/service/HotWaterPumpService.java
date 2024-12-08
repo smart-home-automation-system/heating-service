@@ -3,6 +3,7 @@ package cloud.cholewa.heating.pump.service;
 import cloud.cholewa.heating.model.HotWater;
 import cloud.cholewa.heating.model.Pump;
 import cloud.cholewa.heating.shelly.actor.BoilerPro4Client;
+import cloud.cholewa.shelly.model.ShellyPro4StatusResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,37 +22,60 @@ public class HotWaterPumpService {
     private final HotWater hotWater;
     private final Pump hotWaterPump;
     private final BoilerPro4Client boilerPro4Client;
+    private final HeatingPumpService heatingPumpService;
 
     public Mono<Void> handleHotWaterPump() {
+        return queryHotWaterPumpStatus()
+            .flatMap(response -> controlHowWaterPump());
+    }
+
+    public Mono<ShellyPro4StatusResponse> queryHotWaterPumpStatus() {
+        return boilerPro4Client.getHotWaterPumpStatus()
+            .doOnNext(response -> {
+                hotWaterPump.setRunning(Boolean.TRUE.equals(response.getOutput()));
+                log.info("Pump status [HOT_WATER] isWorking: [{}]", response.getOutput());
+            });
+    }
+
+    private Mono<Void> controlHowWaterPump() {
         if (hotWater.temperature().getValue() < HOT_WATER_LOW_TEMPERATURE) {
-            turnOnHotWaterPump();
+            return heatingPumpService.queryHeatingPumpStatus()
+                .flatMap(response -> {
+                    if (Boolean.TRUE.equals(response.getOutput())) {
+                        return heatingPumpService.turnOffHeatingPump("hot water pump is working");
+                    } else {
+                        return turnOnHotWaterPump();
+                    }
+                });
         } else if (hotWater.temperature().getValue() > HOT_WATER_HIGH_TEMPERATURE) {
-            turnOffHotWaterPump();
+            return turnOffHotWaterPump();
         }
         return Mono.empty();
     }
 
-    private void turnOnHotWaterPump() {
+    private Mono<Void> turnOnHotWaterPump() {
         if (!hotWaterPump.isRunning() && hotWater.temperature().getUpdatedAt() != null) {
-            boilerPro4Client.controlHotWaterPump(true)
+            return boilerPro4Client.controlHotWaterPump(true)
                 .doOnError(throwable -> log.error("Error while turning on hot water pump", throwable))
                 .doOnNext(response -> {
-                    log.info("[{}] pump turned on", hotWaterPump.getName());
+                    log.info("Turned on: [{}], temperature: [{}]", hotWaterPump.getName(), hotWater.temperature().getValue());
                     hotWaterPump.setStartedAt(LocalDateTime.now());
                 })
-                .subscribe();
+                .then();
         }
+        return Mono.empty();
     }
 
-    private void turnOffHotWaterPump() {
+    private Mono<Void> turnOffHotWaterPump() {
         if (hotWaterPump.isRunning()) {
-            boilerPro4Client.controlHotWaterPump(false)
+            return boilerPro4Client.controlHotWaterPump(false)
                 .doOnError(throwable -> log.error("Error while turning off hot water pump", throwable))
                 .doOnNext(response -> {
-                    log.info("[{}] pump turned off", hotWaterPump.getName());
+                    log.info("Turned off: [{}], temperature: [{}]", hotWaterPump.getName(), hotWater.temperature().getValue());
                     hotWaterPump.setStoppedAt(LocalDateTime.now());
                 })
-                .subscribe();
+                .then();
         }
+        return Mono.empty();
     }
 }

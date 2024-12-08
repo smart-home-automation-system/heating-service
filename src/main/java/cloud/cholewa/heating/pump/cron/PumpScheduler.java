@@ -28,7 +28,6 @@ public class PumpScheduler {
     private final Pump fireplacePump;
     private final Pump floorPump;
     private final Pump heatingPump;
-    private final Pump hotWaterPump;
 
     private final BoilerPro4Client boilerPro4Client;
     private final HeaterPro4Client heaterPro4Client;
@@ -39,63 +38,21 @@ public class PumpScheduler {
     private final FurnaceService furnaceService;
     private final FloorPumpService floorPumpService;
 
-//    @Scheduled(fixedRateString = "${jobs.pumps.poolingInterval}", initialDelayString = "PT5s")
+    @Scheduled(fixedRateString = "${jobs.pumps.poolingInterval}", initialDelayString = "PT15s")
     void handleBoiler() {
         log.info("Updating boiler devices status ...");
         Flux.interval(Duration.ofSeconds(3))
             .take(5)
             .flatMap(i ->
                 switch (i.intValue() + 1) {
-                    case 1 -> queryHotWaterPumpStatus();
-                    case 2 -> queryHeatingPumpStatus();
-                    case 3 -> queryFireplacePumpStatus();
-                    case 4 -> queryFloorPumpStatus();
-                    case 5 -> queryFurnaceStatus();
+                    case 1 -> hotWaterPumpService.handleHotWaterPump();
+                    case 2 -> heatingPumpService.handleHeatingPump();
+//                    case 3 -> queryFireplacePumpStatus();
+//                    case 4 -> queryFloorPumpStatus();
+//                    case 5 -> queryFurnaceStatus();
                     default -> Mono.empty();
                 })
             .subscribe();
-    }
-
-    private Mono<Void> queryHotWaterPumpStatus() {
-        return boilerPro4Client.getHotWaterPumpStatus()
-            .doOnError(throwable -> log.error("Error while querying hot water pump status", throwable))
-            .doOnNext(response ->
-                log.info(
-                    "Received pump status [HOT_WATER] isWorking: {}",
-                    response.getOutput()
-                ))
-            .flatMap(response -> {
-                    hotWaterPump.setRunning(Boolean.TRUE.equals(response.getOutput()));
-                    if (Boolean.TRUE.equals(response.getOutput())) {
-                        hotWaterPump.setStartedAt(LocalDateTime.now());
-                    } else {
-                        hotWaterPump.setStoppedAt(LocalDateTime.now());
-                    }
-                    return Mono.just(response);
-                }
-            )
-            .flatMap(o -> hotWaterPumpService.handleHotWaterPump());
-    }
-
-    private Mono<Void> queryHeatingPumpStatus() {
-        return boilerPro4Client.getHeatingPumpStatus()
-            .doOnError(throwable -> log.error("Error while querying hot water pump status", throwable))
-            .doOnNext(response ->
-                log.info(
-                    "Received pump status [HEATING] isWorking: {}",
-                    response.getOutput()
-                ))
-            .flatMap(response -> {
-                    heatingPump.setRunning(Boolean.TRUE.equals(response.getOutput()));
-                    if (Boolean.TRUE.equals(response.getOutput())) {
-                        heatingPump.setStartedAt(LocalDateTime.now());
-                    } else {
-                        heatingPump.setStoppedAt(LocalDateTime.now());
-                    }
-                    return Mono.just(response);
-                }
-            )
-            .flatMap(o -> heatingPumpService.handleHeatingPump());
     }
 
     private Mono<Void> queryFireplacePumpStatus() {
