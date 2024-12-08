@@ -3,6 +3,7 @@ package cloud.cholewa.heating.pump.service;
 import cloud.cholewa.heating.model.Fireplace;
 import cloud.cholewa.heating.model.Pump;
 import cloud.cholewa.heating.shelly.actor.BoilerPro4Client;
+import cloud.cholewa.shelly.model.ShellyPro4StatusResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,24 +25,35 @@ public class FireplacePumpService {
     private final BoilerPro4Client boilerPro4Client;
 
     public Mono<Void> handleFireplacePump() {
-        if (fireplace.temperature().getValue() >= FIREPLACE_START_TEMPERATURE) {
-            turnOnFireplacePump();
-        } else if (fireplace.temperature().getValue() < FIREPLACE_START_TEMPERATURE) {
-            turnOffFireplacePump();
-        }
+        return queryFireplacePumpStatus()
+            .flatMap(response -> controlFireplacePump());
+    }
 
+    private Mono<ShellyPro4StatusResponse> queryFireplacePumpStatus() {
+        return boilerPro4Client.getFireplacePumpStatus()
+            .doOnNext(response -> {
+                fireplacePump.setRunning(Boolean.TRUE.equals(response.getOutput()));
+                log.info("Pump status [FIREPLACE] isWorking: [{}]", response.getOutput());
+            });
+    }
+
+    private Mono<Void> controlFireplacePump() {
         if (fireplace.temperature().getValue() > FIREPLACE_ALERT_TEMPERATURE) {
             log.error("ALERT!!! --- Boiler has exceeded alert temperature: [{} C]", fireplace.temperature().getValue());
             //TODO send notify and open heater valves???
             //TODO open heaters in bathrooms
+        } else if (fireplace.temperature().getValue() >= FIREPLACE_START_TEMPERATURE) {
+            return turnOnFireplacePump();
+        } else if (fireplace.temperature().getValue() < FIREPLACE_START_TEMPERATURE) {
+            return turnOffFireplacePump();
         }
 
         return Mono.empty();
     }
 
-    private void turnOnFireplacePump() {
+    private Mono<Void> turnOnFireplacePump() {
         if (!fireplacePump.isRunning()) {
-            boilerPro4Client.controlFireplacePump(true)
+            return boilerPro4Client.controlFireplacePump(true)
                 .doOnError(throwable -> log.error("Error while turning on fireplace pump", throwable))
                 .doOnNext(response -> {
                     log.info(
@@ -50,13 +62,14 @@ public class FireplacePumpService {
                     );
                     fireplacePump.setStartedAt(LocalDateTime.now());
                 })
-                .subscribe();
+                .then();
         }
+        return Mono.empty();
     }
 
-    private void turnOffFireplacePump() {
+    private Mono<Void> turnOffFireplacePump() {
         if (fireplacePump.isRunning() && fireplace.temperature().getUpdatedAt() != null) {
-            boilerPro4Client.controlFireplacePump(false)
+            return boilerPro4Client.controlFireplacePump(false)
                 .doOnError(throwable -> log.error("Error while turning off fireplace pump", throwable))
                 .doOnNext(response -> {
                     log.info(
@@ -65,7 +78,8 @@ public class FireplacePumpService {
                     );
                     fireplacePump.setStoppedAt(LocalDateTime.now());
                 })
-                .subscribe();
+                .then();
         }
+        return Mono.empty();
     }
 }
