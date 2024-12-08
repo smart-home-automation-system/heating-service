@@ -6,8 +6,6 @@ import lombok.experimental.SuperBuilder;
 @Data
 @SuperBuilder
 public class OpeningSensor {
-
-    private final String name;
-    private final OpeningType openingType;
-    private boolean isOpen;
+    private final OpeningType name;
+    private boolean open;
 }
