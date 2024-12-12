@@ -1,5 +1,7 @@
 package cloud.cholewa.heating.home.config;
 
+import cloud.cholewa.heating.model.Alert;
+import cloud.cholewa.heating.model.AlertReason;
 import cloud.cholewa.heating.model.BoilerRoom;
 import cloud.cholewa.heating.model.Fireplace;
 import cloud.cholewa.heating.model.Furnace;
@@ -22,13 +24,19 @@ public class BoilerRoomConfig {
     }
 
     @Bean
+    Alert alert() {
+        return Alert.builder().reason(AlertReason.NO_ALERT).build();
+    }
+
+    @Bean
     BoilerRoom boilerRoom(
+        final Alert alert,
         final Furnace furnace,
         final Fireplace fireplace,
         final HotWater hotWater,
         final List<Pump> pumps
     ) {
-        return new BoilerRoom(furnace, fireplace, hotWater, pumps);
+        return new BoilerRoom(alert, furnace, fireplace, hotWater, pumps);
     }
 
     @Bean

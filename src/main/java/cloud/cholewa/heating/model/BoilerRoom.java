@@ -10,6 +10,7 @@ import java.util.List;
 public class BoilerRoom {
 
     private boolean heatingEnabled;
+    private final Alert alert;
     private final Furnace furnace;
     private final Fireplace fireplace;
     private final HotWater hotWater;
