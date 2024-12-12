@@ -16,6 +16,12 @@ class HeaterActorHandler {
 
     private final HeaterPro4Client heaterPro4Client;
 
+    Mono<HeaterActor> getStatus(final HeaterActor heaterActor, final HeaterPro4Config.HeaterPro4Data heaterData) {
+        return heaterPro4Client.getHeaterActorStatus(heaterData)
+            .doOnNext(response -> heaterActor.setWorking(Boolean.TRUE.equals(response.getOutput())))
+            .then(Mono.just(heaterActor));
+    }
+
     Mono<Void> turnOnHeaterActor(
         final Room room,
         final HeaterActor heaterActor,

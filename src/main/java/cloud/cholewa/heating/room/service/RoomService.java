@@ -10,9 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-import static cloud.cholewa.heating.model.HeaterType.FLOOR;
-import static cloud.cholewa.heating.model.HeaterType.RADIATOR;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -39,12 +36,29 @@ public class RoomService {
     }
 
     private Mono<Boolean> handleHeaterActors(final Room room) {
-        if (tools.getRadiatorActor(room).getName().equals(RADIATOR)) {
-            return handleRadiator(room, tools.getRadiatorActor(room));
-        } else if (tools.getFloorActor(room).getName().equals(FLOOR)) {
-            return handleFloor(room, tools.getFloorActor(room));
+        if (tools.getRadiatorActor(room).isPresent() && tools.getFloorActor(room).isEmpty()) {
+            return heaterActorHandler.getStatus(
+                    tools.getRadiatorActor(room).orElseThrow(),
+                    heaterPro4Config.getShellyPro4HeaterHost(room.getName())
+                )
+                .flatMap(heaterActor -> handleRadiator(room, heaterActor));
+        } else if (tools.getFloorActor(room).isPresent() && tools.getRadiatorActor(room).isEmpty()) {
+            return heaterActorHandler.getStatus(
+                    tools.getFloorActor(room).orElseThrow(),
+                    heaterPro4Config.getShellyPro4FloorHost(room.getName())
+                )
+                .flatMap(heaterActor -> handleFloor(room, heaterActor));
         } else {
-            return Mono.empty();
+            return heaterActorHandler.getStatus(
+                    tools.getRadiatorActor(room).orElseThrow(),
+                    heaterPro4Config.getShellyPro4HeaterHost(room.getName())
+                )
+                .flatMap(heaterActor -> handleRadiator(room, heaterActor))
+                .then(heaterActorHandler.getStatus(
+                    tools.getFloorActor(room).orElseThrow(),
+                    heaterPro4Config.getShellyPro4FloorHost(room.getName())
+                ))
+                .flatMap(heaterActor -> handleFloor(room, heaterActor));
         }
     }
 
@@ -57,7 +71,7 @@ public class RoomService {
                     "fireplace HIGH temperature"
                 )
                 .then(Mono.just(radiatorActor.isWorking()));
-        } else if (tools.isFireplaceActive()) { //TODO add temp check
+        } else if (tools.isFireplaceActive() && room.getTemperature().getValue() <= 20.5) {
             return heaterActorHandler.turnOnHeaterActor(
                     room,
                     radiatorActor,
@@ -92,7 +106,38 @@ public class RoomService {
     }
 
     private Mono<Boolean> handleFloor(final Room room, final HeaterActor floorActor) {
-        return Mono.just(floorActor.isWorking());
+        if (tools.isFireplaceActive() && room.getTemperature().getValue() <= 20.5) {
+            return heaterActorHandler.turnOnHeaterActor(
+                    room,
+                    floorActor,
+                    heaterPro4Config.getShellyPro4FloorHost(room.getName()),
+                    "fireplace is working"
+                )
+                .then(Mono.just(floorActor.isWorking()));
+        } else if (scheduleService.hasActiveSchedule(room) && boilerRoom.isHeatingEnabled()) {
+            return heaterActorHandler.turnOnHeaterActor(
+                    room,
+                    floorActor,
+                    heaterPro4Config.getShellyPro4FloorHost(room.getName()),
+                    "activated by schedule"
+                )
+                .then(Mono.just(floorActor.isWorking()));
+        } else if (tools.hasTemperatureUnderMin(room) && boilerRoom.isHeatingEnabled()) {
+            return heaterActorHandler.turnOnHeaterActor(
+                    room,
+                    floorActor,
+                    heaterPro4Config.getShellyPro4FloorHost(room.getName()),
+                    "temperature is under min value"
+                )
+                .then(Mono.just(floorActor.isWorking()));
+        } else {
+            return heaterActorHandler.turnOffHeaterActor(
+                    room,
+                    floorActor,
+                    heaterPro4Config.getShellyPro4FloorHost(room.getName())
+                )
+                .then(Mono.just(floorActor.isWorking()));
+        }
     }
 
     private Mono<Boolean> setHeatingActive(final Room room) {

@@ -40,7 +40,7 @@ public class FloorPumpService {
     }
 
     private Mono<Void> controlFloorPump() {
-        if (isAnyFloorWorking() && isFireplacePumpOrHeatingPumpWorking() && !floorPump.isRunning()) {
+        if (isAnyFloorWorking() && isFireplacePumpOrHeatingPumpWorking()) {
             return turnOnFloorPump();
         } else {
             return turnOffFloorPump();

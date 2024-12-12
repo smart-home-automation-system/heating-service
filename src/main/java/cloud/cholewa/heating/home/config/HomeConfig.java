@@ -261,7 +261,7 @@ public class HomeConfig {
                     .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
                     .temperature(22)
                     .startTime(LocalTime.of(16, 0))
-                    .endTime(LocalTime.of(19, 0))
+                    .endTime(LocalTime.of(20, 0))
                     .build()
             ))
             .build();
@@ -366,7 +366,7 @@ public class HomeConfig {
                     .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
                     .temperature(22)
                     .startTime(LocalTime.of(16, 0))
-                    .endTime(LocalTime.of(19, 0))
+                    .endTime(LocalTime.of(20, 0))
                     .build()
             ))
             .build();

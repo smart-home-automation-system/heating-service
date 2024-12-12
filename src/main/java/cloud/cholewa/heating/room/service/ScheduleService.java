@@ -35,7 +35,7 @@ public class ScheduleService {
                 log.info("Valid schedule found for room [{}], returning: {} ", room.getName().name(), schedules);
                 return schedules;
             } else {
-                log.info("No schedules found for room [{}], returning empty list", room.getName().name());
+                log.info("No schedules found for room [{}]", room.getName().name());
                 return List.of();
             }
         }

@@ -39,7 +39,7 @@ public class HeaterPro4Config {
         return switch (roomName) {
             case WARDROBE -> new HeaterPro4Data(SHELLY_PRO4_UP_LEFT, "2");
             case BATHROOM_UP -> new HeaterPro4Data(SHELLY_PRO4_UP_LEFT, "1");
-            case KITCHEN -> new HeaterPro4Data(SHELLY_PRO4_DOWN_LEFT, "0");
+            case LIVING_ROOM -> new HeaterPro4Data(SHELLY_PRO4_DOWN_LEFT, "0");
             case BATHROOM_DOWN -> new HeaterPro4Data(SHELLY_PRO4_DOWN_LEFT, "2");
             default -> throw new HeatingException("Unknown configuration for room floor: " + roomName.name());
         };

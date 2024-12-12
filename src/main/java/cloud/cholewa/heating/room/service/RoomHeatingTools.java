@@ -11,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.util.Optional;
+
 import static cloud.cholewa.heating.model.HeatingTemperatures.FIREPLACE_TEMPERATURE_ALLOW_ENABLE_HEATER;
 
 @Slf4j
@@ -27,16 +29,16 @@ class RoomHeatingTools {
             : Mono.just(room);
     }
 
-    HeaterActor getRadiatorActor(final Room room) {
+    Optional<HeaterActor> getRadiatorActor(final Room room) {
         return room.getHeaterActors().stream()
             .filter(heaterActor -> heaterActor.getName() == HeaterType.RADIATOR)
-            .findFirst().orElseThrow();
+            .findFirst();
     }
 
-    HeaterActor getFloorActor(final Room room) {
+    Optional<HeaterActor> getFloorActor(final Room room) {
         return room.getHeaterActors().stream()
             .filter(heaterActor -> heaterActor.getName() == HeaterType.FLOOR)
-            .findFirst().orElseThrow();
+            .findFirst();
     }
 
     boolean isAlertActive() {
@@ -49,8 +51,9 @@ class RoomHeatingTools {
 
     boolean hasTemperatureUnderMin(final Room room) {
         return switch (room.getName()) {
-            case OFFICE -> room.getTemperature().getValue() < 19;
-            case ENTRANCE -> room.getTemperature().getValue() < 18;
+            case OFFICE, TOBI, LIVIA, BEDROOM, CINEMA, LIVING_ROOM, WARDROBE, BATHROOM_DOWN, BATHROOM_UP ->
+                room.getTemperature().getValue() < 19;
+            case ENTRANCE -> room.getTemperature().getValue() < 17;
             case GARAGE -> room.getTemperature().getValue() < 14;
             default -> room.getTemperature().getValue() < 10;
         };
