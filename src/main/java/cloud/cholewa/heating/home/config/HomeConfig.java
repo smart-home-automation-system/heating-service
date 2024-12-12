@@ -16,7 +16,6 @@ import cloud.cholewa.home.model.RoomName;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Set;
@@ -113,6 +112,13 @@ public class HomeConfig {
                 Schedule.builder()
                     .type(ScheduleType.HEATING)
                     .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
+                    .temperature(19)
+                    .startTime(LocalTime.of(8, 1))
+                    .endTime(LocalTime.of(16, 59))
+                    .build(),
+                Schedule.builder()
+                    .type(ScheduleType.HEATING)
+                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
                     .temperature(20)
                     .startTime(LocalTime.of(17, 0))
                     .endTime(LocalTime.of(22, 0))
@@ -149,6 +155,13 @@ public class HomeConfig {
                     .temperature(20)
                     .startTime(LocalTime.of(5, 0))
                     .endTime(LocalTime.of(8, 0))
+                    .build(),
+                Schedule.builder()
+                    .type(ScheduleType.HEATING)
+                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
+                    .temperature(19)
+                    .startTime(LocalTime.of(8, 1))
+                    .endTime(LocalTime.of(16, 59))
                     .build(),
                 Schedule.builder()
                     .type(ScheduleType.HEATING)
@@ -195,7 +208,7 @@ public class HomeConfig {
                     .type(ScheduleType.HEATING)
                     .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
                     .temperature(19)
-                    .startTime(LocalTime.of(15, 0))
+                    .startTime(LocalTime.of(8, 1))
                     .endTime(LocalTime.of(21, 0))
                     .build()
             ))
@@ -310,6 +323,13 @@ public class HomeConfig {
                     .temperature(20)
                     .startTime(LocalTime.of(5, 0))
                     .endTime(LocalTime.of(8, 0))
+                    .build(),
+                Schedule.builder()
+                    .type(ScheduleType.HEATING)
+                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
+                    .temperature(19)
+                    .startTime(LocalTime.of(8, 1))
+                    .endTime(LocalTime.of(16, 59))
                     .build(),
                 Schedule.builder()
                     .type(ScheduleType.HEATING)

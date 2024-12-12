@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -15,27 +16,37 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ScheduleService {
 
-    public Schedule findSchedule(final Room room) {
-        if (room.getSchedules() == null) {
-            return null;
-        }
-
-        List<Schedule> schedules = getActiveSchedules(room);
-
-        if (schedules.size() > 1) {
-            throw new HeatingException("To many schedules [{" + schedules.size() + "}], only one schedule is allowed");
-        }
-
-        return schedules.stream().findFirst().orElse(null);
+    public boolean hasActiveSchedule(final Room room) {
+        return getActiveSchedules(room).stream()
+            .anyMatch(schedule -> room.getTemperature().getValue() < schedule.getTemperature()
+                && room.getTemperature().getUpdatedAt() != null
+            );
     }
 
     private List<Schedule> getActiveSchedules(final Room room) {
-        return room.getSchedules() == null
-            ? List.of()
-            : room.getSchedules().stream().filter(this::isScheduleActive).toList();
+        if (room.getSchedules() == null) {
+            return List.of();
+        } else {
+            List<Schedule> schedules = room.getSchedules().stream().filter(this::isScheduleActive).toList();
+            if (schedules.size() > 1) {
+                throw new HeatingException("To many schedules [" + room.getSchedules().size() + "], only one schedule is allowed");
+            } else if (schedules.size() == 1) {
+                log.info("Valid schedule found for room [{}], returning: {} ", room.getName(), schedules);
+                return schedules;
+            } else {
+                log.info("No schedules found for room [{}], returning empty list", room.getName());
+                return List.of();
+            }
+        }
     }
 
     private boolean isScheduleActive(final Schedule schedule) {
-        return LocalTime.now().isAfter(schedule.getStartTime()) && LocalTime.now().isBefore(schedule.getEndTime());
+        return LocalTime.now().isAfter(schedule.getStartTime())
+            && LocalTime.now().isBefore(schedule.getEndTime())
+            && isDayOfWeekValid(schedule);
+    }
+
+    private boolean isDayOfWeekValid(final Schedule schedule) {
+        return schedule.getDays().contains(LocalDate.now().getDayOfWeek());
     }
 }

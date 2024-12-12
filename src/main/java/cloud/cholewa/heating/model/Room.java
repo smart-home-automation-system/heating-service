@@ -2,6 +2,7 @@ package cloud.cholewa.heating.model;
 
 import cloud.cholewa.home.model.RoomName;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.SuperBuilder;
 
@@ -17,11 +18,10 @@ public class Room {
     private boolean heatingActive;
     private final Temperature temperature;
     private final Humidity humidity;
-    private final List<HeaterActor> heaterActors;
-    private final List<OpeningSensor> openingSensors;
-    private final List<Schedule> schedules;
-
-    public String getName() {
-        return name.name();
-    }
+    @Builder.Default
+    private List<HeaterActor> heaterActors = List.of();
+    @Builder.Default
+    private final List<OpeningSensor> openingSensors = List.of();
+    @Builder.Default
+    private final List<Schedule> schedules = List.of();
 }

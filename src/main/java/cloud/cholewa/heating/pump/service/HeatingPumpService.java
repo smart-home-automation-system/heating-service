@@ -42,7 +42,7 @@ public class HeatingPumpService {
     }
 
     private Mono<Void> controlHeatingPump() {
-        if (boilerRoom.isHeatingEnabled() && isFireplaceNotActive() && isAnyRoomHeatingActive() && !hotWaterPump.isRunning()) {
+        if (boilerRoom.isHeatingEnabled() && isNotFireplaceActive() && isAnyRoomHeatingActive() && !hotWaterPump.isRunning()) {
             return turnOnHeatingPump();
         } else {
             return turnOffHeatingPump("no room to heat");
@@ -50,15 +50,10 @@ public class HeatingPumpService {
     }
 
     private boolean isAnyRoomHeatingActive() {
-        log.info("isAnyRoomHeatingActive: [{}]", rooms.stream().anyMatch(Room::isHeatingActive));
         return rooms.stream().anyMatch(Room::isHeatingActive);
     }
 
-    private boolean isFireplaceNotActive() {
-        log.info(
-            "isFireplaceNotActive: [{}]",
-            fireplace.temperature().getValue() < HeatingTemperatures.FIREPLACE_TEMPERATURE_VALID_TO_ENABLE_FURNACE
-        );
+    private boolean isNotFireplaceActive() {
         return fireplace.temperature().getValue() < HeatingTemperatures.FIREPLACE_TEMPERATURE_VALID_TO_ENABLE_FURNACE;
     }
 

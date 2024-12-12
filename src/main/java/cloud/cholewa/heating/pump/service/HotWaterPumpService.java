@@ -21,36 +21,40 @@ public class HotWaterPumpService {
 
     private final HotWater hotWater;
     private final Pump hotWaterPump;
+    private final Pump heatingPump;
     private final BoilerPro4Client boilerPro4Client;
     private final HeatingPumpService heatingPumpService;
 
     public Mono<Void> handleHotWaterPump() {
         return queryHotWaterPumpStatus()
-            .flatMap(response -> controlHowWaterPump());
+            .flatMap(response -> controlHotWaterPump());
     }
 
     public Mono<ShellyPro4StatusResponse> queryHotWaterPumpStatus() {
         return boilerPro4Client.getHotWaterPumpStatus()
             .doOnNext(response -> {
                 hotWaterPump.setRunning(Boolean.TRUE.equals(response.getOutput()));
-                log.info("Pump status [HOT_WATER] isWorking: [{}]", response.getOutput());
+                log.info("Pump status [HOT_WATER] isWorking: [{}]", hotWaterPump.isRunning());
             });
     }
 
-    private Mono<Void> controlHowWaterPump() {
+    private Mono<Void> controlHotWaterPump() {
         if (hotWater.temperature().getValue() < HOT_WATER_LOW_TEMPERATURE) {
-            return heatingPumpService.queryHeatingPumpStatus()
-                .flatMap(response -> {
-                    if (Boolean.TRUE.equals(response.getOutput())) {
-                        return heatingPumpService.turnOffHeatingPump("hot water pump is working");
-                    } else {
-                        return turnOnHotWaterPump();
-                    }
-                });
-        } else if (hotWater.temperature().getValue() > HOT_WATER_HIGH_TEMPERATURE) {
+            return optionallyTurnOffHeatingPump().then(turnOnHotWaterPump());
+        } else if (hotWater.temperature().getValue() >= HOT_WATER_HIGH_TEMPERATURE) {
             return turnOffHotWaterPump();
         }
         return Mono.empty();
+    }
+
+    private Mono<Boolean> optionallyTurnOffHeatingPump() {
+        if (heatingPump.isRunning()) {
+            return heatingPumpService.turnOffHeatingPump("hot water pump is working")
+                .then(Mono.defer(heatingPumpService::queryHeatingPumpStatus))
+                .doOnNext(response -> heatingPump.setRunning(Boolean.TRUE.equals(response.getOutput())))
+                .then(Mono.just(heatingPump.isRunning()));
+        }
+        return Mono.just(false);
     }
 
     private Mono<Void> turnOnHotWaterPump() {
@@ -58,7 +62,12 @@ public class HotWaterPumpService {
             return boilerPro4Client.controlHotWaterPump(true)
                 .doOnError(throwable -> log.error("Error while turning on hot water pump", throwable))
                 .doOnNext(response -> {
-                    log.info("Turned on: [{}], temperature: [{}]", hotWaterPump.getName(), hotWater.temperature().getValue());
+                    log.info(
+                        "Turned on: [{}], temperature: [{}]",
+                        hotWaterPump.getName(),
+                        hotWater.temperature().getValue()
+                    );
+                    hotWaterPump.setRunning(Boolean.TRUE.equals(response.getIson()));
                     hotWaterPump.setStartedAt(LocalDateTime.now());
                 })
                 .then();
@@ -71,7 +80,12 @@ public class HotWaterPumpService {
             return boilerPro4Client.controlHotWaterPump(false)
                 .doOnError(throwable -> log.error("Error while turning off hot water pump", throwable))
                 .doOnNext(response -> {
-                    log.info("Turned off: [{}], temperature: [{}]", hotWaterPump.getName(), hotWater.temperature().getValue());
+                    log.info(
+                        "Turned off: [{}], temperature: [{}]",
+                        hotWaterPump.getName(),
+                        hotWater.temperature().getValue()
+                    );
+                    hotWaterPump.setRunning(Boolean.TRUE.equals(response.getIson()));
                     hotWaterPump.setStoppedAt(LocalDateTime.now());
                 })
                 .then();

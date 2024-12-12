@@ -28,7 +28,7 @@ public class FurnaceService {
     public Mono<Void> handleFurnace() {
         return queryFurnaceStatus()
             .flatMap(response -> {
-                if (!furnace.isRunning() && (heatingPump.isRunning() || hotWaterPump.isRunning())) {
+                if (heatingPump.isRunning() || hotWaterPump.isRunning()) {
                     return turnOnFurnace();
                 } else {
                     return turnOffFurnace();

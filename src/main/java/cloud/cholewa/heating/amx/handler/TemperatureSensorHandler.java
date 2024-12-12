@@ -3,6 +3,7 @@ package cloud.cholewa.heating.amx.handler;
 import cloud.cholewa.heating.model.BoilerRoom;
 import cloud.cholewa.heating.model.Fireplace;
 import cloud.cholewa.heating.model.Room;
+import cloud.cholewa.heating.room.service.RoomService;
 import cloud.cholewa.home.model.DeviceStatusUpdate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ public class TemperatureSensorHandler {
     private final BoilerRoom boilerRoom;
     private final Fireplace fireplace;
     private final List<Room> rooms;
+    private final RoomService roomService;
 
     public Mono<Void> handle(final DeviceStatusUpdate device) {
         if (device.getRoomName().equals(BOILER)) {
@@ -36,7 +38,7 @@ public class TemperatureSensorHandler {
         }
 
         return Flux.fromIterable(rooms)
-            .filter(room -> room.getName().equalsIgnoreCase(device.getRoomName().name()))
+            .filter(room -> room.getName().equals(device.getRoomName()))
             .flatMap(room -> handleRoom(room, device))
             .single()
             .doOnNext(room -> logStatusUpdate(device))
@@ -44,7 +46,7 @@ public class TemperatureSensorHandler {
                 "Unknown Room [{}] while handling temperature sensor",
                 device.getRoomName(), throwable
             ))
-            .then();
+            .flatMap(roomService::handleRoom);
     }
 
     private Mono<BoilerRoom> handleBoiler(final DeviceStatusUpdate device) {

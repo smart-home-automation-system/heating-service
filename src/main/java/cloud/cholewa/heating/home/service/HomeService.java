@@ -30,7 +30,7 @@ public class HomeService {
 
     public Mono<Room> getRoomStatusByName(final String name) {
         return Flux.fromIterable(home.rooms())
-            .filter(room -> room.getName().equalsIgnoreCase(name))
+            .filter(room -> room.getName().name().replace("_", "").equalsIgnoreCase(name))
             .doOnNext(room -> log.info("Founded room with name: [{}]", room.getName()))
             .singleOrEmpty()
             .switchIfEmpty(Mono.error(new RoomNotFoundException("[ " + name.toUpperCase() + " ]" + " not found")));

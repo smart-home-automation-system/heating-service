@@ -10,7 +10,7 @@ public class RoomMapper {
 
     public static RoomShortResponse toRoomShortResponse(Room room) {
         return RoomShortResponse.builder()
-            .name(room.getName())
+            .name(room.getName().name())
             .temperature(room.getTemperature())
             .build();
     }

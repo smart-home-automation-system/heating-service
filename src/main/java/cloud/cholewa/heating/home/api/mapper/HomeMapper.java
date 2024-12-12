@@ -31,7 +31,6 @@ public class HomeMapper {
 
     private static boolean isInternalRoom(final Room room) {
         return Stream.of(RoomName.LOFT, RoomName.SANCTUM, RoomName.SAUNA)
-            .map(roomName -> roomName.toString().toLowerCase())
-            .noneMatch(roomName -> roomName.equalsIgnoreCase(room.getName().toLowerCase()));
+            .noneMatch(roomName -> roomName.equals(room.getName()));
     }
 }

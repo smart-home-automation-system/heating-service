@@ -46,9 +46,7 @@ public class FloorPumpService {
     }
 
     private boolean isAnyFloorWorking() {
-        return Stream.of(wardrobe, bathroomUp)
-            .map(Room::isHeatingActive)
-            .anyMatch(aBoolean -> aBoolean.equals(true));
+        return Stream.of(wardrobe, bathroomUp).anyMatch(Room::isHeatingActive);
     }
 
     private Mono<Void> turnOnFloorPump() {
@@ -58,6 +56,7 @@ public class FloorPumpService {
                 .doOnNext(response -> {
                     log.info("Floor pump turned on");
                     floorPump.setStartedAt(LocalDateTime.now());
+                    floorPump.setRunning(Boolean.TRUE.equals(response.getIson()));
                 })
                 .then();
         }
@@ -71,6 +70,7 @@ public class FloorPumpService {
                 .doOnNext(response -> {
                     log.info("Floor pump turned off");
                     floorPump.setStoppedAt(LocalDateTime.now());
+                    floorPump.setRunning(Boolean.TRUE.equals(response.getIson()));
                 })
                 .then();
         }
