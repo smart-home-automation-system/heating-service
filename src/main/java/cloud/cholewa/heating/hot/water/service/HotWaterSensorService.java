@@ -23,26 +23,14 @@ public class HotWaterSensorService {
     private final HotWater hotWater;
     private final HotWaterSensorClient hotWaterSensorClient;
 
-    public Mono<ShellyUniStatusResponse> querySensorStatus() {
+    public Mono<Void> handle() {
         return hotWaterSensorClient.getStatus()
             .flatMap(this::updateHotWaterStatus)
             .doOnNext(this::logHotWaterUpdateStatus)
             .flatMap(response -> {
                 optionallyTurnOnCirculationPump();
-                return Mono.just(response);
+                return Mono.empty();
             });
-    }
-
-    private void optionallyTurnOnCirculationPump() {
-        if (LocalTime.now().isAfter(LocalTime.of(5, 0))
-            && LocalTime.now().isBefore(LocalTime.of(23, 59))
-        ) {
-            if (hotWater.circulation().temperature().getValue() < CIRCULATION_TEMPERATURE_MAX) {
-                if (!hotWater.circulation().pump().isRunning()) {
-                    hotWaterSensorClient.enableCirculationPump().subscribe();
-                }
-            }
-        }
     }
 
     private Mono<ShellyUniStatusResponse> updateHotWaterStatus(final ShellyUniStatusResponse response) {
@@ -68,5 +56,17 @@ public class HotWaterSensorService {
             hotWater.temperature().getValue(),
             hotWater.circulation().temperature().getValue()
         );
+    }
+
+    private void optionallyTurnOnCirculationPump() {
+        if (LocalTime.now().isAfter(LocalTime.of(5, 0))
+            && LocalTime.now().isBefore(LocalTime.of(23, 59))
+        ) {
+            if (hotWater.circulation().temperature().getValue() < CIRCULATION_TEMPERATURE_MAX) {
+                if (!hotWater.circulation().pump().isRunning()) {
+                    hotWaterSensorClient.enableCirculationPump().subscribe();
+                }
+            }
+        }
     }
 }

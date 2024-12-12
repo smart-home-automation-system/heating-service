@@ -33,8 +33,7 @@ public class HotWaterPumpService {
     }
 
     public Mono<Void> handleHotWaterPump() {
-        return queryHotWaterPumpStatus()
-            .flatMap(response -> controlHotWaterPump());
+        return queryHotWaterPumpStatus().flatMap(response -> controlHotWaterPump());
     }
 
     public Mono<ShellyPro4StatusResponse> queryHotWaterPumpStatus() {
