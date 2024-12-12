@@ -29,15 +29,13 @@ logbook:
 
 logging:
   level:
-    org.zalando.logbook: trace
+    org.zalando.logbook: off
 
 jobs:
   hot-water:
     poolingInterval: PT2m
   pumps:
     poolingInterval: PT60s
-  rooms:
-    poolingInterval: PT5m
 
 shelly:
   sensor:

@@ -51,8 +51,9 @@ class RoomHeatingTools {
 
     boolean hasTemperatureUnderMin(final Room room) {
         return switch (room.getName()) {
-            case OFFICE, TOBI, LIVIA, BEDROOM, CINEMA, LIVING_ROOM, WARDROBE, BATHROOM_DOWN, BATHROOM_UP ->
+            case OFFICE, TOBI, LIVIA, BEDROOM, CINEMA, LIVING_ROOM, BATHROOM_DOWN, BATHROOM_UP ->
                 room.getTemperature().getValue() < 19;
+            case WARDROBE -> room.getTemperature().getValue() < 18;
             case ENTRANCE -> room.getTemperature().getValue() < 17;
             case GARAGE -> room.getTemperature().getValue() < 14;
             default -> room.getTemperature().getValue() < 10;
