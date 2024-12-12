@@ -26,7 +26,7 @@ class HeaterActorHandler {
             return heaterPro4Client.controlHeatingActor(heaterData, true)
                 .then(heaterPro4Client.getHeaterActorStatus(heaterData))
                 .doOnNext(response -> heaterActor.setWorking(Boolean.TRUE.equals(response.getOutput())))
-                .then(logStatus(room, heaterActor, reasonMessage));
+                .then(Mono.fromRunnable(() -> logStatus(room, heaterActor, reasonMessage)));
         }
         return Mono.empty();
     }
@@ -40,19 +40,23 @@ class HeaterActorHandler {
             .doOnNext(response -> heaterActor.setWorking(Boolean.TRUE.equals(response.getOutput())))
             .then(heaterActor.isWorking() ? heaterPro4Client.controlHeatingActor(heaterData, false) : Mono.empty())
             .then(heaterActor.isWorking() ? heaterPro4Client.getHeaterActorStatus(heaterData) : Mono.empty())
-            .doOnNext(response -> heaterActor.setWorking(Boolean.TRUE.equals(response.getOutput())))
-            .then(logStatus(room, heaterActor, "turned off"));
+            .doOnNext(response -> {
+                if (heaterActor.isWorking()) {
+                    logStatus(room, heaterActor, "turned off");
+                    heaterActor.setWorking(Boolean.FALSE.equals(response.getOutput()));
+                }
+            })
+            .then();
     }
 
-    private Mono<Void> logStatus(final Room room, final HeaterActor heaterActor, final String reasonMessage) {
+    private void logStatus(final Room room, final HeaterActor heaterActor, final String reasonMessage) {
         log.info(
             "Heater status, room: [{}], current temp: [{}] heat source: [{}], isWorking: [{}], reason: [{}]",
-            room.getName(),
+            room.getName().name(),
             room.getTemperature().getValue(),
             heaterActor.getName(),
             heaterActor.isWorking(),
             reasonMessage
         );
-        return Mono.empty();
     }
 }

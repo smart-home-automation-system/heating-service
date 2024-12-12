@@ -29,12 +29,13 @@ public class ScheduleService {
         } else {
             List<Schedule> schedules = room.getSchedules().stream().filter(this::isScheduleActive).toList();
             if (schedules.size() > 1) {
-                throw new HeatingException("To many schedules [" + room.getSchedules().size() + "], only one schedule is allowed");
+                throw new HeatingException("To many schedules: [" + room.getSchedules().size()
+                    + "] for room: [" + room.getName().name() + "], only one schedule is allowed");
             } else if (schedules.size() == 1) {
-                log.info("Valid schedule found for room [{}], returning: {} ", room.getName(), schedules);
+                log.info("Valid schedule found for room [{}], returning: {} ", room.getName().name(), schedules);
                 return schedules;
             } else {
-                log.info("No schedules found for room [{}], returning empty list", room.getName());
+                log.info("No schedules found for room [{}], returning empty list", room.getName().name());
                 return List.of();
             }
         }

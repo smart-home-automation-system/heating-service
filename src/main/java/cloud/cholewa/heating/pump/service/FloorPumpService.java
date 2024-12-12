@@ -23,6 +23,8 @@ public class FloorPumpService {
     private final Room bathroomUp;
 
     private final HeaterPro4Client heaterPro4Client;
+    private final Pump heatingPump;
+    private final Pump fireplacePump;
 
     public Mono<Void> handleFloorPump() {
         return queryFloorPumpStatus()
@@ -33,12 +35,12 @@ public class FloorPumpService {
         return heaterPro4Client.getFloorPumpStatus()
             .doOnNext(response -> {
                 floorPump.setRunning(Boolean.TRUE.equals(response.getOutput()));
-                log.info("Pump status [FLOOR] isWorking: [{}]", response.getOutput());
+                log.info("Pump status [FLOOR] isWorking: [{}]", floorPump.isRunning());
             });
     }
 
     private Mono<Void> controlFloorPump() {
-        if (isAnyFloorWorking() && !floorPump.isRunning()) {
+        if (isAnyFloorWorking() && isFireplacePumpOrHeatingPumpWorking() && !floorPump.isRunning()) {
             return turnOnFloorPump();
         } else {
             return turnOffFloorPump();
@@ -47,6 +49,10 @@ public class FloorPumpService {
 
     private boolean isAnyFloorWorking() {
         return Stream.of(wardrobe, bathroomUp).anyMatch(Room::isHeatingActive);
+    }
+
+    private boolean isFireplacePumpOrHeatingPumpWorking() {
+        return Stream.of(heatingPump, fireplacePump).anyMatch(Pump::isRunning);
     }
 
     private Mono<Void> turnOnFloorPump() {

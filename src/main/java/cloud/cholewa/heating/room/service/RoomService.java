@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.room.service;
 
+import cloud.cholewa.heating.model.BoilerRoom;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.pump.service.HeatingPumpService;
@@ -17,6 +18,8 @@ import static cloud.cholewa.heating.model.HeaterType.RADIATOR;
 @RequiredArgsConstructor
 public class RoomService {
 
+    private final BoilerRoom boilerRoom;
+
     private final RoomHeatingTools tools;
     private final HeaterActorHandler heaterActorHandler;
     private final HeaterPro4Config heaterPro4Config;
@@ -30,7 +33,7 @@ public class RoomService {
             .flatMap(is -> heatingPumpService.handleHeatingPump().then(Mono.just(true)))
             .switchIfEmpty(Mono.fromRunnable(() -> log.info(
                 "Room: [{}] does not contains any heater actors",
-                roomToHandle.getName()
+                roomToHandle.getName().name()
             )))
             .then();
     }
@@ -62,7 +65,7 @@ public class RoomService {
                     "fireplace is working"
                 )
                 .then(Mono.just(radiatorActor.isWorking()));
-        } else if (scheduleService.hasActiveSchedule(room)) {
+        } else if (scheduleService.hasActiveSchedule(room) && boilerRoom.isHeatingEnabled()) {
             return heaterActorHandler.turnOnHeaterActor(
                     room,
                     radiatorActor,
@@ -70,7 +73,7 @@ public class RoomService {
                     "activated by schedule"
                 )
                 .then(Mono.just(radiatorActor.isWorking()));
-        } else if (tools.hasTemperatureUnderMin(room)) {
+        } else if (tools.hasTemperatureUnderMin(room) && boilerRoom.isHeatingEnabled()) {
             return heaterActorHandler.turnOnHeaterActor(
                     room,
                     radiatorActor,

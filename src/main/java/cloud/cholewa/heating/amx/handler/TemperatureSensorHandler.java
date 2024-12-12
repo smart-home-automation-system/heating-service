@@ -32,7 +32,7 @@ public class TemperatureSensorHandler {
                 .doOnNext(boiler -> {
                     fireplace.temperature().setUpdatedAt(LocalDateTime.now());
                     fireplace.temperature().setValue(Double.parseDouble(device.getValue()));
-                    logStatusUpdate(device);
+                    logStatusUpdate(null, device);
                 })
                 .then();
         }
@@ -41,10 +41,10 @@ public class TemperatureSensorHandler {
             .filter(room -> room.getName().equals(device.getRoomName()))
             .flatMap(room -> handleRoom(room, device))
             .single()
-            .doOnNext(room -> logStatusUpdate(device))
+            .doOnNext(room -> logStatusUpdate(room, device))
             .doOnError(throwable -> log.error(
                 "Unknown Room [{}] while handling temperature sensor",
-                device.getRoomName(), throwable
+                device.getRoomName().name(), throwable
             ))
             .flatMap(roomService::handleRoom);
     }
@@ -68,12 +68,12 @@ public class TemperatureSensorHandler {
         return Mono.just(room);
     }
 
-    private void logStatusUpdate(final DeviceStatusUpdate deviceStatusUpdate) {
+    private void logStatusUpdate(final Room room,final DeviceStatusUpdate deviceStatusUpdate) {
         log.info(
             "Status update, room: [{}], device: [{}], value: [{}]",
-            deviceStatusUpdate.getRoomName().name(),
+            deviceStatusUpdate.getRoomName().equals(BOILER) ? "FIREPLACE" : deviceStatusUpdate.getRoomName().name(),
             deviceStatusUpdate.getDeviceType().name(),
-            deviceStatusUpdate.getValue()
+            room == null ? deviceStatusUpdate.getValue() : room.getTemperature().getValue()
         );
     }
 }
