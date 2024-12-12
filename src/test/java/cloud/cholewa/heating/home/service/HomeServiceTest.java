@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.home.service;
 
+import cloud.cholewa.heating.model.Alert;
 import cloud.cholewa.heating.model.BoilerRoom;
 import cloud.cholewa.heating.model.Fireplace;
 import cloud.cholewa.heating.model.Furnace;
@@ -22,7 +23,8 @@ class HomeServiceTest {
     private final HotWater hotWater = new HotWater(new Temperature(), circulation);
     private final Fireplace fireplace = new Fireplace(new Temperature());
     private final Furnace furnace = new Furnace();
-    private final BoilerRoom boilerRoom = new BoilerRoom(furnace, fireplace, hotWater, pumps);
+    private final Alert alert = Alert.builder().build();
+    private final BoilerRoom boilerRoom = new BoilerRoom(alert, furnace, fireplace, hotWater, pumps);
     private final List<Room> rooms = List.of(Room.builder().name(RoomName.OFFICE).build());
     private final Home home = new Home(boilerRoom, rooms);
     private final HomeService sut = new HomeService(home);
