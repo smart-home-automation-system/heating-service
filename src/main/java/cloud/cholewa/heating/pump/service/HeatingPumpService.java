@@ -9,6 +9,8 @@ import cloud.cholewa.heating.shelly.actor.BoilerPro4Client;
 import cloud.cholewa.shelly.model.ShellyPro4StatusResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -27,6 +29,11 @@ public class HeatingPumpService {
     private final List<Room> rooms;
 
     private final BoilerPro4Client boilerPro4Client;
+
+    @EventListener(ApplicationReadyEvent.class)
+    void pumpOff() {
+        queryHeatingPumpStatus().flatMap(response -> turnOffHeatingPump("system startup")).subscribe();
+    }
 
     public Mono<Void> handleHeatingPump() {
         return queryHeatingPumpStatus()
