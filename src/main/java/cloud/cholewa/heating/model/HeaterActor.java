@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @SuperBuilder
@@ -14,4 +15,5 @@ public class HeaterActor {
     private boolean working;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
+    private List<Schedule> schedules;
 }
