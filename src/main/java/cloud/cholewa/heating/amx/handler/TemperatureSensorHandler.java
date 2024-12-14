@@ -39,7 +39,7 @@ public class TemperatureSensorHandler {
 
         return Flux.fromIterable(rooms)
             .filter(room -> room.getName().equals(device.getRoomName()))
-            .flatMap(room -> handleRoom(room, device))
+            .flatMap(room -> adjustTemperatureOffset(room, device))
             .single()
             .doOnNext(room -> logStatusUpdate(room, device))
             .doOnError(throwable -> log.error(
@@ -55,7 +55,7 @@ public class TemperatureSensorHandler {
         return Mono.just(boilerRoom);
     }
 
-    private Mono<Room> handleRoom(final Room room, final DeviceStatusUpdate device) {
+    private Mono<Room> adjustTemperatureOffset(final Room room, final DeviceStatusUpdate device) {
         room.getTemperature().setUpdatedAt(LocalDateTime.now());
 
         //adding temperature offset due to sensor issue
