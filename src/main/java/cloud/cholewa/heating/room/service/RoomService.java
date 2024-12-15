@@ -3,12 +3,16 @@ package cloud.cholewa.heating.room.service;
 import cloud.cholewa.heating.model.BoilerRoom;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.Room;
+import cloud.cholewa.heating.pump.service.FurnaceService;
 import cloud.cholewa.heating.pump.service.HeatingPumpService;
 import cloud.cholewa.heating.shelly.actor.HeaterPro4Config;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+
+import java.time.Duration;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -22,12 +26,18 @@ public class RoomService {
     private final HeaterPro4Config heaterPro4Config;
     private final ScheduleService scheduleService;
     private final HeatingPumpService heatingPumpService;
+    private final FurnaceService furnaceService;
+    private final List<Room> rooms;
 
     public Mono<Void> handleRoom(final Room roomToHandle) {
         return tools.hasAnyHeaterActor(roomToHandle)
             .flatMap(this::handleHeaterActors)
-            .flatMap(isWorking -> setHeatingActive(roomToHandle))
-            .flatMap(is -> heatingPumpService.handleHeatingPump().then(Mono.just(true)))
+            .flatMap(isWorking -> setRoomHeatingActive(roomToHandle))
+            .flatMap(isHeatingActive -> setHeatingAllowed())
+            .delayElement(Duration.ofSeconds(1))
+            .flatMap(isActive -> heatingPumpService.handleHeatingPump().then(Mono.just(true)))
+            .delayElement(Duration.ofSeconds(1))
+            .flatMap(isOn -> furnaceService.handleFurnace().then(Mono.just(true)))
             .switchIfEmpty(Mono.fromRunnable(() -> log.info(
                 "Room: [{}] does not contains any heater actors",
                 roomToHandle.getName().name()
@@ -42,7 +52,7 @@ public class RoomService {
                     heaterPro4Config.getShellyPro4HeaterHost(room.getName())
                 )
                 .flatMap(heaterActor -> handleRadiator(room, heaterActor));
-        } else if (tools.getFloorActor(room).isPresent() && tools.getRadiatorActor(room).isEmpty()) {
+        } else if (tools.getRadiatorActor(room).isEmpty() && tools.getFloorActor(room).isPresent()) {
             return heaterActorHandler.getStatus(
                     tools.getFloorActor(room).orElseThrow(),
                     heaterPro4Config.getShellyPro4FloorHost(room.getName())
@@ -79,7 +89,7 @@ public class RoomService {
                     "fireplace is working"
                 )
                 .then(Mono.just(radiatorActor.isWorking()));
-        } else if (scheduleService.hasActiveSchedule(room) && boilerRoom.isHeatingEnabled()) {
+        } else if (scheduleService.hasActiveSchedule(room, radiatorActor) && boilerRoom.isHeatingEnabled()) {
             return heaterActorHandler.turnOnHeaterActor(
                     room,
                     radiatorActor,
@@ -114,7 +124,7 @@ public class RoomService {
                     "fireplace is working"
                 )
                 .then(Mono.just(floorActor.isWorking()));
-        } else if (scheduleService.hasActiveSchedule(room) && boilerRoom.isHeatingEnabled()) {
+        } else if (scheduleService.hasActiveSchedule(room, floorActor) && boilerRoom.isHeatingEnabled()) {
             return heaterActorHandler.turnOnHeaterActor(
                     room,
                     floorActor,
@@ -140,8 +150,12 @@ public class RoomService {
         }
     }
 
-    private Mono<Boolean> setHeatingActive(final Room room) {
+    private Mono<Boolean> setRoomHeatingActive(final Room room) {
         room.setHeatingActive(room.getHeaterActors().stream().anyMatch(HeaterActor::isWorking));
         return Mono.just(room.isHeatingActive());
+    }
+
+    private Mono<Boolean> setHeatingAllowed() {
+        return Mono.just(rooms.stream().anyMatch(Room::isHeatingActive));
     }
 }

@@ -1,8 +1,8 @@
 package cloud.cholewa.heating.amx.handler;
 
-import cloud.cholewa.heating.model.BoilerRoom;
 import cloud.cholewa.heating.model.Fireplace;
 import cloud.cholewa.heating.model.Room;
+import cloud.cholewa.heating.pump.service.FireplacePumpService;
 import cloud.cholewa.heating.room.service.RoomService;
 import cloud.cholewa.home.model.DeviceStatusUpdate;
 import lombok.RequiredArgsConstructor;
@@ -21,20 +21,14 @@ import static cloud.cholewa.home.model.RoomName.BOILER;
 @RequiredArgsConstructor
 public class TemperatureSensorHandler {
 
-    private final BoilerRoom boilerRoom;
     private final Fireplace fireplace;
     private final List<Room> rooms;
     private final RoomService roomService;
+    private final FireplacePumpService fireplacePumpService;
 
     public Mono<Void> handle(final DeviceStatusUpdate device) {
         if (device.getRoomName().equals(BOILER)) {
-            return handleBoiler(device)
-                .doOnNext(boiler -> {
-                    fireplace.temperature().setUpdatedAt(LocalDateTime.now());
-                    fireplace.temperature().setValue(Double.parseDouble(device.getValue()));
-                    logStatusUpdate(null, device);
-                })
-                .then();
+            return handleFireplace(device);
         }
 
         return Flux.fromIterable(rooms)
@@ -49,10 +43,11 @@ public class TemperatureSensorHandler {
             .flatMap(roomService::handleRoom);
     }
 
-    private Mono<BoilerRoom> handleBoiler(final DeviceStatusUpdate device) {
+    private Mono<Void> handleFireplace(final DeviceStatusUpdate device) {
         fireplace.temperature().setUpdatedAt(LocalDateTime.now());
         fireplace.temperature().setValue(Double.parseDouble(device.getValue()));
-        return Mono.just(boilerRoom);
+        logStatusUpdate(null, device);
+        return fireplacePumpService.handleFireplacePump();
     }
 
     private Mono<Room> adjustTemperatureOffset(final Room room, final DeviceStatusUpdate device) {

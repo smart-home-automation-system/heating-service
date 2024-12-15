@@ -33,7 +33,7 @@ logging:
 
 jobs:
   hot-water:
-    poolingInterval: PT2m
+    poolingInterval: PT1m
   pumps:
     poolingInterval: PT60s
 

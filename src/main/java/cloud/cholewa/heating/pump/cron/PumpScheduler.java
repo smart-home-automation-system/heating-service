@@ -5,7 +5,6 @@ import cloud.cholewa.heating.pump.service.FloorPumpService;
 import cloud.cholewa.heating.pump.service.FurnaceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -21,7 +20,7 @@ public class PumpScheduler {
     private final FurnaceService furnaceService;
     private final FloorPumpService floorPumpService;
 
-    @Scheduled(fixedRateString = "${jobs.pumps.poolingInterval}", initialDelayString = "PT15s")
+//    @Scheduled(fixedRateString = "${jobs.pumps.poolingInterval}", initialDelayString = "PT15s")
     void handleBoiler() {
         log.info("Updating boiler devices status ...");
         Flux.interval(Duration.ofSeconds(3))

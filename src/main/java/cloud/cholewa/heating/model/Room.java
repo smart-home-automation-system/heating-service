@@ -22,6 +22,4 @@ public class Room {
     private List<HeaterActor> heaterActors = List.of();
     @Builder.Default
     private final List<OpeningSensor> openingSensors = List.of();
-    @Builder.Default
-    private final List<Schedule> schedules = List.of();
 }

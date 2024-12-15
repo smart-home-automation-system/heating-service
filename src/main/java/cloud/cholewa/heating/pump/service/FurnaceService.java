@@ -11,7 +11,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Slf4j
@@ -24,12 +23,10 @@ public class FurnaceService {
     private final Furnace furnace;
 
     private final BoilerPro4Client boilerPro4Client;
-    private final HotWaterPumpService hotWaterPumpService;
-    private final HeatingPumpService heatingPumpService;
 
     @EventListener(ApplicationReadyEvent.class)
     void furnaceOff() {
-        queryFurnaceStatus().flatMap(response -> turnOffFurnace()).subscribe();
+        queryFurnaceStatus().then(turnOffFurnace("system startup")).subscribe();
     }
 
     public Mono<Void> handleFurnace() {
@@ -38,7 +35,7 @@ public class FurnaceService {
                 if (heatingPump.isRunning() || hotWaterPump.isRunning()) {
                     return turnOnFurnace();
                 } else {
-                    return turnOffFurnace();
+                    return turnOffFurnace("heating not required");
                 }
             });
     }
@@ -47,11 +44,8 @@ public class FurnaceService {
         return boilerPro4Client.getFurnaceStatus()
             .doOnNext(response -> {
                 furnace.setRunning(Boolean.TRUE.equals(response.getOutput()));
-                log.info("Status [FURNACE] isWorking: [{}]", response.getOutput());
-            })
-            .flatMap(response -> hotWaterPumpService.queryHotWaterPumpStatus())
-            .delayElement(Duration.ofSeconds(1L))
-            .flatMap(response -> heatingPumpService.queryHeatingPumpStatus());
+                log.info("Status update [FURNACE] isWorking: [{}]", response.getOutput());
+            });
     }
 
     private Mono<Void> turnOnFurnace() {
@@ -61,7 +55,8 @@ public class FurnaceService {
                 .doOnNext(response -> {
                     log.info(
                         "Furnace turned on due to heating: [{}] or hot water: [{}]",
-                        heatingPump.isRunning(), hotWaterPump.isRunning()
+                        heatingPump.isRunning(),
+                        hotWaterPump.isRunning()
                     );
                     furnace.setStartedAt(LocalDateTime.now());
                 })
@@ -70,12 +65,12 @@ public class FurnaceService {
         return Mono.empty();
     }
 
-    private Mono<Void> turnOffFurnace() {
+    private Mono<Void> turnOffFurnace(final String messageReason) {
         if (furnace.isRunning()) {
             return boilerPro4Client.controlFurnace(false)
                 .doOnError(throwable -> log.error("Error while turning off furnace", throwable))
                 .doOnNext(response -> {
-                    log.info("Furnace turned off");
+                    log.info("Furnace turned off, due to: [{}]", messageReason);
                     furnace.setStoppedAt(LocalDateTime.now());
                 })
                 .then();

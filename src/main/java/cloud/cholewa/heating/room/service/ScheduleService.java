@@ -1,6 +1,7 @@
 package cloud.cholewa.heating.room.service;
 
 import cloud.cholewa.heating.infrastructure.error.HeatingException;
+import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.model.Schedule;
 import lombok.RequiredArgsConstructor;
@@ -16,20 +17,21 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ScheduleService {
 
-    public boolean hasActiveSchedule(final Room room) {
-        return getActiveSchedules(room).stream()
+    public boolean hasActiveSchedule(final Room room, final HeaterActor heaterActor) {
+        return getActiveSchedules(room, heaterActor).stream()
             .anyMatch(schedule -> room.getTemperature().getValue() < schedule.getTemperature()
                 && room.getTemperature().getUpdatedAt() != null
             );
     }
 
-    private List<Schedule> getActiveSchedules(final Room room) {
-        if (room.getSchedules() == null) {
+    private List<Schedule> getActiveSchedules(final Room room, final HeaterActor heaterActor) {
+        if (heaterActor.getSchedules() == null) {
             return List.of();
         } else {
-            List<Schedule> schedules = room.getSchedules().stream().filter(this::isScheduleActive).toList();
+            List<Schedule> schedules = heaterActor.getSchedules().stream().filter(this::isScheduleActive).toList();
+
             if (schedules.size() > 1) {
-                throw new HeatingException("To many schedules: [" + room.getSchedules().size()
+                throw new HeatingException("To many schedules: [" + heaterActor.getSchedules().size()
                     + "] for room: [" + room.getName().name() + "], only one schedule is allowed");
             } else if (schedules.size() == 1) {
                 log.info("Valid schedule found for room [{}], returning: {} ", room.getName().name(), schedules);

@@ -11,6 +11,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 import static cloud.cholewa.heating.model.HeatingTemperatures.HOT_WATER_HIGH_TEMPERATURE;
@@ -29,11 +30,13 @@ public class HotWaterPumpService {
 
     @EventListener(ApplicationReadyEvent.class)
     void pumpOff() {
-        queryHotWaterPumpStatus().flatMap(response -> turnOffHotWaterPump()).subscribe();
+        queryHotWaterPumpStatus().then(turnOffHotWaterPump()).subscribe();
     }
 
     public Mono<Void> handleHotWaterPump() {
-        return queryHotWaterPumpStatus().flatMap(response -> controlHotWaterPump());
+        return queryHotWaterPumpStatus()
+            .delayElement(Duration.ofSeconds(1))
+            .then(controlHotWaterPump());
     }
 
     public Mono<ShellyPro4StatusResponse> queryHotWaterPumpStatus() {
@@ -48,19 +51,16 @@ public class HotWaterPumpService {
         if (hotWater.temperature().getValue() < HOT_WATER_LOW_TEMPERATURE) {
             return optionallyTurnOffHeatingPump().then(turnOnHotWaterPump());
         } else if (hotWater.temperature().getValue() >= HOT_WATER_HIGH_TEMPERATURE) {
-            return turnOffHotWaterPump();
+            return turnOffHotWaterPump().then(optionallyTurnOnHeatingPump());
         }
         return Mono.empty();
     }
 
-    private Mono<Boolean> optionallyTurnOffHeatingPump() {
-        if (heatingPump.isRunning()) {
-            return heatingPumpService.turnOffHeatingPump("hot water pump is working")
-                .then(Mono.defer(heatingPumpService::queryHeatingPumpStatus))
-                .doOnNext(response -> heatingPump.setRunning(Boolean.TRUE.equals(response.getOutput())))
-                .then(Mono.just(heatingPump.isRunning()));
-        }
-        return Mono.just(false);
+    private Mono<Void> optionallyTurnOffHeatingPump() {
+        return heatingPumpService.turnOffHeatingPump("hot water pump is working")
+            .then(Mono.defer(heatingPumpService::queryHeatingPumpStatus))
+            .doOnNext(response -> heatingPump.setRunning(Boolean.TRUE.equals(response.getOutput())))
+            .then();
     }
 
     private Mono<Void> turnOnHotWaterPump() {
@@ -97,5 +97,9 @@ public class HotWaterPumpService {
                 .then();
         }
         return Mono.empty();
+    }
+
+    private Mono<Void> optionallyTurnOnHeatingPump() {
+        return heatingPumpService.handleHeatingPump();
     }
 }

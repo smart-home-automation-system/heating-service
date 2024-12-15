@@ -9,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -28,13 +30,16 @@ class HeaterActorHandler {
         final HeaterPro4Config.HeaterPro4Data heaterData,
         final String reasonMessage
     ) {
-        if (!heaterActor.isWorking()) {
-            return heaterPro4Client.controlHeatingActor(heaterData, true)
-                .then(heaterPro4Client.getHeaterActorStatus(heaterData))
-                .doOnNext(response -> heaterActor.setWorking(Boolean.TRUE.equals(response.getOutput())))
-                .then(Mono.fromRunnable(() -> logStatus(room, heaterActor, reasonMessage)));
-        }
-        return Mono.empty();
+        return heaterPro4Client.getHeaterActorStatus(heaterData)
+            .doOnNext(response -> heaterActor.setWorking(Boolean.TRUE.equals(response.getOutput())))
+            .then(!heaterActor.isWorking() ? heaterPro4Client.setHeaterActor(heaterData, true) : Mono.empty())
+            .delayElement(Duration.ofSeconds(1))
+            .flatMap(response -> heaterPro4Client.getHeaterActorStatus(heaterData))
+            .doOnNext(response -> {
+                heaterActor.setWorking(Boolean.TRUE.equals(response.getOutput()));
+                logStatus(room, heaterActor, reasonMessage);
+            })
+            .then();
     }
 
     Mono<Void> turnOffHeaterActor(
@@ -44,8 +49,9 @@ class HeaterActorHandler {
     ) {
         return heaterPro4Client.getHeaterActorStatus(heaterData)
             .doOnNext(response -> heaterActor.setWorking(Boolean.TRUE.equals(response.getOutput())))
-            .then(heaterActor.isWorking() ? heaterPro4Client.controlHeatingActor(heaterData, false) : Mono.empty())
-            .then(heaterActor.isWorking() ? heaterPro4Client.getHeaterActorStatus(heaterData) : Mono.empty())
+            .then(heaterActor.isWorking() ? heaterPro4Client.setHeaterActor(heaterData, false) : Mono.empty())
+            .delayElement(Duration.ofSeconds(1))
+            .flatMap(response ->  heaterPro4Client.getHeaterActorStatus(heaterData))
             .doOnNext(response -> {
                 if (heaterActor.isWorking()) {
                     logStatus(room, heaterActor, "turned off");

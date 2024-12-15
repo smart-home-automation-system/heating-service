@@ -19,33 +19,33 @@ public class HeaterPro4Client {
     private final WebClient webClient;
     private final HeaterPro4Config heaterPro4Config;
 
-    public Mono<ShellyProRelayResponse> controlHeatingActor(
-        final HeaterPro4Config.HeaterPro4Data heaterPro4Data,
+    public Mono<ShellyProRelayResponse> setHeaterActor(
+        final HeaterPro4Config.HeaterPro4Data heaterData,
         final boolean enable
     ) {
         return webClient.get()
-            .uri(uriBuilder -> uriBuilder.scheme("http").host(heaterPro4Data.host())
-                .path("relay/" + heaterPro4Data.relay())
+            .uri(uriBuilder -> uriBuilder.scheme("http").host(heaterData.host())
+                .path("relay/" + heaterData.relay())
                 .queryParam("turn", enable ? "on" : "off")
                 .build())
             .retrieve()
             .onStatus(
                 HttpStatusCode::isError, clientResponse ->
-                    Mono.error(new BoilerException("Shelly PRO4 communication error on IP: " + heaterPro4Data.host()))
+                    Mono.error(new BoilerException("Shelly PRO4 communication error on IP: " + heaterData.host()))
             )
             .bodyToMono(ShellyProRelayResponse.class);
     }
 
-    public Mono<ShellyPro4StatusResponse> getHeaterActorStatus(final HeaterPro4Config.HeaterPro4Data heaterPro4Data) {
+    public Mono<ShellyPro4StatusResponse> getHeaterActorStatus(final HeaterPro4Config.HeaterPro4Data heaterData) {
         return webClient.get()
-            .uri(uriBuilder -> uriBuilder.scheme("http").host(heaterPro4Data.host())
+            .uri(uriBuilder -> uriBuilder.scheme("http").host(heaterData.host())
                 .path("rpc/Switch.GetStatus")
-                .queryParam("id", heaterPro4Data.relay())
+                .queryParam("id", heaterData.relay())
                 .build())
             .retrieve()
             .onStatus(
                 HttpStatusCode::isError, clientResponse ->
-                    Mono.error((new BoilerException("Shelly PRO4 communication error on IP: " + heaterPro4Data.host()))
+                    Mono.error((new BoilerException("Shelly PRO4 communication error on IP: " + heaterData.host()))
                     )
             )
             .bodyToMono(ShellyPro4StatusResponse.class);

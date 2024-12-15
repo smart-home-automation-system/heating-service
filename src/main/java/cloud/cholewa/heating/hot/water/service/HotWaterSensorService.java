@@ -23,14 +23,11 @@ public class HotWaterSensorService {
     private final HotWater hotWater;
     private final HotWaterSensorClient hotWaterSensorClient;
 
-    public Mono<Void> handle() {
+    public Mono<Void> handleSensor() {
         return hotWaterSensorClient.getStatus()
             .flatMap(this::updateHotWaterStatus)
             .doOnNext(this::logHotWaterUpdateStatus)
-            .flatMap(response -> {
-                optionallyTurnOnCirculationPump();
-                return Mono.empty();
-            });
+            .then(Mono.fromRunnable(this::optionallyTurnOnCirculationPump));
     }
 
     private Mono<ShellyUniStatusResponse> updateHotWaterStatus(final ShellyUniStatusResponse response) {

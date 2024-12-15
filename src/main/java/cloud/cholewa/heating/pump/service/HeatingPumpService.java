@@ -32,7 +32,7 @@ public class HeatingPumpService {
 
     @EventListener(ApplicationReadyEvent.class)
     void pumpOff() {
-        queryHeatingPumpStatus().flatMap(response -> turnOffHeatingPump("system startup")).subscribe();
+        queryHeatingPumpStatus().then(turnOffHeatingPump("system startup")).subscribe();
     }
 
     public Mono<Void> handleHeatingPump() {
