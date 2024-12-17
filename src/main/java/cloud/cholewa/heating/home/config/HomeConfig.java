@@ -156,7 +156,14 @@ public class HomeConfig {
                             .build(),
                         Schedule.builder()
                             .type(ScheduleType.HEATING)
-                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
+                            .days(Set.of(MONDAY))
+                            .temperature(20)
+                            .startTime(LocalTime.of(15, 1))
+                            .endTime(LocalTime.of(16, 59))
+                            .build(),
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
                             .temperature(19)
                             .startTime(LocalTime.of(8, 1))
                             .endTime(LocalTime.of(16, 59))
