@@ -65,7 +65,7 @@ public class TemperatureSensorHandler {
 
     private void logStatusUpdate(final Room room,final DeviceStatusUpdate deviceStatusUpdate) {
         log.info(
-            "Status update, room: [{}], device: [{}], value: [{}]",
+            "Temperature update, room: [{}], device: [{}], value: [{}]",
             deviceStatusUpdate.getRoomName().equals(BOILER) ? "FIREPLACE" : deviceStatusUpdate.getRoomName().name(),
             deviceStatusUpdate.getDeviceType().name(),
             room == null ? deviceStatusUpdate.getValue() : room.getTemperature().getValue()

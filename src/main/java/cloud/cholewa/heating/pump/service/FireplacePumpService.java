@@ -45,10 +45,9 @@ public class FireplacePumpService {
             return processEmergencySituation();
         } else if (fireplace.temperature().getValue() >= FIREPLACE_START_TEMPERATURE) {
             return turnOnFireplacePump();
-        } else if (fireplace.temperature().getValue() < FIREPLACE_START_TEMPERATURE) {
+        } else {
             return turnOffFireplacePump();
         }
-        return Mono.empty();
     }
 
     private Mono<Void> processEmergencySituation() {
@@ -70,19 +69,22 @@ public class FireplacePumpService {
                     logFireplaceStatus(response);
                     fireplacePump.setStartedAt(LocalDateTime.now());
                 })
+                .delayElement(Duration.ofSeconds(1))
+                .then(queryFireplacePumpStatus())
                 .then();
         }
         return Mono.empty();
     }
 
     private Mono<Void> turnOffFireplacePump() {
-        if (fireplacePump.isRunning() && fireplace.temperature().getUpdatedAt() != null) {
+        if (fireplacePump.isRunning()) {
             return boilerPro4Client.controlFireplacePump(false)
                 .doOnError(this::logErrorStatus)
                 .doOnNext(response -> {
                     logFireplaceStatus(response);
                     fireplacePump.setStoppedAt(LocalDateTime.now());
                 })
+                .then(queryFireplacePumpStatus())
                 .then();
         }
         return Mono.empty();
