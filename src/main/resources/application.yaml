@@ -29,19 +29,32 @@ logbook:
 
 logging:
   level:
-    org.zalando.logbook: trace
+    org.zalando.logbook: off
 
 jobs:
   hot-water:
-    poolingInterval: PT60s
+    poolingInterval: PT1m
   pumps:
-    poolingInterval: PT5s
+    poolingInterval: PT60s
 
 shelly:
   sensor:
-    uni-hot-water:
-      scheme: http
-      host: 10.78.30.47
+    uni:
+      hot-water:
+        host: 10.78.30.47
+  actor:
+    pro4:
+      boiler:
+        host: 10.78.30.20
+      down_left:
+        host: 10.78.30.39
+      down_right:
+        host: 10.78.30.19
+      up_left:
+        host: 10.78.30.89
+      up_right:
+        host: 10.78.30.26
+
 
 ---
 
