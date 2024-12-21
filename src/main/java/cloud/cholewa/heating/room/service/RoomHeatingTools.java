@@ -6,6 +6,7 @@ import cloud.cholewa.heating.model.Fireplace;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.HeaterType;
 import cloud.cholewa.heating.model.Room;
+import cloud.cholewa.home.model.RoomName;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -13,7 +14,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.Optional;
 
-import static cloud.cholewa.heating.model.HeatingTemperatures.FIREPLACE_TEMPERATURE_ALLOW_ENABLE_HEATER;
+import static cloud.cholewa.heating.model.HeatingTemperatures.FIREPLACE_START_TEMPERATURE;
 
 @Slf4j
 @Service
@@ -45,8 +46,10 @@ class RoomHeatingTools {
         return boilerRoom.getAlert().getReason() != AlertReason.NO_ALERT;
     }
 
-    boolean isFireplaceActive() {
-        return fireplace.temperature().getValue() >= FIREPLACE_TEMPERATURE_ALLOW_ENABLE_HEATER;
+    boolean isFireplaceActive(final Room room) {
+        return fireplace.temperature().getValue() >= FIREPLACE_START_TEMPERATURE
+            && room.getTemperature().getValue() < 20.5
+            && (!room.getName().equals(RoomName.ENTRANCE) && !room.getName().equals(RoomName.GARAGE));
     }
 
     boolean hasTemperatureUnderMin(final Room room) {

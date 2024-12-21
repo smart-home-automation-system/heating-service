@@ -81,7 +81,7 @@ public class RoomService {
                     "fireplace HIGH temperature"
                 )
                 .then(Mono.just(radiatorActor.isWorking()));
-        } else if (tools.isFireplaceActive() && room.getTemperature().getValue() <= 20.5) {
+        } else if (tools.isFireplaceActive(room)) {
             return heaterActorHandler.turnOnHeaterActor(
                     room,
                     radiatorActor,
@@ -116,7 +116,7 @@ public class RoomService {
     }
 
     private Mono<Boolean> handleFloor(final Room room, final HeaterActor floorActor) {
-        if (tools.isFireplaceActive() && room.getTemperature().getValue() <= 20.5) {
+        if (tools.isFireplaceActive(room)) {
             return heaterActorHandler.turnOnHeaterActor(
                     room,
                     floorActor,
