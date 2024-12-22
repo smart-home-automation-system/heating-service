@@ -11,6 +11,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Slf4j
@@ -26,11 +27,14 @@ public class FurnaceService {
 
     @EventListener(ApplicationReadyEvent.class)
     void furnaceOff() {
-        queryFurnaceStatus().then(turnOffFurnace("system startup")).subscribe();
+        queryFurnaceStatus()
+            .delayElement(Duration.ofSeconds(1))
+            .then(turnOffFurnace("system startup")).subscribe();
     }
 
-    public Mono<Void> handleFurnace() {
+    public Mono<ShellyPro4StatusResponse> handleFurnace() {
         return queryFurnaceStatus()
+            .delayElement(Duration.ofSeconds(1))
             .flatMap(response -> {
                 if (heatingPump.isRunning() || hotWaterPump.isRunning()) {
                     return turnOnFurnace();
@@ -48,7 +52,7 @@ public class FurnaceService {
             });
     }
 
-    private Mono<Void> turnOnFurnace() {
+    private Mono<ShellyPro4StatusResponse> turnOnFurnace() {
         if (!furnace.isRunning()) {
             return boilerPro4Client.controlFurnace(true)
                 .doOnError(throwable -> log.error("Error while turning on furnace", throwable))
@@ -60,12 +64,13 @@ public class FurnaceService {
                     );
                     furnace.setStartedAt(LocalDateTime.now());
                 })
-                .then();
+                .delayElement(Duration.ofSeconds(1))
+                .then(queryFurnaceStatus());
         }
         return Mono.empty();
     }
 
-    private Mono<Void> turnOffFurnace(final String messageReason) {
+    private Mono<ShellyPro4StatusResponse> turnOffFurnace(final String messageReason) {
         if (furnace.isRunning()) {
             return boilerPro4Client.controlFurnace(false)
                 .doOnError(throwable -> log.error("Error while turning off furnace", throwable))
@@ -73,7 +78,8 @@ public class FurnaceService {
                     log.info("Furnace turned off, due to: [{}]", messageReason);
                     furnace.setStoppedAt(LocalDateTime.now());
                 })
-                .then();
+                .delayElement(Duration.ofSeconds(1))
+                .then(queryFurnaceStatus());
         }
         return Mono.empty();
     }

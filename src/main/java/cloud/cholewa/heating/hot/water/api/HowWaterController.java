@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
@@ -29,6 +30,13 @@ public class HowWaterController {
     Mono<ResponseEntity<WaterCirculation>> getCirculationStatus() {
         log.info("Requesting hot water circulation status");
         return hotWaterService.getWaterCirculationStatus().map(ResponseEntity::ok);
+    }
+
+    @PostMapping("update")
+    Mono<ResponseEntity<String>> executeHotWaterUpdate() {
+        log.info("Executing manual hot water update");
+        return hotWaterService.executeHotWaterUpdate()
+            .flatMap(response ->  Mono.just(ResponseEntity.ok().body("Updated")));
     }
 }
 

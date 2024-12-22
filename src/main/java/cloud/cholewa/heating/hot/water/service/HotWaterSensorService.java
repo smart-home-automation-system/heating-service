@@ -23,11 +23,11 @@ public class HotWaterSensorService {
     private final HotWater hotWater;
     private final HotWaterSensorClient hotWaterSensorClient;
 
-    public Mono<Void> handleSensor() {
+    public Mono<ShellyUniStatusResponse> handleSensor() {
         return hotWaterSensorClient.getStatus()
             .flatMap(this::updateHotWaterStatus)
             .doOnNext(this::logHotWaterUpdateStatus)
-            .then(Mono.fromRunnable(this::optionallyTurnOnCirculationPump));
+            .doOnNext(this::optionallyTurnOnCirculationPump);
     }
 
     private Mono<ShellyUniStatusResponse> updateHotWaterStatus(final ShellyUniStatusResponse response) {
@@ -55,7 +55,7 @@ public class HotWaterSensorService {
         );
     }
 
-    private void optionallyTurnOnCirculationPump() {
+    private void optionallyTurnOnCirculationPump(final ShellyUniStatusResponse response) {
         if (LocalTime.now().isAfter(LocalTime.of(5, 0))
             && LocalTime.now().isBefore(LocalTime.of(23, 59))
         ) {

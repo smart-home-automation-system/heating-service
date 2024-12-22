@@ -30,13 +30,13 @@ public class HotWaterPumpService {
 
     @EventListener(ApplicationReadyEvent.class)
     void pumpOff() {
-        queryHotWaterPumpStatus().then(turnOffHotWaterPump()).subscribe();
+        queryHotWaterPumpStatus().map(this::turnOffHotWaterPump).subscribe();
     }
 
-    public Mono<Void> handleHotWaterPump() {
+    public Mono<ShellyPro4StatusResponse> handleHotWaterPump() {
         return queryHotWaterPumpStatus()
             .delayElement(Duration.ofSeconds(1))
-            .then(controlHotWaterPump());
+            .flatMap(this::controlHotWaterPump);
     }
 
     public Mono<ShellyPro4StatusResponse> queryHotWaterPumpStatus() {
@@ -47,13 +47,15 @@ public class HotWaterPumpService {
             });
     }
 
-    private Mono<Void> controlHotWaterPump() {
+    private Mono<ShellyPro4StatusResponse> controlHotWaterPump(final ShellyPro4StatusResponse response) {
         if (hotWater.temperature().getValue() < HOT_WATER_LOW_TEMPERATURE) {
-            return optionallyTurnOffHeatingPump().then(turnOnHotWaterPump());
+            return optionallyTurnOffHeatingPump()
+                .then(turnOnHotWaterPump(response));
         } else if (hotWater.temperature().getValue() >= HOT_WATER_HIGH_TEMPERATURE) {
-            return turnOffHotWaterPump().then(optionallyTurnOnHeatingPump());
+            return optionallyTurnOnHeatingPump()
+                .then(turnOffHotWaterPump(response));
         }
-        return Mono.empty();
+        return Mono.just(response);
     }
 
     private Mono<Void> optionallyTurnOffHeatingPump() {
@@ -63,7 +65,7 @@ public class HotWaterPumpService {
             .then();
     }
 
-    private Mono<Void> turnOnHotWaterPump() {
+    private Mono<ShellyPro4StatusResponse> turnOnHotWaterPump(final ShellyPro4StatusResponse shellyPro4StatusResponse) {
         if (!hotWaterPump.isRunning() && hotWater.temperature().getUpdatedAt() != null) {
             return boilerPro4Client.controlHotWaterPump(true)
                 .doOnError(throwable -> log.error("Error while turning on hot water pump", throwable))
@@ -76,12 +78,13 @@ public class HotWaterPumpService {
                     hotWaterPump.setRunning(Boolean.TRUE.equals(response.getIson()));
                     hotWaterPump.setStartedAt(LocalDateTime.now());
                 })
-                .then();
+                .delayElement(Duration.ofSeconds(1))
+                .then(queryHotWaterPumpStatus());
         }
-        return Mono.empty();
+        return Mono.just(shellyPro4StatusResponse);
     }
 
-    private Mono<Void> turnOffHotWaterPump() {
+    private Mono<ShellyPro4StatusResponse> turnOffHotWaterPump(final ShellyPro4StatusResponse shellyPro4StatusResponse) {
         if (hotWaterPump.isRunning()) {
             return boilerPro4Client.controlHotWaterPump(false)
                 .doOnError(throwable -> log.error("Error while turning off hot water pump", throwable))
@@ -94,9 +97,10 @@ public class HotWaterPumpService {
                     hotWaterPump.setRunning(Boolean.TRUE.equals(response.getIson()));
                     hotWaterPump.setStoppedAt(LocalDateTime.now());
                 })
-                .then();
+                .delayElement(Duration.ofSeconds(1))
+                .then(queryHotWaterPumpStatus());
         }
-        return Mono.empty();
+        return Mono.just(shellyPro4StatusResponse);
     }
 
     private Mono<Void> optionallyTurnOnHeatingPump() {

@@ -14,6 +14,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -72,6 +73,8 @@ public class HeatingPumpService {
                     log.info("Heating pump turned on - some rooms are ready to heat");
                     heatingPump.setStartedAt(LocalDateTime.now());
                 })
+                .delayElement(Duration.ofSeconds(1))
+                .then(queryHeatingPumpStatus())
                 .then();
         }
         return Mono.empty();
@@ -85,6 +88,8 @@ public class HeatingPumpService {
                     log.info("Heating pump turned off - {}", messageReason);
                     heatingPump.setStoppedAt(LocalDateTime.now());
                 })
+                .delayElement(Duration.ofSeconds(1))
+                .then(queryHeatingPumpStatus())
                 .then();
         }
         return Mono.empty();
