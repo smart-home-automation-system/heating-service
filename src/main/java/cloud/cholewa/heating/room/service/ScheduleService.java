@@ -34,10 +34,19 @@ public class ScheduleService {
                 throw new HeatingException("To many schedules: [" + heaterActor.getSchedules().size()
                     + "] for room: [" + room.getName().name() + "], only one schedule is allowed");
             } else if (schedules.size() == 1) {
-                log.info("Valid schedule found for room [{}], returning: {} ", room.getName().name(), schedules);
+                log.info(
+                    "Schedule found for room [{}], heater: [{}] returning: {} ",
+                    room.getName().name(),
+                    heaterActor.getName(),
+                    schedules
+                );
                 return schedules;
             } else {
-                log.info("No schedules found for room [{}]", room.getName().name());
+                log.info(
+                    "No schedules found for room [{}] for heater [{}]",
+                    room.getName().name(),
+                    heaterActor.getName()
+                );
                 return List.of();
             }
         }

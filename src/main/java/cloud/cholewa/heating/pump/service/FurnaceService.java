@@ -29,7 +29,8 @@ public class FurnaceService {
     void furnaceOff() {
         queryFurnaceStatus()
             .delayElement(Duration.ofSeconds(1))
-            .then(turnOffFurnace("system startup")).subscribe();
+            .flatMap(response ->  turnOffFurnace(response, "system startup"))
+            .subscribe();
     }
 
     public Mono<ShellyPro4StatusResponse> handleFurnace() {
@@ -37,9 +38,9 @@ public class FurnaceService {
             .delayElement(Duration.ofSeconds(1))
             .flatMap(response -> {
                 if (heatingPump.isRunning() || hotWaterPump.isRunning()) {
-                    return turnOnFurnace();
+                    return turnOnFurnace(response);
                 } else {
-                    return turnOffFurnace("heating not required");
+                    return turnOffFurnace(response, "heating not required");
                 }
             });
     }
@@ -52,7 +53,7 @@ public class FurnaceService {
             });
     }
 
-    private Mono<ShellyPro4StatusResponse> turnOnFurnace() {
+    private Mono<ShellyPro4StatusResponse> turnOnFurnace(final ShellyPro4StatusResponse shellyPro4StatusResponse) {
         if (!furnace.isRunning()) {
             return boilerPro4Client.controlFurnace(true)
                 .doOnError(throwable -> log.error("Error while turning on furnace", throwable))
@@ -67,10 +68,10 @@ public class FurnaceService {
                 .delayElement(Duration.ofSeconds(1))
                 .then(queryFurnaceStatus());
         }
-        return Mono.empty();
+        return Mono.just(shellyPro4StatusResponse);
     }
 
-    private Mono<ShellyPro4StatusResponse> turnOffFurnace(final String messageReason) {
+    private Mono<ShellyPro4StatusResponse> turnOffFurnace(final ShellyPro4StatusResponse shellyPro4StatusResponse, final String messageReason) {
         if (furnace.isRunning()) {
             return boilerPro4Client.controlFurnace(false)
                 .doOnError(throwable -> log.error("Error while turning off furnace", throwable))
@@ -81,6 +82,6 @@ public class FurnaceService {
                 .delayElement(Duration.ofSeconds(1))
                 .then(queryFurnaceStatus());
         }
-        return Mono.empty();
+        return Mono.just(shellyPro4StatusResponse);
     }
 }

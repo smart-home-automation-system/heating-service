@@ -35,9 +35,9 @@ public class RoomService {
             .flatMap(isWorking -> setRoomHeatingActive(roomToHandle))
             .flatMap(isHeatingActive -> setHeatingAllowed())
             .delayElement(Duration.ofSeconds(1))
-            .flatMap(isActive -> heatingPumpService.handleHeatingPump().then(Mono.just(true)))
+            .flatMap(isActive -> heatingPumpService.handleHeatingPump())
             .delayElement(Duration.ofSeconds(1))
-            .flatMap(isOn -> furnaceService.handleFurnace().then(Mono.just(true)))
+            .flatMap(isOn -> furnaceService.handleFurnace())
             .switchIfEmpty(Mono.fromRunnable(() -> log.info(
                 "Room: [{}] does not contains any heater actors",
                 roomToHandle.getName().name()

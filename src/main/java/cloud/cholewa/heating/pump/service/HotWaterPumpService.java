@@ -52,14 +52,17 @@ public class HotWaterPumpService {
             return optionallyTurnOffHeatingPump()
                 .then(turnOnHotWaterPump(response));
         } else if (hotWater.temperature().getValue() >= HOT_WATER_HIGH_TEMPERATURE) {
-            return optionallyTurnOnHeatingPump()
-                .then(turnOffHotWaterPump(response));
+            return turnOffHotWaterPump(ShellyPro4StatusResponse.builder().build())
+                .flatMap(r -> optionallyTurnOnHeatingPump());
         }
         return Mono.just(response);
     }
 
     private Mono<Void> optionallyTurnOffHeatingPump() {
-        return heatingPumpService.turnOffHeatingPump("hot water pump is working")
+        return heatingPumpService.turnOffHeatingPump(
+                ShellyPro4StatusResponse.builder().build(),
+                "hot water pump is working"
+            )
             .then(Mono.defer(heatingPumpService::queryHeatingPumpStatus))
             .doOnNext(response -> heatingPump.setRunning(Boolean.TRUE.equals(response.getOutput())))
             .then();
@@ -103,7 +106,7 @@ public class HotWaterPumpService {
         return Mono.just(shellyPro4StatusResponse);
     }
 
-    private Mono<Void> optionallyTurnOnHeatingPump() {
+    private Mono<ShellyPro4StatusResponse> optionallyTurnOnHeatingPump() {
         return heatingPumpService.handleHeatingPump();
     }
 }

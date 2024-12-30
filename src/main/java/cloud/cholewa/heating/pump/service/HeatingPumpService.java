@@ -33,12 +33,16 @@ public class HeatingPumpService {
 
     @EventListener(ApplicationReadyEvent.class)
     void pumpOff() {
-        queryHeatingPumpStatus().then(turnOffHeatingPump("system startup")).subscribe();
+        queryHeatingPumpStatus()
+            .delayElement(Duration.ofSeconds(1))
+            .flatMap(response ->  turnOffHeatingPump(response, "system startup"))
+            .subscribe();
     }
 
-    public Mono<Void> handleHeatingPump() {
+    public Mono<ShellyPro4StatusResponse> handleHeatingPump() {
         return queryHeatingPumpStatus()
-            .flatMap(response -> controlHeatingPump());
+            .delayElement(Duration.ofSeconds(1))
+            .flatMap(this::controlHeatingPump);
     }
 
     public Mono<ShellyPro4StatusResponse> queryHeatingPumpStatus() {
@@ -49,11 +53,11 @@ public class HeatingPumpService {
             });
     }
 
-    private Mono<Void> controlHeatingPump() {
+    private Mono<ShellyPro4StatusResponse> controlHeatingPump(final ShellyPro4StatusResponse response) {
         if (boilerRoom.isHeatingEnabled() && isNotFireplaceActive() && isAnyRoomHeatingActive() && !hotWaterPump.isRunning()) {
-            return turnOnHeatingPump();
+            return turnOnHeatingPump(response);
         } else {
-            return turnOffHeatingPump("no room to heat");
+            return turnOffHeatingPump(response, "no room to heat");
         }
     }
 
@@ -65,7 +69,7 @@ public class HeatingPumpService {
         return fireplace.temperature().getValue() < HeatingTemperatures.FIREPLACE_TEMPERATURE_VALID_TO_ENABLE_FURNACE;
     }
 
-    private Mono<Void> turnOnHeatingPump() {
+    private Mono<ShellyPro4StatusResponse> turnOnHeatingPump(final ShellyPro4StatusResponse shellyPro4StatusResponse) {
         if (!heatingPump.isRunning()) {
             return boilerPro4Client.controlHeatingPump(true)
                 .doOnError(throwable -> log.error("Error while turning on heating pump", throwable))
@@ -74,13 +78,12 @@ public class HeatingPumpService {
                     heatingPump.setStartedAt(LocalDateTime.now());
                 })
                 .delayElement(Duration.ofSeconds(1))
-                .then(queryHeatingPumpStatus())
-                .then();
+                .then(queryHeatingPumpStatus());
         }
-        return Mono.empty();
+        return Mono.just(shellyPro4StatusResponse);
     }
 
-    public Mono<Void> turnOffHeatingPump(final String messageReason) {
+    public Mono<ShellyPro4StatusResponse> turnOffHeatingPump(final ShellyPro4StatusResponse shellyPro4StatusResponse, final String messageReason) {
         if (heatingPump.isRunning()) {
             return boilerPro4Client.controlHeatingPump(false)
                 .doOnError(throwable -> log.error("Error while turning off heating pump", throwable))
@@ -89,9 +92,8 @@ public class HeatingPumpService {
                     heatingPump.setStoppedAt(LocalDateTime.now());
                 })
                 .delayElement(Duration.ofSeconds(1))
-                .then(queryHeatingPumpStatus())
-                .then();
+                .then(queryHeatingPumpStatus());
         }
-        return Mono.empty();
+        return Mono.just(shellyPro4StatusResponse);
     }
 }
