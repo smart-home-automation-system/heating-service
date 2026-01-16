@@ -35,7 +35,7 @@ public class DbConfig {
     private String database;
 
     @Bean
-    ConnectionFactory connectionFactory() {
+    ConnectionFactory postgresConnectionFactory() {
         return ConnectionFactories.get(ConnectionFactoryOptions.builder()
             .option(ConnectionFactoryOptions.DRIVER, "postgresql")
             .option(ConnectionFactoryOptions.HOST, host)
@@ -49,18 +49,18 @@ public class DbConfig {
     }
 
     @Bean
-    R2dbcEntityOperations entityTemplate(ConnectionFactory connectionFactory) {
+    R2dbcEntityOperations entityTemplate(final ConnectionFactory postgresConnectionFactory) {
         DefaultReactiveDataAccessStrategy strategy = new DefaultReactiveDataAccessStrategy(SqlServerDialect.INSTANCE);
 
-        DatabaseClient databaseClient = DatabaseClient.builder().connectionFactory(connectionFactory).build();
+        DatabaseClient databaseClient = DatabaseClient.builder().connectionFactory(postgresConnectionFactory).build();
 
         return new R2dbcEntityTemplate(databaseClient, strategy);
     }
 
     @Bean
-    ConnectionFactoryInitializer initializer(ConnectionFactory connectionFactory) {
+    ConnectionFactoryInitializer initializer(ConnectionFactory postgresConnectionFactory) {
         ConnectionFactoryInitializer initializer = new ConnectionFactoryInitializer();
-        initializer.setConnectionFactory(connectionFactory);
+        initializer.setConnectionFactory(postgresConnectionFactory);
         return initializer;
     }
 }
