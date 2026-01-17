@@ -1,6 +1,5 @@
 package cloud.cholewa.heating.home.config;
 
-import cloud.cholewa.heating.model.BoilerRoom;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.HeaterType;
 import cloud.cholewa.heating.model.Home;
@@ -32,9 +31,8 @@ import static java.time.DayOfWeek.WEDNESDAY;
 public class HomeConfig {
 
     @Bean
-    Home home(final BoilerRoom boilerRoom, final List<Room> rooms
-    ) {
-        return new Home(boilerRoom, rooms);
+    Home home(final List<Room> rooms) {
+        return new Home(rooms);
     }
 
     @Bean

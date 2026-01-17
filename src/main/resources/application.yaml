@@ -6,6 +6,14 @@ spring:
     active: home
   webflux:
     base-path: "/home"
+  rabbitmq:
+    host: rabbitmq-headless
+    port: 5672
+    username: temperature
+    password: ${rabbitmq-password:dummyPassword}
+    virtual-host: /temperature
+    connection-timeout: 10s
+    requested-heartbeat: 10s
   datasource:
     host: ${database-host:localhost}
     port: ${database-port:1433}
@@ -30,6 +38,10 @@ logbook:
 logging:
   level:
     org.zalando.logbook: off
+
+rabbitmq:
+  queue:
+    name: temperature.prod.heating
 
 jobs:
   hot-water:
@@ -62,12 +74,18 @@ spring:
   config:
     activate:
       on-profile: local
+  rabbitmq:
+    host: localhost
 
 server:
   port: 6002
 management:
   server:
     port: 8002
+
+rabbitmq:
+  queue:
+    name: temperature.dev.heating
 
 ---
 
