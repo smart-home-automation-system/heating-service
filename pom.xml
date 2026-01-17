@@ -144,11 +144,11 @@
 	<repositories>
 		<repository>
 			<id>github-prv</id>
-			<url>https://maven.pkg.github.com/magikabdul/cholewa-commons</url>
+			<url>https://maven.pkg.github.com/magikabdul/*</url>
 		</repository>
 		<repository>
 			<id>github-org-smart-home</id>
-			<url>https://maven.pkg.github.com/smart-home-automation-system/smart-home-sdk</url>
+			<url>https://maven.pkg.github.com/smart-home-automation-system/*</url>
 		</repository>
 	</repositories>
 
