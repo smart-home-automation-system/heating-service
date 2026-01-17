@@ -22,7 +22,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'maven'
-          server-id: github
+          server-id: github-prv
           server-username: x-access-token
           server-password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -31,7 +31,7 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          server-id: github-org
+          server-id: github-org-smart-home
           server-username: x-access-token
           server-password: ${{ secrets.GITHUB_TOKEN }}
           overwrite-settings: false
