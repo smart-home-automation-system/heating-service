@@ -36,6 +36,9 @@ jobs:
           server-password: ${{ secrets.GITHUB_TOKEN }}
           overwrite-settings: false
 
+      - name: Display settings.xml
+        run: cat ~/.m2/settings.xml
+
       - name: Build with Maven
         run: mvn -B package --file pom.xml
 
