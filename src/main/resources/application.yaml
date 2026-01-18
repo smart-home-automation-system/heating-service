@@ -5,7 +5,7 @@ spring:
   profiles:
     active: home
   webflux:
-    base-path: "/home"
+    base-path: "/home/heating"
   rabbitmq:
     host: rabbitmq-headless
     port: 5672
@@ -43,21 +43,9 @@ rabbitmq:
   queue:
     name: temperature.prod.heating
 
-jobs:
-  hot-water:
-    poolingInterval: PT1m
-  pumps:
-    poolingInterval: PT60s
-
 shelly:
-  sensor:
-    uni:
-      hot-water:
-        host: 10.78.30.47
   actor:
     pro4:
-      boiler:
-        host: 10.78.30.20
       down_left:
         host: 10.78.30.39
       down_right:
@@ -66,7 +54,6 @@ shelly:
         host: 10.78.30.89
       up_right:
         host: 10.78.30.26
-
 
 ---
 

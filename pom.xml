@@ -29,8 +29,8 @@
 
 		<!--  internal dependencies versions-->
 		<cholewa-commons.version>0.2.1</cholewa-commons.version>
-		<shelly-client.version>0.0.7</shelly-client.version>
-		<smart-home-sdk.version>0.1.1</smart-home-sdk.version>
+		<shelly-client.version>0.0.8</shelly-client.version>
+		<smart-home-sdk.version>0.1.2</smart-home-sdk.version>
 
 		<!--  plugins versions-->
 		<maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
