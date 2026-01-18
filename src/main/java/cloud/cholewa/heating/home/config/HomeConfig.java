@@ -1,241 +1,505 @@
 package cloud.cholewa.heating.home.config;
 
-import cloud.cholewa.heating.model.BoilerRoom;
 import cloud.cholewa.heating.model.HeaterActor;
-import cloud.cholewa.heating.model.HeatingSource;
+import cloud.cholewa.heating.model.HeaterType;
 import cloud.cholewa.heating.model.Home;
-import cloud.cholewa.heating.model.HotWater;
+import cloud.cholewa.heating.model.Humidity;
 import cloud.cholewa.heating.model.OpeningSensor;
-import cloud.cholewa.heating.model.Pump;
-import cloud.cholewa.heating.model.PumpType;
+import cloud.cholewa.heating.model.OpeningType;
 import cloud.cholewa.heating.model.Room;
-import cloud.cholewa.heating.model.TemperatureSensor;
+import cloud.cholewa.heating.model.RoomMode;
+import cloud.cholewa.heating.model.Schedule;
+import cloud.cholewa.heating.model.ScheduleType;
+import cloud.cholewa.heating.model.Temperature;
+import cloud.cholewa.home.model.RoomName;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.LocalTime;
 import java.util.List;
+import java.util.Set;
 
-import static cloud.cholewa.heating.model.HeaterType.FLOOR;
-import static cloud.cholewa.heating.model.HeaterType.RADIATOR;
-import static cloud.cholewa.heating.model.HeatingSourceType.FIREPLACE;
-import static cloud.cholewa.heating.model.HeatingSourceType.FURNACE;
-import static cloud.cholewa.heating.model.OpeningType.DOOR;
-import static cloud.cholewa.heating.model.OpeningType.ENTRANCE_DOOR;
-import static cloud.cholewa.heating.model.OpeningType.GATE_KATE;
-import static cloud.cholewa.heating.model.OpeningType.GATE_KRIS;
-import static cloud.cholewa.heating.model.OpeningType.ROOF;
-import static cloud.cholewa.heating.model.OpeningType.ROOF2;
-import static cloud.cholewa.heating.model.OpeningType.WINDOW;
-import static cloud.cholewa.heating.model.OpeningType.WINDOW2;
-import static cloud.cholewa.heating.model.PumpType.FIREPLACE_PUMP;
-import static cloud.cholewa.heating.model.PumpType.HEATING_PUMP;
-import static cloud.cholewa.heating.model.PumpType.HOT_WATER_PUMP;
-import static cloud.cholewa.home.model.RoomName.BATHROOM_DOWN;
-import static cloud.cholewa.home.model.RoomName.BATHROOM_UP;
-import static cloud.cholewa.home.model.RoomName.BEDROOM;
-import static cloud.cholewa.home.model.RoomName.CINEMA;
-import static cloud.cholewa.home.model.RoomName.ENTRANCE;
-import static cloud.cholewa.home.model.RoomName.GARAGE;
-import static cloud.cholewa.home.model.RoomName.LIVIA;
-import static cloud.cholewa.home.model.RoomName.LIVING_ROOM;
-import static cloud.cholewa.home.model.RoomName.OFFICE;
-import static cloud.cholewa.home.model.RoomName.TOBI;
-import static cloud.cholewa.home.model.RoomName.WARDROBE;
+import static java.time.DayOfWeek.FRIDAY;
+import static java.time.DayOfWeek.MONDAY;
+import static java.time.DayOfWeek.SATURDAY;
+import static java.time.DayOfWeek.SUNDAY;
+import static java.time.DayOfWeek.THURSDAY;
+import static java.time.DayOfWeek.TUESDAY;
+import static java.time.DayOfWeek.WEDNESDAY;
 
 @Configuration
 public class HomeConfig {
 
     @Bean
-    public Home home() {
-        return new Home(
-            getBoilerConfiguration(),
-            getRoomsConfiguration()
-        );
+    Home home(final List<Room> rooms) {
+        return new Home(rooms);
     }
 
-    private List<Room> getRoomsConfiguration() {
+    @Bean
+    List<Room> rooms(
+        final Room office,
+        final Room tobi,
+        final Room livia,
+        final Room bedroom,
+        final Room wardrobe,
+        final Room bathroomUp,
+        final Room loft,
+        final Room livingRoom,
+        final Room cinema,
+        final Room bathroomDown,
+        final Room entrance,
+        final Room garage,
+        final Room sanctum,
+        final Room sauna,
+        final Room garden
+    ) {
         return List.of(
-            getOfficeConfiguration(),
-            getTobiRoomConfiguration(),
-            getLiviaRoomConfiguration(),
-            getBedroomConfiguration(),
-            getWardrobeConfiguration(),
-            getBathroomUpConfiguration(),
-            getMainConfiguration(),
-            getCinemaConfiguration(),
-            getBathroomDownConfiguration(),
-            getEntranceConfiguration(),
-            getGarageConfiguration()
+            office, tobi, livia, bedroom, wardrobe, bathroomUp, loft,
+            livingRoom, cinema, bathroomDown, entrance, garage, sanctum, sauna, garden
         );
     }
 
-    public BoilerRoom getBoilerConfiguration() {
-        return BoilerRoom.builder()
-            .heatingSources(List.of(
-                HeatingSource.builder().type(FURNACE).build(),
-                HeatingSource.builder().type(FIREPLACE).build()
-            ))
-            .hotWater(new HotWater())
-            .pumps(List.of(
-                Pump.builder().type(HEATING_PUMP).build(),
-                Pump.builder().type(FIREPLACE_PUMP).build(),
-                Pump.builder().type(HOT_WATER_PUMP).build(),
-                Pump.builder().type(PumpType.FLOOR_PUMP).build()
-            ))
-            .build();
-    }
-
-    private Room getOfficeConfiguration() {
+    @Bean
+    Room office() {
         return Room.builder()
-            .name(OFFICE)
-            .temperatureSensor(TemperatureSensor.builder().build())
+            .name(RoomName.OFFICE)
+            .mode(RoomMode.HEATING)
+            .temperature(new Temperature())
+            .humidity(new Humidity())
+            .heaterActors(List.of(
+                HeaterActor.builder().name(HeaterType.RADIATOR)
+                    .schedules(List.of(
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
+                            .temperature(20)
+                            .startTime(LocalTime.of(7, 0))
+                            .endTime(LocalTime.of(22, 0))
+                            .build()
+                    ))
+                    .build()
+            ))
             .openingSensors(List.of(
-                OpeningSensor.builder().openingType(DOOR).build(),
-                OpeningSensor.builder().openingType(WINDOW).build()
-            ))
-            .heaterActors(List.of(
-                HeaterActor.builder().type(RADIATOR).build()
+                OpeningSensor.builder().name(OpeningType.DOOR).build(),
+                OpeningSensor.builder().name(OpeningType.WINDOW).build()
             ))
             .build();
     }
 
-    private Room getTobiRoomConfiguration() {
+    @Bean
+    Room tobi() {
         return Room.builder()
-            .name(TOBI)
-            .temperatureSensor(TemperatureSensor.builder().build())
+            .name(RoomName.TOBI)
+            .mode(RoomMode.HEATING)
+            .temperature(new Temperature())
+            .humidity(new Humidity())
+            .heaterActors(List.of(
+                HeaterActor.builder().name(HeaterType.RADIATOR)
+                    .schedules(List.of(
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
+                            .temperature(20)
+                            .startTime(LocalTime.of(5, 0))
+                            .endTime(LocalTime.of(8, 0))
+                            .build(),
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
+                            .temperature(19)
+                            .startTime(LocalTime.of(8, 1))
+                            .endTime(LocalTime.of(16, 59))
+                            .build(),
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
+                            .temperature(20)
+                            .startTime(LocalTime.of(17, 0))
+                            .endTime(LocalTime.of(22, 0))
+                            .build(),
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(SATURDAY, SUNDAY))
+                            .temperature(20)
+                            .startTime(LocalTime.of(9, 0))
+                            .endTime(LocalTime.of(22, 0))
+                            .build()
+                    ))
+                    .build()
+            ))
             .openingSensors(List.of(
-                OpeningSensor.builder().openingType(DOOR).build(),
-                OpeningSensor.builder().openingType(WINDOW).build()
+                OpeningSensor.builder().name(OpeningType.DOOR).build(),
+                OpeningSensor.builder().name(OpeningType.WINDOW).build()
             ))
-            .heaterActors(List.of(
-                HeaterActor.builder().type(RADIATOR).build()
-            ))
+
             .build();
     }
 
-    private Room getLiviaRoomConfiguration() {
+    @Bean
+    Room livia() {
         return Room.builder()
-            .name(LIVIA)
-            .temperatureSensor(TemperatureSensor.builder().build())
+            .name(RoomName.LIVIA)
+            .mode(RoomMode.HEATING)
+            .temperature(new Temperature())
+            .humidity(new Humidity())
+            .heaterActors(List.of(
+                HeaterActor.builder().name(HeaterType.RADIATOR)
+                    .schedules(List.of(
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
+                            .temperature(20)
+                            .startTime(LocalTime.of(5, 0))
+                            .endTime(LocalTime.of(8, 0))
+                            .build(),
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY))
+                            .temperature(20)
+                            .startTime(LocalTime.of(15, 1))
+                            .endTime(LocalTime.of(16, 59))
+                            .build(),
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
+                            .temperature(19)
+                            .startTime(LocalTime.of(8, 1))
+                            .endTime(LocalTime.of(16, 59))
+                            .build(),
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
+                            .temperature(20)
+                            .startTime(LocalTime.of(17, 0))
+                            .endTime(LocalTime.of(22, 0))
+                            .build(),
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(SATURDAY, SUNDAY))
+                            .temperature(20)
+                            .startTime(LocalTime.of(9, 0))
+                            .endTime(LocalTime.of(22, 0))
+                            .build()
+                    ))
+                    .build()
+            ))
             .openingSensors(List.of(
-                OpeningSensor.builder().openingType(WINDOW).build(),
-                OpeningSensor.builder().openingType(ROOF).build()
+                OpeningSensor.builder().name(OpeningType.ROOF).build(),
+                OpeningSensor.builder().name(OpeningType.WINDOW).build()
             ))
-            .heaterActors(List.of(
-                HeaterActor.builder().type(RADIATOR).build()
-            ))
+
             .build();
     }
 
-    private Room getBedroomConfiguration() {
+    @Bean
+    Room bedroom() {
         return Room.builder()
-            .name(BEDROOM)
-            .temperatureSensor(TemperatureSensor.builder().build())
+            .name(RoomName.BEDROOM)
+            .mode(RoomMode.HEATING)
+            .temperature(new Temperature())
+            .humidity(new Humidity())
+            .heaterActors(List.of(
+                HeaterActor.builder().name(HeaterType.RADIATOR)
+                    .schedules(List.of(
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
+                            .temperature(20)
+                            .startTime(LocalTime.of(7, 0))
+                            .endTime(LocalTime.of(8, 0))
+                            .build(),
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
+                            .temperature(19)
+                            .startTime(LocalTime.of(8, 1))
+                            .endTime(LocalTime.of(21, 0))
+                            .build()
+                    ))
+                    .build()
+            ))
             .openingSensors(List.of(
-                OpeningSensor.builder().openingType(WINDOW).build(),
-                OpeningSensor.builder().openingType(WINDOW2).build(),
-                OpeningSensor.builder().openingType(DOOR).build()
+                OpeningSensor.builder().name(OpeningType.WINDOW).build(),
+                OpeningSensor.builder().name(OpeningType.DOOR).build(),
+                OpeningSensor.builder().name(OpeningType.WINDOW2).build()
             ))
-            .heaterActors(List.of(
-                HeaterActor.builder().type(RADIATOR).build()
-            ))
+
             .build();
     }
 
-    private Room getWardrobeConfiguration() {
+    @Bean
+    Room wardrobe() {
         return Room.builder()
-            .name(WARDROBE)
-            .temperatureSensor(TemperatureSensor.builder().build())
+            .name(RoomName.WARDROBE)
+            .mode(RoomMode.HEATING)
+            .temperature(new Temperature())
+            .humidity(new Humidity())
+            .heaterActors(List.of(
+                HeaterActor.builder().name(HeaterType.FLOOR)
+                    .schedules(List.of(
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
+                            .temperature(18.5)
+                            .startTime(LocalTime.of(5, 0))
+                            .endTime(LocalTime.of(20, 0))
+                            .build()
+                    ))
+                    .build()
+            ))
             .openingSensors(List.of(
-                OpeningSensor.builder().openingType(ROOF).build(),
-                OpeningSensor.builder().openingType(ROOF2).build()
+                OpeningSensor.builder().name(OpeningType.ROOF_LEFT).build(),
+                OpeningSensor.builder().name(OpeningType.ROOF_RIGHT).build()
             ))
-            .heaterActors(List.of(
-                HeaterActor.builder().type(FLOOR).build()
-            ))
+
             .build();
     }
 
-    private Room getBathroomUpConfiguration() {
+    @Bean
+    Room bathroomUp() {
         return Room.builder()
-            .name(BATHROOM_UP)
-            .temperatureSensor(TemperatureSensor.builder().build())
+            .name(RoomName.BATHROOM_UP)
+            .mode(RoomMode.HEATING)
+            .temperature(new Temperature())
+            .humidity(new Humidity())
+            .heaterActors(List.of(
+                HeaterActor.builder().name(HeaterType.RADIATOR).schedules(
+                    List.of(
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
+                            .temperature(22.5)
+                            .startTime(LocalTime.of(19, 0))
+                            .endTime(LocalTime.of(20, 0))
+                            .build()
+                    )
+                ).build(),
+                HeaterActor.builder().name(HeaterType.FLOOR)
+                    .schedules(
+                        List.of(
+                            Schedule.builder()
+                                .type(ScheduleType.HEATING)
+                                .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
+                                .temperature(22)
+                                .startTime(LocalTime.of(16, 0))
+                                .endTime(LocalTime.of(20, 0))
+                                .build()
+                        )
+                    ).build()
+            ))
             .openingSensors(List.of(
-                OpeningSensor.builder().openingType(ROOF).build()
-            ))
-            .heaterActors(List.of(
-                HeaterActor.builder().type(FLOOR).build(),
-                HeaterActor.builder().type(RADIATOR).build()
+                OpeningSensor.builder().name(OpeningType.ROOF).build()
             ))
             .build();
     }
 
-    private Room getMainConfiguration() {
+    @Bean
+    Room loft() {
         return Room.builder()
-            .name(LIVING_ROOM)
-            .temperatureSensor(TemperatureSensor.builder().build())
+            .name(RoomName.LOFT)
+            .temperature(new Temperature())
+            .build();
+    }
+
+    @Bean
+    Room livingRoom() {
+        return Room.builder()
+            .name(RoomName.LIVING_ROOM)
+            .mode(RoomMode.HEATING)
+            .temperature(new Temperature())
+            .humidity(new Humidity())
+            .heaterActors(List.of(
+                HeaterActor.builder().name(HeaterType.RADIATOR)
+                    .schedules(List.of(
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
+                            .temperature(19.5)
+                            .startTime(LocalTime.of(8, 0))
+                            .endTime(LocalTime.of(20, 0))
+                            .build()
+                    ))
+                    .build(),
+                HeaterActor.builder().name(HeaterType.FLOOR).build()
+            ))
             .openingSensors(List.of(
-                OpeningSensor.builder().openingType(DOOR).build(),
-                OpeningSensor.builder().openingType(WINDOW).build(),
-                OpeningSensor.builder().openingType(WINDOW2).build(),
-                OpeningSensor.builder().openingType(ENTRANCE_DOOR).build()
+                OpeningSensor.builder().name(OpeningType.DOOR).build(),
+                OpeningSensor.builder().name(OpeningType.ENTRANCE_DOOR).build()
             ))
-            .heaterActors(List.of(
-                HeaterActor.builder().type(FLOOR).build(),
-                HeaterActor.builder().type(RADIATOR).build()
-            ))
+
             .build();
     }
 
-    private Room getBathroomDownConfiguration() {
+    @Bean
+    Room cinema() {
         return Room.builder()
-            .name(BATHROOM_DOWN)
-            .temperatureSensor(TemperatureSensor.builder().build())
+            .name(RoomName.CINEMA)
+            .mode(RoomMode.HEATING)
+            .temperature(new Temperature())
+            .humidity(new Humidity())
             .heaterActors(List.of(
-                HeaterActor.builder().type(FLOOR).build(),
-                HeaterActor.builder().type(RADIATOR).build()
+                HeaterActor.builder().name(HeaterType.RADIATOR)
+                    .schedules(List.of(
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
+                            .temperature(20)
+                            .startTime(LocalTime.of(5, 0))
+                            .endTime(LocalTime.of(8, 0))
+                            .build(),
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
+                            .temperature(19)
+                            .startTime(LocalTime.of(8, 1))
+                            .endTime(LocalTime.of(16, 59))
+                            .build(),
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
+                            .temperature(20)
+                            .startTime(LocalTime.of(16, 0))
+                            .endTime(LocalTime.of(20, 0))
+                            .build(),
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(SATURDAY, SUNDAY))
+                            .temperature(20)
+                            .startTime(LocalTime.of(10, 0))
+                            .endTime(LocalTime.of(22, 0))
+                            .build()
+                    ))
+                    .build()
             ))
-            .build();
-    }
-
-    private Room getCinemaConfiguration() {
-        return Room.builder()
-            .name(CINEMA)
-            .temperatureSensor(TemperatureSensor.builder().build())
             .openingSensors(List.of(
-                OpeningSensor.builder().openingType(WINDOW).build(),
-                OpeningSensor.builder().openingType(WINDOW2).build()
+                OpeningSensor.builder().name(OpeningType.WINDOW).build(),
+                OpeningSensor.builder().name(OpeningType.WINDOW2).build()
             ))
+
+            .build();
+    }
+
+    @Bean
+    Room bathroomDown() {
+        return Room.builder()
+            .name(RoomName.BATHROOM_DOWN)
+            .mode(RoomMode.HEATING)
+            .temperature(new Temperature())
+            .humidity(new Humidity())
             .heaterActors(List.of(
-                HeaterActor.builder().type(RADIATOR).build()
+                HeaterActor.builder().name(HeaterType.RADIATOR).schedules(
+                    List.of(
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
+                            .temperature(23)
+                            .startTime(LocalTime.of(19, 0))
+                            .endTime(LocalTime.of(20, 0))
+                            .build()
+                    )
+                ).build(),
+                HeaterActor.builder().name(HeaterType.FLOOR)
+                    .schedules(
+                        List.of(
+                            Schedule.builder()
+                                .type(ScheduleType.HEATING)
+                                .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
+                                .temperature(22)
+                                .startTime(LocalTime.of(16, 0))
+                                .endTime(LocalTime.of(20, 0))
+                                .build()
+                        )
+                    ).build()
             ))
             .build();
     }
 
-    private Room getEntranceConfiguration() {
+    @Bean
+    Room entrance() {
         return Room.builder()
-            .name(ENTRANCE)
-            .temperatureSensor(TemperatureSensor.builder().build())
-            .openingSensors(List.of(
-                OpeningSensor.builder().openingType(ENTRANCE_DOOR).build()
-            ))
+            .name(RoomName.ENTRANCE)
+            .mode(RoomMode.HEATING)
+            .temperature(new Temperature())
+            .humidity(new Humidity())
             .heaterActors(List.of(
-                HeaterActor.builder().type(RADIATOR).build()
+                HeaterActor.builder().name(HeaterType.RADIATOR)
+                    .schedules(List.of(
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
+                            .temperature(18)
+                            .startTime(LocalTime.of(5, 0))
+                            .endTime(LocalTime.of(21, 0))
+                            .build()
+                    ))
+                    .build()
+            ))
+            .openingSensors(List.of(
+                OpeningSensor.builder().name(OpeningType.ENTRANCE_DOOR).build()
+            ))
+
+            .build();
+    }
+
+    @Bean
+    Room garage() {
+        return Room.builder()
+            .name(RoomName.GARAGE)
+            .mode(RoomMode.HEATING)
+            .temperature(new Temperature())
+            .humidity(new Humidity())
+            .heaterActors(List.of(
+                HeaterActor.builder().name(HeaterType.RADIATOR)
+                    .schedules(List.of(
+                        Schedule.builder()
+                            .type(ScheduleType.HEATING)
+                            .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
+                            .temperature(13)
+                            .startTime(LocalTime.of(5, 0))
+                            .endTime(LocalTime.of(20, 0))
+                            .build()
+                    ))
+                    .build()
+            ))
+            .openingSensors(List.of(
+                OpeningSensor.builder().name(OpeningType.GATE_KATE).build(),
+                OpeningSensor.builder().name(OpeningType.GATE_KRIS).build()
+            ))
+
+            .build();
+    }
+
+    @Bean
+    Room sanctum() {
+        return Room.builder()
+            .name(RoomName.SANCTUM)
+            .mode(RoomMode.HEATING)
+            .temperature(new Temperature())
+            .humidity(new Humidity())
+            .heaterActors(List.of(
+                HeaterActor.builder().name(HeaterType.RADIATOR).build()
+            ))
+            .openingSensors(List.of(
+                OpeningSensor.builder().name(OpeningType.DOOR).build()
             ))
             .build();
     }
 
-    private Room getGarageConfiguration() {
+    @Bean
+    Room sauna() {
         return Room.builder()
-            .name(GARAGE)
-            .temperatureSensor(TemperatureSensor.builder().build())
-            .openingSensors(List.of(
-                OpeningSensor.builder().openingType(GATE_KATE).build(),
-                OpeningSensor.builder().openingType(GATE_KRIS).build()
-            ))
-            .heaterActors(List.of(
-                HeaterActor.builder().type(RADIATOR).build()
-            ))
+            .name(RoomName.SAUNA)
+            .temperature(new Temperature())
+            .humidity(new Humidity())
+            .build();
+    }
+
+    @Bean
+    Room garden() {
+        return Room.builder()
+            .name(RoomName.GARDEN)
+            .temperature(new Temperature())
+            .humidity(new Humidity())
             .build();
     }
 }

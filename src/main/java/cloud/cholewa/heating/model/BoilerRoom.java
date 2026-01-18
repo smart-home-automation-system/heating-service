@@ -1,15 +1,18 @@
 package cloud.cholewa.heating.model;
 
 import lombok.Data;
-import lombok.experimental.SuperBuilder;
+import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
 @Data
-@SuperBuilder
+@RequiredArgsConstructor
 public class BoilerRoom {
 
-    private final List<HeatingSource> heatingSources;
+    private boolean heatingEnabled;
+    private final Alert alert;
+    private final Furnace furnace;
+    private final Fireplace fireplace;
     private final HotWater hotWater;
     private final List<Pump> pumps;
 }

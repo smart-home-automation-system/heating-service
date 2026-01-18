@@ -9,10 +9,8 @@ import java.time.LocalDateTime;
 @Data
 @Builder
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-public class Pump {
-
-    private final PumpType name;
-    private boolean running;
-    private LocalDateTime startedAt;
-    private LocalDateTime stoppedAt;
+public class Alert {
+    private AlertReason reason;
+    private LocalDateTime createdAt;
+    private LocalDateTime cancelledAt;
 }
