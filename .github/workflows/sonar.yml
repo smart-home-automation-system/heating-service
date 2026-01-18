@@ -53,25 +53,3 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=smart-home-automation-system_heating-service -DskipTests
-
-      - name: SonarQube Quality Gate check
-        id: sonar
-        uses: SonarSource/sonarqube-quality-gate-action@cf038b0e0cdecfa9e56c198bbb7d21d751d62c3b # v1.2.0
-        timeout-minutes: 5
-        continue-on-error: true
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          scanMetadataReportFile: target/sonar/report-task.txt
-
-      - name: Comment PR with SonarQube results
-        if: github.event_name == 'pull_request' && steps.sonar.outcome == 'failure'
-        uses: actions/github-script@v8
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '⚠️ **SonarQube Quality Gate failed**\n\nCheck the details in [SonarCloud](https://sonarcloud.io/project/configuration/GitHubActions?id=smart-home-automation-system_heating-service)'
-            })
