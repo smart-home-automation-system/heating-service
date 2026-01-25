@@ -1,4 +1,4 @@
-package cloud.cholewa.heating.home.config;
+package cloud.cholewa.heating.config;
 
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.HeaterType;
@@ -64,10 +64,10 @@ public class HomeConfig {
         return Room.builder()
             .name(RoomName.OFFICE)
             .mode(RoomMode.HEATING)
-            .temperature(new Temperature())
+            .temperature(Temperature.builder().build())
             .humidity(new Humidity())
             .heaterActors(List.of(
-                HeaterActor.builder().name(HeaterType.RADIATOR)
+                HeaterActor.builder().type(HeaterType.RADIATOR)
                     .schedules(List.of(
                         Schedule.builder()
                             .type(ScheduleType.HEATING)
@@ -91,10 +91,10 @@ public class HomeConfig {
         return Room.builder()
             .name(RoomName.TOBI)
             .mode(RoomMode.HEATING)
-            .temperature(new Temperature())
+            .temperature(Temperature.builder().build())
             .humidity(new Humidity())
             .heaterActors(List.of(
-                HeaterActor.builder().name(HeaterType.RADIATOR)
+                HeaterActor.builder().type(HeaterType.RADIATOR)
                     .schedules(List.of(
                         Schedule.builder()
                             .type(ScheduleType.HEATING)
@@ -140,10 +140,10 @@ public class HomeConfig {
         return Room.builder()
             .name(RoomName.LIVIA)
             .mode(RoomMode.HEATING)
-            .temperature(new Temperature())
+            .temperature(Temperature.builder().build())
             .humidity(new Humidity())
             .heaterActors(List.of(
-                HeaterActor.builder().name(HeaterType.RADIATOR)
+                HeaterActor.builder().type(HeaterType.RADIATOR)
                     .schedules(List.of(
                         Schedule.builder()
                             .type(ScheduleType.HEATING)
@@ -196,10 +196,10 @@ public class HomeConfig {
         return Room.builder()
             .name(RoomName.BEDROOM)
             .mode(RoomMode.HEATING)
-            .temperature(new Temperature())
+            .temperature(Temperature.builder().build())
             .humidity(new Humidity())
             .heaterActors(List.of(
-                HeaterActor.builder().name(HeaterType.RADIATOR)
+                HeaterActor.builder().type(HeaterType.RADIATOR)
                     .schedules(List.of(
                         Schedule.builder()
                             .type(ScheduleType.HEATING)
@@ -232,10 +232,10 @@ public class HomeConfig {
         return Room.builder()
             .name(RoomName.WARDROBE)
             .mode(RoomMode.HEATING)
-            .temperature(new Temperature())
+            .temperature(Temperature.builder().build())
             .humidity(new Humidity())
             .heaterActors(List.of(
-                HeaterActor.builder().name(HeaterType.FLOOR)
+                HeaterActor.builder().type(HeaterType.FLOOR)
                     .schedules(List.of(
                         Schedule.builder()
                             .type(ScheduleType.HEATING)
@@ -260,10 +260,10 @@ public class HomeConfig {
         return Room.builder()
             .name(RoomName.BATHROOM_UP)
             .mode(RoomMode.HEATING)
-            .temperature(new Temperature())
+            .temperature(Temperature.builder().build())
             .humidity(new Humidity())
             .heaterActors(List.of(
-                HeaterActor.builder().name(HeaterType.RADIATOR).schedules(
+                HeaterActor.builder().type(HeaterType.RADIATOR).schedules(
                     List.of(
                         Schedule.builder()
                             .type(ScheduleType.HEATING)
@@ -274,7 +274,7 @@ public class HomeConfig {
                             .build()
                     )
                 ).build(),
-                HeaterActor.builder().name(HeaterType.FLOOR)
+                HeaterActor.builder().type(HeaterType.FLOOR)
                     .schedules(
                         List.of(
                             Schedule.builder()
@@ -297,7 +297,7 @@ public class HomeConfig {
     Room loft() {
         return Room.builder()
             .name(RoomName.LOFT)
-            .temperature(new Temperature())
+            .temperature(Temperature.builder().build())
             .build();
     }
 
@@ -306,10 +306,10 @@ public class HomeConfig {
         return Room.builder()
             .name(RoomName.LIVING_ROOM)
             .mode(RoomMode.HEATING)
-            .temperature(new Temperature())
+            .temperature(Temperature.builder().build())
             .humidity(new Humidity())
             .heaterActors(List.of(
-                HeaterActor.builder().name(HeaterType.RADIATOR)
+                HeaterActor.builder().type(HeaterType.RADIATOR)
                     .schedules(List.of(
                         Schedule.builder()
                             .type(ScheduleType.HEATING)
@@ -320,7 +320,7 @@ public class HomeConfig {
                             .build()
                     ))
                     .build(),
-                HeaterActor.builder().name(HeaterType.FLOOR).build()
+                HeaterActor.builder().type(HeaterType.FLOOR).build()
             ))
             .openingSensors(List.of(
                 OpeningSensor.builder().name(OpeningType.DOOR).build(),
@@ -335,10 +335,10 @@ public class HomeConfig {
         return Room.builder()
             .name(RoomName.CINEMA)
             .mode(RoomMode.HEATING)
-            .temperature(new Temperature())
+            .temperature(Temperature.builder().build())
             .humidity(new Humidity())
             .heaterActors(List.of(
-                HeaterActor.builder().name(HeaterType.RADIATOR)
+                HeaterActor.builder().type(HeaterType.RADIATOR)
                     .schedules(List.of(
                         Schedule.builder()
                             .type(ScheduleType.HEATING)
@@ -384,10 +384,10 @@ public class HomeConfig {
         return Room.builder()
             .name(RoomName.BATHROOM_DOWN)
             .mode(RoomMode.HEATING)
-            .temperature(new Temperature())
+            .temperature(Temperature.builder().build())
             .humidity(new Humidity())
             .heaterActors(List.of(
-                HeaterActor.builder().name(HeaterType.RADIATOR).schedules(
+                HeaterActor.builder().type(HeaterType.RADIATOR).schedules(
                     List.of(
                         Schedule.builder()
                             .type(ScheduleType.HEATING)
@@ -398,7 +398,7 @@ public class HomeConfig {
                             .build()
                     )
                 ).build(),
-                HeaterActor.builder().name(HeaterType.FLOOR)
+                HeaterActor.builder().type(HeaterType.FLOOR)
                     .schedules(
                         List.of(
                             Schedule.builder()
@@ -419,10 +419,10 @@ public class HomeConfig {
         return Room.builder()
             .name(RoomName.ENTRANCE)
             .mode(RoomMode.HEATING)
-            .temperature(new Temperature())
+            .temperature(Temperature.builder().build())
             .humidity(new Humidity())
             .heaterActors(List.of(
-                HeaterActor.builder().name(HeaterType.RADIATOR)
+                HeaterActor.builder().type(HeaterType.RADIATOR)
                     .schedules(List.of(
                         Schedule.builder()
                             .type(ScheduleType.HEATING)
@@ -446,10 +446,10 @@ public class HomeConfig {
         return Room.builder()
             .name(RoomName.GARAGE)
             .mode(RoomMode.HEATING)
-            .temperature(new Temperature())
+            .temperature(Temperature.builder().build())
             .humidity(new Humidity())
             .heaterActors(List.of(
-                HeaterActor.builder().name(HeaterType.RADIATOR)
+                HeaterActor.builder().type(HeaterType.RADIATOR)
                     .schedules(List.of(
                         Schedule.builder()
                             .type(ScheduleType.HEATING)
@@ -474,10 +474,10 @@ public class HomeConfig {
         return Room.builder()
             .name(RoomName.SANCTUM)
             .mode(RoomMode.HEATING)
-            .temperature(new Temperature())
+            .temperature(Temperature.builder().build())
             .humidity(new Humidity())
             .heaterActors(List.of(
-                HeaterActor.builder().name(HeaterType.RADIATOR).build()
+                HeaterActor.builder().type(HeaterType.RADIATOR).build()
             ))
             .openingSensors(List.of(
                 OpeningSensor.builder().name(OpeningType.DOOR).build()
@@ -489,7 +489,7 @@ public class HomeConfig {
     Room sauna() {
         return Room.builder()
             .name(RoomName.SAUNA)
-            .temperature(new Temperature())
+            .temperature(Temperature.builder().build())
             .humidity(new Humidity())
             .build();
     }
@@ -498,7 +498,7 @@ public class HomeConfig {
     Room garden() {
         return Room.builder()
             .name(RoomName.GARDEN)
-            .temperature(new Temperature())
+            .temperature(Temperature.builder().build())
             .humidity(new Humidity())
             .build();
     }

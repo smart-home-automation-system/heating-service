@@ -1,4 +1,4 @@
-package cloud.cholewa.heating.shelly.actor;
+package cloud.cholewa.heating.config;
 
 import cloud.cholewa.heating.infrastructure.error.HeatingException;
 import cloud.cholewa.home.model.RoomName;
@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Getter
-public class HeaterPro4Config {
+public class ShellyConfig {
 
     @Value("${shelly.actor.pro4.down_left.host}")
     private String SHELLY_PRO4_DOWN_LEFT;

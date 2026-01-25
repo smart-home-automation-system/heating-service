@@ -1,7 +1,10 @@
-package cloud.cholewa.heating.shelly.actor;
+package cloud.cholewa.heating.client;
 
 import cloud.cholewa.heating.infrastructure.error.BoilerException;
 import cloud.cholewa.heating.infrastructure.error.HotWaterException;
+import cloud.cholewa.heating.config.ShellyConfig;
+import cloud.cholewa.heating.model.HeaterType;
+import cloud.cholewa.home.model.RoomName;
 import cloud.cholewa.shelly.model.ShellyPro4StatusResponse;
 import cloud.cholewa.shelly.model.ShellyProRelayResponse;
 import lombok.RequiredArgsConstructor;
@@ -14,16 +17,32 @@ import reactor.core.publisher.Mono;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class HeaterPro4Client {
+public class ShellyClient {
 
-    private final WebClient webClient;
-    private final HeaterPro4Config heaterPro4Config;
+    private final WebClient shellyWebClient;
+    private final ShellyConfig shellyConfig;
 
-    public Mono<ShellyProRelayResponse> setHeaterActor(
-        final HeaterPro4Config.HeaterPro4Data heaterData,
+    public Mono<ShellyPro4StatusResponse> getHeaterActorStatus(
+        final HeaterType heaterType,
+        final RoomName roomName
+    ) {
+        return Mono.empty();
+    }
+
+    public Mono<ShellyProRelayResponse> controlHeaterActor(
+        final HeaterType heaterType,
+        final RoomName roomName,
         final boolean enable
     ) {
-        return webClient.get()
+        return Mono.empty();
+    }
+
+
+    public Mono<ShellyProRelayResponse> controlHeaterActor(
+        final ShellyConfig.HeaterPro4Data heaterData,
+        final boolean enable
+    ) {
+        return shellyWebClient.get()
             .uri(uriBuilder -> uriBuilder.scheme("http").host(heaterData.host())
                 .path("relay/" + heaterData.relay())
                 .queryParam("turn", enable ? "on" : "off")
@@ -36,8 +55,8 @@ public class HeaterPro4Client {
             .bodyToMono(ShellyProRelayResponse.class);
     }
 
-    public Mono<ShellyPro4StatusResponse> getHeaterActorStatus(final HeaterPro4Config.HeaterPro4Data heaterData) {
-        return webClient.get()
+    public Mono<ShellyPro4StatusResponse> getHeaterActorStatus(final ShellyConfig.HeaterPro4Data heaterData) {
+        return shellyWebClient.get()
             .uri(uriBuilder -> uriBuilder.scheme("http").host(heaterData.host())
                 .path("rpc/Switch.GetStatus")
                 .queryParam("id", heaterData.relay())
@@ -52,8 +71,8 @@ public class HeaterPro4Client {
     }
 
     public Mono<ShellyProRelayResponse> controlPumpFloor(final boolean enable) {
-        return webClient.get()
-            .uri(uriBuilder -> uriBuilder.scheme("http").host(heaterPro4Config.getSHELLY_PRO4_UP_LEFT())
+        return shellyWebClient.get()
+            .uri(uriBuilder -> uriBuilder.scheme("http").host(shellyConfig.getSHELLY_PRO4_UP_LEFT())
                 .path("relay/0")
                 .queryParam("turn", enable ? "on" : "off")
                 .build())
@@ -66,8 +85,8 @@ public class HeaterPro4Client {
     }
 
     public Mono<ShellyPro4StatusResponse> getFloorPumpStatus() {
-        return webClient.get()
-            .uri(uriBuilder -> uriBuilder.scheme("http").host(heaterPro4Config.getSHELLY_PRO4_UP_LEFT())
+        return shellyWebClient.get()
+            .uri(uriBuilder -> uriBuilder.scheme("http").host(shellyConfig.getSHELLY_PRO4_UP_LEFT())
                 .path("rpc/Switch.GetStatus")
                 .queryParam("id", "0")
                 .build())

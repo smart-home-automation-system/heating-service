@@ -1,5 +1,6 @@
 package cloud.cholewa.heating;
 
+import cloud.cholewa.heating.api.HeatingController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webflux.test.autoconfigure.WebFluxTest;
