@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 
 @Slf4j
@@ -16,25 +17,30 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class HomeService {
 
+    private final Clock clock;
     private final Home home;
     private final ScheduleService scheduleService;
     private final HeatingService heatingService;
-
-    /**
-     * 1. 
-     *
-     */
+    
     public Mono<Void> processRoomTemperature(final RoomName roomName, final double temperature) {
         return Flux.fromIterable(home.rooms())
             .filter(room -> room.getName().equals(roomName))
             .doOnNext(room -> updateRoomTemperature(room, temperature))
             .flatMap(scheduleService::processSchedule)
+            .onErrorResume(throwable -> {
+                log.error("Error processing schedule for room: {}", roomName);
+                return Mono.empty();
+            })
             .flatMap(heatingService::processHeatingRequest)
+            .onErrorResume(throwable -> {
+                log.error("Error processing heating request for room: {}", roomName);
+                return Mono.empty();
+            })
             .then();
     }
 
     private void updateRoomTemperature(final Room room, final double temperature) {
-        room.getTemperature().setUpdatedAt(LocalDateTime.now());
+        room.getTemperature().setUpdatedAt(LocalDateTime.now(clock));
         room.getTemperature().setValue(temperature);
     }
 }

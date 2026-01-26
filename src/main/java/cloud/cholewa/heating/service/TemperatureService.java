@@ -1,7 +1,7 @@
 package cloud.cholewa.heating.service;
 
-import cloud.cholewa.heating.mapper.TemperatureMapper;
 import cloud.cholewa.heating.db.repository.TemperatureRepository;
+import cloud.cholewa.heating.mapper.TemperatureMapper;
 import cloud.cholewa.home.model.RoomName;
 import cloud.cholewa.home.model.TemperatureMessage;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +17,6 @@ public class TemperatureService {
     private final TemperatureMapper temperatureMapper;
     private final TemperatureRepository temperatureRepository;
     private final HomeService homeService;
-    private final HeatingService heatingService;
 
     public Mono<Void> handleTemperature(final TemperatureMessage message) {
         return Mono.fromCallable(() -> temperatureMapper.toEntity(message))
