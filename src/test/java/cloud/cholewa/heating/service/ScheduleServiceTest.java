@@ -69,7 +69,7 @@ class ScheduleServiceTest {
             .assertNext(room -> {
                 assertThat(room).isNotNull();
                 assertThat(room.getHeaterActors()).isNotEmpty();
-                assertThat(room.getHeaterActors()).extracting(HeaterActor::isWorking).containsExactly(expectedStates);
+                assertThat(room.getHeaterActors()).extracting(HeaterActor::isInSchedule).containsExactly(expectedStates);
             })
             .verifyComplete();
     }

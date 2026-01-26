@@ -27,9 +27,9 @@ public class ScheduleService {
     }
 
     private void processHeaterActor(final HeaterActor heaterActor, final double temperature) {
-        boolean isWorking = heaterActor.getSchedules().stream()
+        boolean isInSchedule = heaterActor.getSchedules().stream()
             .anyMatch(schedule -> isActiveSchedule(schedule, temperature));
-        heaterActor.setWorking(isWorking);
+        heaterActor.setInSchedule(isInSchedule);
     }
 
     private boolean isActiveSchedule(final Schedule schedule, final double temperature) {
