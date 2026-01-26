@@ -4,11 +4,13 @@ import cloud.cholewa.heating.infrastructure.error.HeatingException;
 import cloud.cholewa.home.model.RoomName;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @Setter
+@Component
 @ConfigurationProperties(prefix = "shelly.actor.relay")
 public class RelayConfig {
     private Map<String, Integer> heater = new HashMap<>();

@@ -1,15 +1,25 @@
 package cloud.cholewa.heating.config;
 
 import cloud.cholewa.heating.infrastructure.error.HeatingException;
+import cloud.cholewa.heating.model.HeaterType;
 import cloud.cholewa.home.model.RoomName;
-import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriBuilder;
+
+import java.net.URI;
+
+import static cloud.cholewa.heating.model.HeaterType.RADIATOR;
 
 @Component
-@Getter
+@RequiredArgsConstructor
 public class ShellyConfig {
 
+    @Value("${shelly.actor.scheme}")
+    private String scheme;
+    @Value("${shelly.actor.port}")
+    private int port;
     @Value("${shelly.actor.pro4.down_left.host}")
     private String SHELLY_PRO4_DOWN_LEFT;
     @Value("${shelly.actor.pro4.down_right.host}")
@@ -19,31 +29,51 @@ public class ShellyConfig {
     @Value("${shelly.actor.pro4.up_right.host}")
     private String SHELLY_PRO4_UP_RIGHT;
 
-    public HeaterPro4Data getShellyPro4HeaterHost(final RoomName roomName) {
+    private final RelayConfig relayConfig;
+
+    public URI getStatusUri(final UriBuilder uriBuilder, final HeaterType heaterType, final RoomName roomName) {
+        return uriBuilder
+            .scheme(scheme)
+            .host(heaterType == RADIATOR ? getShellyHeaterHost(roomName) : getShellyFloorHost(roomName))
+            .port(port)
+            .path("rpc/Switch.GetStatus")
+            .queryParam("id", heaterType == RADIATOR ? relayConfig.getHeater(roomName) : relayConfig.getFloor(roomName))
+            .build();
+    }
+
+    public URI getControlUri(
+        final UriBuilder uriBuilder,
+        final HeaterType heaterType,
+        final RoomName roomName,
+        final boolean enable
+    ) {
+        return uriBuilder
+            .scheme(scheme)
+            .host(heaterType == RADIATOR ? getShellyHeaterHost(roomName) : getShellyFloorHost(roomName))
+            .port(port)
+            .pathSegment("relay")
+            .path(String.valueOf(heaterType == HeaterType.RADIATOR
+                ? relayConfig.getHeater(roomName)
+                : relayConfig.getFloor(roomName)))
+            .queryParam("turn", enable ? "on" : "off")
+            .build();
+    }
+
+    private String getShellyHeaterHost(final RoomName roomName) {
         return switch (roomName) {
-            case OFFICE -> new HeaterPro4Data(SHELLY_PRO4_UP_RIGHT, "3");
-            case TOBI -> new HeaterPro4Data(SHELLY_PRO4_UP_RIGHT, "2");
-            case LIVIA -> new HeaterPro4Data(SHELLY_PRO4_UP_RIGHT, "1");
-            case BEDROOM -> new HeaterPro4Data(SHELLY_PRO4_UP_RIGHT, "0");
-            case BATHROOM_UP -> new HeaterPro4Data(SHELLY_PRO4_UP_LEFT, "3");
-            case LIVING_ROOM -> new HeaterPro4Data(SHELLY_PRO4_DOWN_LEFT, "1");
-            case CINEMA -> new HeaterPro4Data(SHELLY_PRO4_DOWN_RIGHT, "1");
-            case BATHROOM_DOWN -> new HeaterPro4Data(SHELLY_PRO4_DOWN_LEFT, "3");
-            case ENTRANCE -> new HeaterPro4Data(SHELLY_PRO4_DOWN_RIGHT, "0");
-            case GARAGE -> new HeaterPro4Data(SHELLY_PRO4_DOWN_RIGHT, "2");
+            case OFFICE, TOBI, LIVIA, BEDROOM -> SHELLY_PRO4_UP_RIGHT;
+            case BATHROOM_UP -> SHELLY_PRO4_UP_LEFT;
+            case LIVING_ROOM, BATHROOM_DOWN -> SHELLY_PRO4_DOWN_LEFT;
+            case CINEMA, ENTRANCE, GARAGE -> SHELLY_PRO4_DOWN_RIGHT;
             default -> throw new HeatingException("Unknown configuration for room heater: " + roomName.name());
         };
     }
 
-    public HeaterPro4Data getShellyPro4FloorHost(final RoomName roomName) {
+    private String getShellyFloorHost(final RoomName roomName) {
         return switch (roomName) {
-            case WARDROBE -> new HeaterPro4Data(SHELLY_PRO4_UP_LEFT, "2");
-            case BATHROOM_UP -> new HeaterPro4Data(SHELLY_PRO4_UP_LEFT, "1");
-            case LIVING_ROOM -> new HeaterPro4Data(SHELLY_PRO4_DOWN_LEFT, "0");
-            case BATHROOM_DOWN -> new HeaterPro4Data(SHELLY_PRO4_DOWN_LEFT, "2");
+            case WARDROBE, BATHROOM_UP -> SHELLY_PRO4_UP_LEFT;
+            case LIVING_ROOM, BATHROOM_DOWN -> SHELLY_PRO4_DOWN_LEFT;
             default -> throw new HeatingException("Unknown configuration for room floor: " + roomName.name());
         };
     }
-
-    public record HeaterPro4Data(String host, String relay) {}
 }
