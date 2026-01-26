@@ -30,6 +30,8 @@ public class ScheduleService {
         boolean isInSchedule = heaterActor.getSchedules().stream()
             .anyMatch(schedule -> isActiveSchedule(schedule, temperature));
         heaterActor.setInSchedule(isInSchedule);
+        
+        log.info("Schedule active status: {} for heater actor {}", isInSchedule, heaterActor.getType());
     }
 
     private boolean isActiveSchedule(final Schedule schedule, final double temperature) {
