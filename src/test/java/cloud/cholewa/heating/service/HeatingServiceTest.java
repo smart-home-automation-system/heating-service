@@ -30,7 +30,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
@@ -298,22 +297,26 @@ class HeatingServiceTest {
             .type(RADIATOR)
             .lastStatusUpdate(LocalDateTime.of(2026, 1, 19, 11, 58)) // 2 minutes ago
             .inSchedule(true)
-            .working(true)
+            .working(false) // Not working but in schedule
             .build();
 
         Room room = Room.builder().name(RoomName.BEDROOM).heaterActor(actor).build();
 
         mockClock(); // 2026-01-19 12:00
 
+        when(shellyClient.controlHeaterActor(any(), any(), anyBoolean()))
+            .thenReturn(Mono.just(ShellyProRelayResponse.builder().ison(true).build()));
+
         sut.processHeatingRequest(room)
             .as(StepVerifier::create)
             .assertNext(result -> {
-                assertThat(actor.getLastStatusUpdate()).isEqualTo(LocalDateTime.of(2026, 1, 19, 11, 58));
+                assertThat(actor.getLastStatusUpdate()).isEqualTo(LocalDateTime.of(2026, 1, 19, 12, 0));
                 assertThat(result.isRoomHeatingEnabled()).isTrue();
             })
             .verifyComplete();
 
-        verifyNoInteractions(shellyClient);
+        verify(shellyClient).controlHeaterActor(RADIATOR, RoomName.BEDROOM, true);
+        verify(shellyClient, never()).getHeaterActorStatus(any(), any());
     }
 
     @Test

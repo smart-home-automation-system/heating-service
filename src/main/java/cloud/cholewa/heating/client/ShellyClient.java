@@ -2,7 +2,6 @@ package cloud.cholewa.heating.client;
 
 import cloud.cholewa.heating.config.ShellyConfig;
 import cloud.cholewa.heating.infrastructure.error.BoilerException;
-import cloud.cholewa.heating.infrastructure.error.HotWaterException;
 import cloud.cholewa.heating.model.HeaterType;
 import cloud.cholewa.home.model.RoomName;
 import cloud.cholewa.shelly.model.ShellyPro4StatusResponse;
