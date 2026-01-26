@@ -23,6 +23,10 @@ public class RabbitTemperatureConsumer {
                     "Received temperature message room: {} value: {}C",
                     message.getRoom(),
                     message.getTemperature()
-                ));
+                ))
+            .onErrorResume(throwable -> {
+                log.error("Error while consuming temperature message: {}", throwable.getMessage());
+                return Mono.empty();
+            });
     }
 }
