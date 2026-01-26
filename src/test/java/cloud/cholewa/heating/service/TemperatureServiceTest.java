@@ -15,6 +15,7 @@ import reactor.test.StepVerifier;
 import java.time.LocalDateTime;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -24,12 +25,14 @@ import static org.mockito.Mockito.when;
 class TemperatureServiceTest {
 
     private static final TemperatureEntity TEMPERATURE_ENTITY =
-        new TemperatureEntity(1L, LocalDateTime.now(), "room", 12.0);
+        new TemperatureEntity(1L, LocalDateTime.now(), "cinema", 12.0);
 
     @Mock
     private TemperatureMapper temperatureMapper;
     @Mock
     private TemperatureRepository temperatureRepository;
+    @Mock
+    private HomeService homeService;
 
     @InjectMocks
     private TemperatureService sut;
@@ -39,6 +42,8 @@ class TemperatureServiceTest {
         when(temperatureMapper.toEntity(any())).thenReturn(TEMPERATURE_ENTITY);
 
         when(temperatureRepository.save(any())).thenReturn(Mono.just(TEMPERATURE_ENTITY));
+
+        when(homeService.processRoomTemperature(any(), anyDouble())).thenReturn(Mono.empty());
 
         sut.handleTemperature(new TemperatureMessage())
             .as(StepVerifier::create)
