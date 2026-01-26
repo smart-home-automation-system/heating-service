@@ -2,7 +2,6 @@ package cloud.cholewa.heating.service;
 
 import cloud.cholewa.heating.client.ShellyClient;
 import cloud.cholewa.heating.model.HeaterActor;
-import cloud.cholewa.heating.model.HeaterType;
 import cloud.cholewa.heating.model.HomeStatus;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.home.model.RoomName;
@@ -32,8 +31,7 @@ public class HeatingService {
     }
 
     public Mono<Void> updateHomeStatus(final boolean enabled) {
-        homeStatus.setHomeHeatingEnabled(enabled);
-        return Mono.empty();
+        return Mono.fromRunnable(() -> homeStatus.setHomeHeatingEnabled(enabled));
     }
 
     public Mono<Room> processHeatingRequest(final Room room) {
@@ -55,51 +53,62 @@ public class HeatingService {
      * 5. return room
      * */
     private Mono<HeaterActor> handleHeaterActor(final RoomName roomName, final HeaterActor heaterActor) {
-        return olderThanFiveMinutes(heaterActor.getLastStatusUpdate())
-            .filter(needsUpdate -> needsUpdate)
-            .flatMap(needsUpdate -> shellyClient.getHeaterActorStatus(heaterActor.getType(), roomName))
-            .flatMap(statusResponse -> controlHeaterActor(heaterActor, statusResponse, roomName))
-            .doOnNext(relayResponse -> updateHeaterStatus(relayResponse, heaterActor))
+        return Mono.fromSupplier(() -> isStatusStale(heaterActor))
+            .filter(Boolean::booleanValue)
+            .flatMap(refreshNeeded -> shellyClient.getHeaterActorStatus(heaterActor.getType(), roomName))
+            .doOnNext(statusResponse -> updateHeaterStatus(statusResponse, heaterActor))
+            .then(controlHeaterActor(heaterActor, roomName))
             .thenReturn(heaterActor);
     }
 
-    private Mono<Boolean> olderThanFiveMinutes(final LocalDateTime lastUpdate) {
-        return Mono.just(LocalDateTime.now(clock).minusMinutes(5).isAfter(lastUpdate));
+    private boolean isStatusStale(final HeaterActor heaterActor) {
+        LocalDateTime lastUpdate = heaterActor.getLastStatusUpdate() == null
+            ? LocalDateTime.MIN
+            : heaterActor.getLastStatusUpdate();
+
+        return LocalDateTime.now(clock).minusMinutes(5).isAfter(lastUpdate);
     }
 
-    private Mono<ShellyProRelayResponse> controlHeaterActor(
-        final HeaterActor heaterActor,
-        final ShellyPro4StatusResponse shellyResponse,
-        final RoomName roomName
-    ) {
+    private void updateHeaterStatus(final ShellyPro4StatusResponse statusResponse, final HeaterActor heaterActor) {
+        boolean isOn = Boolean.TRUE.equals(statusResponse.getOutput());
+        log.info("Heater actor {} status updated: {}", heaterActor.getType(), isOn);
+        heaterActor.setWorking(isOn);
+        heaterActor.setLastStatusUpdate(LocalDateTime.now(clock));
+    }
+
+    private Mono<ShellyProRelayResponse> controlHeaterActor(final HeaterActor heaterActor, final RoomName roomName) {
         return Mono.defer(() -> {
-            if (Boolean.TRUE.equals(shellyResponse.getOutput()) && !homeStatus.isHomeHeatingEnabled()) {
-                return controlHeaterActor(heaterActor.getType(), roomName, false);
-            } else if (Boolean.TRUE.equals(shellyResponse.getOutput()) != heaterActor.isWorking()) {
-                return controlHeaterActor(heaterActor.getType(), roomName, shellyResponse.getOutput());
-            } else {
+
+            if (!homeStatus.isHomeHeatingEnabled() || !heaterActor.isInSchedule()) {
+                if (heaterActor.isWorking()) {
+                    return setHeaterActor(heaterActor, roomName, false);
+                }
                 return Mono.empty();
             }
+
+            if (!heaterActor.isWorking()) {
+                return setHeaterActor(heaterActor, roomName, true);
+            }
+
+            return Mono.empty();
         });
     }
 
-    private Mono<ShellyProRelayResponse> controlHeaterActor(
-        final HeaterType heaterType,
+    private Mono<ShellyProRelayResponse> setHeaterActor(
+        final HeaterActor heaterActor,
         final RoomName roomName,
-        final Boolean enabled
+        final boolean enabled
     ) {
-        if (homeStatus.isHomeHeatingEnabled()) {
-            log.info("Switching heater actor {} for room {} to status {}", heaterType, roomName, enabled);
-            return shellyClient.controlHeaterActor(heaterType, roomName, enabled);
-        } else {
-            log.info("Disabling heater actor {} for room {}", heaterType, roomName);
-            return shellyClient.controlHeaterActor(heaterType, roomName, false);
-        }
-    }
-
-    private void updateHeaterStatus(final ShellyProRelayResponse relayResponse, final HeaterActor heaterActor) {
-        log.info("Heater actor {} status updated: {}", heaterActor.getType(), heaterActor.isWorking());
-        heaterActor.setWorking(Boolean.TRUE.equals(relayResponse.getIson()));
-        heaterActor.setLastStatusUpdate(LocalDateTime.now(clock));
+        return shellyClient.controlHeaterActor(heaterActor.getType(), roomName, enabled)
+            .doOnNext(response -> {
+                log.info(
+                    "Switching heater actor {} for room {} to {}",
+                    heaterActor.getType(),
+                    roomName,
+                    Boolean.TRUE.equals(response.getIson())
+                );
+                heaterActor.setWorking(Boolean.TRUE.equals(response.getIson()));
+                heaterActor.setLastStatusUpdate(LocalDateTime.now(clock));
+            });
     }
 }

@@ -25,6 +25,8 @@ public class HeaterActor {
 
     private LocalDateTime endTime;
 
+    private boolean inSchedule;
+    
     @Singular
     private List<Schedule> schedules;
 }
