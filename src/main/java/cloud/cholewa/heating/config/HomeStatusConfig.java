@@ -10,7 +10,7 @@ public class HomeStatusConfig {
     @Bean
     HomeStatus homeStatus() {
         HomeStatus homeStatus = new HomeStatus();
-        homeStatus.setHomeHeatingEnabled(false);
+        homeStatus.setHomeHeatingEnabled(true);
         return homeStatus;
     }
 }
