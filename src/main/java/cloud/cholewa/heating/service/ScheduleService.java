@@ -43,7 +43,7 @@ public class ScheduleService {
             room.getName().getValue(),
             heaterActor.getType(),
             heaterActor.isInSchedule(),
-            heaterActor.getTargetTemperature()
+            heaterActor.getTargetTemperature() == null ? "not set" : heaterActor.getTargetTemperature()
         );
     }
 
