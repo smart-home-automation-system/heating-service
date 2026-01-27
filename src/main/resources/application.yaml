@@ -45,6 +45,8 @@ rabbitmq:
 
 shelly:
   actor:
+    scheme: http
+    port: 80
     pro4:
       down_left:
         host: 10.78.30.39
@@ -54,6 +56,23 @@ shelly:
         host: 10.78.30.89
       up_right:
         host: 10.78.30.26
+    relay:
+      heater:
+        office: 3
+        tobi: 2
+        livia: 1
+        bedroom: 0
+        bathroom_up: 3
+        living_room: 1
+        cinema: 1
+        bathroom_down: 3
+        entrance: 0
+        garage: 2
+      floor:
+        wardrobe: 2
+        bathroom_up: 1
+        living_room: 0
+        bathroom_down: 2
 
 ---
 
