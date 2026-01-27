@@ -76,4 +76,25 @@ public class ShellyConfig {
             default -> throw new HeatingException("Unknown configuration for room floor: " + roomName.name());
         };
     }
+
+    public URI getHeatingPumpStatusUri(final UriBuilder uriBuilder) {
+        return uriBuilder
+            .scheme(scheme)
+            .host(SHELLY_PRO4_UP_LEFT)
+            .port(port)
+            .path("rpc/Switch.GetStatus")
+            .queryParam("id", "0")
+            .build();
+    }
+    
+    public URI getHeatingPumpControlUri(final UriBuilder uriBuilder, final boolean enable) {
+        return uriBuilder
+            .scheme(scheme)
+            .host(SHELLY_PRO4_UP_LEFT)
+            .port(port)
+            .pathSegment("relay")
+            .path("0")
+            .queryParam("turn", enable ? "on" : "off")
+            .build();
+    }
 }

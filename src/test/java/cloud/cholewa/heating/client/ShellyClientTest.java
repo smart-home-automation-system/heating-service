@@ -34,13 +34,15 @@ class ShellyClientTest {
         RelayConfig relayConfig = new RelayConfig();
 
         ReflectionTestUtils.setField(
-            relayConfig, 
-            "heater", Map.of("bedroom", 1, "living_room", 2, "cinema", 3));
-        
+            relayConfig,
+            "heater", Map.of("bedroom", 1, "living_room", 2, "cinema", 3)
+        );
+
         ShellyConfig shellyConfig = new ShellyConfig(relayConfig);
         ReflectionTestUtils.setField(shellyConfig, "scheme", "http");
         ReflectionTestUtils.setField(shellyConfig, "port", mockWebServer.getPort());
         ReflectionTestUtils.setField(shellyConfig, "SHELLY_PRO4_DOWN_RIGHT", mockWebServer.getHostName());
+        ReflectionTestUtils.setField(shellyConfig, "SHELLY_PRO4_UP_LEFT", mockWebServer.getHostName());
 
         sut = new ShellyClient(WebClient.create(), shellyConfig);
     }
@@ -62,7 +64,7 @@ class ShellyClientTest {
                 }
                 """)
         );
-        
+
         sut.getHeaterActorStatus(HeaterType.RADIATOR, RoomName.CINEMA)
             .as(StepVerifier::create)
             .expectNextMatches(status -> Boolean.FALSE.equals(status.getOutput()))
@@ -74,7 +76,7 @@ class ShellyClientTest {
         mockWebServer.enqueue(new MockResponse()
             .setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
         );
-        
+
         sut.getHeaterActorStatus(HeaterType.RADIATOR, RoomName.CINEMA)
             .as(StepVerifier::create)
             .expectErrorMatches(BoilerException.class::isInstance)
@@ -92,7 +94,7 @@ class ShellyClientTest {
                 }
                 """)
         );
-        
+
         sut.controlHeaterActor(HeaterType.RADIATOR, RoomName.CINEMA, true)
             .as(StepVerifier::create)
             .expectNextMatches(status -> Boolean.TRUE.equals(status.getIson()))
@@ -104,8 +106,68 @@ class ShellyClientTest {
         mockWebServer.enqueue(new MockResponse()
             .setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
         );
-        
+
         sut.controlHeaterActor(HeaterType.RADIATOR, RoomName.CINEMA, true)
+            .as(StepVerifier::create)
+            .expectErrorMatches(BoilerException.class::isInstance)
+            .verify();
+    }
+
+    @Test
+    void should_get_floor_pump_status_successfully() {
+        mockWebServer.enqueue(new MockResponse()
+            .setResponseCode(HttpStatus.OK.value())
+            .addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+            .setBody("""
+                {
+                    "output": true
+                }
+                """)
+        );
+
+        sut.getFloorPumpStatus()
+            .as(StepVerifier::create)
+            .expectNextMatches(status -> Boolean.TRUE.equals(status.getOutput()))
+            .verifyComplete();
+    }
+
+    @Test
+    void should_handle_error_when_getting_floor_pump_status() {
+        mockWebServer.enqueue(new MockResponse()
+            .setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+        );
+
+        sut.getFloorPumpStatus()
+            .as(StepVerifier::create)
+            .expectErrorMatches(BoilerException.class::isInstance)
+            .verify();
+    }
+
+    @Test
+    void should_control_floor_pump_successfully() {
+        mockWebServer.enqueue(new MockResponse()
+            .setResponseCode(HttpStatus.OK.value())
+            .addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+            .setBody("""
+                {
+                    "ison": true
+                }
+                """)
+        );
+
+        sut.controlFloorPump(true)
+            .as(StepVerifier::create)
+            .expectNextMatches(status -> Boolean.TRUE.equals(status.getIson()))
+            .verifyComplete();
+    }
+
+    @Test
+    void should_handle_error_when_controlling_floor_pump() {
+        mockWebServer.enqueue(new MockResponse()
+            .setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+        );
+
+        sut.controlFloorPump(true)
             .as(StepVerifier::create)
             .expectErrorMatches(BoilerException.class::isInstance)
             .verify();

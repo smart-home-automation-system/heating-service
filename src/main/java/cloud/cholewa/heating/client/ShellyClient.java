@@ -43,4 +43,24 @@ public class ShellyClient {
                 log.error("Error while controlling actor for room: {}, heater type: {}", roomName, heaterType))
             .onErrorMap(throwable -> new BoilerException("Error while controlling actor for room: " + roomName + ", heater type: " + heaterType));
     }
+
+    public Mono<ShellyPro4StatusResponse> getFloorPumpStatus() {
+        return shellyWebClient.get()
+            .uri(shellyConfig::getHeatingPumpStatusUri)
+            .retrieve()
+            .bodyToMono(ShellyPro4StatusResponse.class)
+            .doOnError(throwable ->
+                log.error("Error while getting floor pump status"))
+            .onErrorMap(throwable -> new BoilerException("Error while getting floor pump status"));
+    }
+
+    public Mono<ShellyProRelayResponse> controlFloorPump(final boolean enable) {
+        return shellyWebClient.get()
+            .uri(uriBuilder -> shellyConfig.getHeatingPumpControlUri(uriBuilder, enable))
+            .retrieve()
+            .bodyToMono(ShellyProRelayResponse.class)
+            .doOnError(throwable ->
+                log.error("Error while controlling floor pump"))
+            .onErrorMap(throwable -> new BoilerException("Error while controlling floor pump"));
+    }
 }

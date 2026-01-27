@@ -95,4 +95,25 @@ class ShellyConfigTest {
             .isInstanceOf(HeatingException.class)
             .hasMessageContaining("Unknown configuration for room floor: LOFT");
     }
+
+    @Test
+    void should_get_heating_pump_status_uri() {
+        URI uri = sut.getHeatingPumpStatusUri(UriComponentsBuilder.newInstance());
+        
+        assertThat(uri.toString()).hasToString("http://10.78.30.89:80/rpc/Switch.GetStatus?id=0");
+    }
+
+    @Test
+    void should_get_heating_pump_control_uri_on() {
+        URI uri = sut.getHeatingPumpControlUri(UriComponentsBuilder.newInstance(), true);
+        
+        assertThat(uri.toString()).hasToString("http://10.78.30.89:80/relay/0?turn=on");
+    }
+
+    @Test
+    void should_get_heating_pump_control_uri_off() {
+        URI uri = sut.getHeatingPumpControlUri(UriComponentsBuilder.newInstance(), false);
+        
+        assertThat(uri.toString()).hasToString("http://10.78.30.89:80/relay/0?turn=off");
+    }
 }
