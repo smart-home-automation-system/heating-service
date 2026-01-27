@@ -27,15 +27,23 @@ public class ScheduleService {
     }
 
     private void processHeaterActor(final HeaterActor heaterActor, final Room room) {
-        boolean isInSchedule = heaterActor.getSchedules().stream()
-            .anyMatch(schedule -> isActiveSchedule(schedule, room.getTemperature().getValue()));
-        heaterActor.setInSchedule(isInSchedule);
+        heaterActor.getSchedules().stream()
+            .filter(schedule -> isActiveSchedule(schedule, room.getTemperature().getValue()))
+            .findFirst()
+            .ifPresentOrElse(schedule -> {
+                heaterActor.setInSchedule(true);
+                heaterActor.setTargetTemperature(schedule.getTemperature());
+            }, () -> {
+                heaterActor.setInSchedule(false);
+                heaterActor.setTargetTemperature(null);
+            });
 
         log.info(
-            "Schedule for room: {}, heater actor: {} status is: {}",
+            "Schedule for room: {}, heater actor: {} status is: {}, target temperature: {}",
             room.getName().getValue(),
             heaterActor.getType(),
-            isInSchedule
+            heaterActor.isInSchedule(),
+            heaterActor.getTargetTemperature()
         );
     }
 

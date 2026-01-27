@@ -59,7 +59,8 @@ class ScheduleServiceTest {
         final String name,
         final Room testRoom,
         final LocalDateTime dateTime,
-        final Boolean... expectedStates
+        final Boolean[] expectedStates,
+        final Double[] expectedTargetTemperatures
     ) {
         when(clock.instant()).thenReturn(dateTime.atZone(ZoneId.systemDefault()).toInstant());
 
@@ -71,6 +72,7 @@ class ScheduleServiceTest {
                 assertThat(room).isNotNull();
                 assertThat(room.getHeaterActors()).isNotEmpty();
                 assertThat(room.getHeaterActors()).extracting(HeaterActor::isInSchedule).containsExactly(expectedStates);
+                assertThat(room.getHeaterActors()).extracting(HeaterActor::getTargetTemperature).containsExactly(expectedTargetTemperatures);
             })
             .verifyComplete();
     }
@@ -85,7 +87,8 @@ class ScheduleServiceTest {
                     Temperature.builder().value(16.6).build()
                 ),
                 LocalDateTime.of(2026, 1, 19, 12, 0),
-                new Boolean[]{true}
+                new Boolean[]{true},
+                new Double[]{20.0}
             ),
             Arguments.of(
                 "one heater actor, and one schedule with higher temperature",
@@ -95,7 +98,8 @@ class ScheduleServiceTest {
                     Temperature.builder().value(21.6).build()
                 ),
                 LocalDateTime.of(2026, 1, 19, 12, 0),
-                new Boolean[]{false}
+                new Boolean[]{false},
+                new Double[]{null}
             ),
             Arguments.of(
                 "one heater actor, and two schedules",
@@ -106,7 +110,8 @@ class ScheduleServiceTest {
                     ))), Temperature.builder().value(16.6).build()
                 ),
                 LocalDateTime.of(2026, 1, 19, 12, 0),
-                new Boolean[]{true}
+                new Boolean[]{true},
+                new Double[]{19.0}
             ),
             Arguments.of(
                 "two heater actors, different schedules",
@@ -127,7 +132,8 @@ class ScheduleServiceTest {
                     ), Temperature.builder().value(16.6).build()
                 ),
                 LocalDateTime.of(2026, 1, 19, 12, 0),
-                new Boolean[]{true, false}
+                new Boolean[]{true, false},
+                new Double[]{20.0, null}
             ),
             Arguments.of(
                 "two heater actors, different schedules, lower temperature but time out of schedules",
@@ -148,7 +154,8 @@ class ScheduleServiceTest {
                     ), Temperature.builder().value(16.6).build()
                 ),
                 LocalDateTime.of(2026, 1, 19, 23, 0),
-                new Boolean[]{false, false}
+                new Boolean[]{false, false},
+                new Double[]{null, null}
             )
         );
     }
