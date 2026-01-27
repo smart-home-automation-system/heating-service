@@ -4,6 +4,7 @@ import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.model.Schedule;
 import cloud.cholewa.heating.model.Temperature;
+import cloud.cholewa.home.model.RoomName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -154,6 +155,7 @@ class ScheduleServiceTest {
 
     private static Room testedRoom(final List<HeaterActor> heaterActors, final Temperature temperature) {
         return Room.builder()
+            .name(RoomName.fromValue("kitchen"))
             .temperature(temperature)
             .heaterActors(heaterActors)
             .build();

@@ -22,16 +22,21 @@ public class ScheduleService {
 
     public Mono<Room> processSchedule(final Room room) {
         return Flux.fromIterable(room.getHeaterActors())
-            .doOnNext(heaterActor -> processHeaterActor(heaterActor, room.getTemperature().getValue()))
+            .doOnNext(heaterActor -> processHeaterActor(heaterActor, room))
             .then(Mono.just(room));
     }
 
-    private void processHeaterActor(final HeaterActor heaterActor, final double temperature) {
+    private void processHeaterActor(final HeaterActor heaterActor, final Room room) {
         boolean isInSchedule = heaterActor.getSchedules().stream()
-            .anyMatch(schedule -> isActiveSchedule(schedule, temperature));
+            .anyMatch(schedule -> isActiveSchedule(schedule, room.getTemperature().getValue()));
         heaterActor.setInSchedule(isInSchedule);
-        
-        log.info("Schedule active status: {} for heater actor {}", isInSchedule, heaterActor.getType());
+
+        log.info(
+            "Schedule for room: {}, heater actor: {} status is: {}",
+            room.getName().getValue(),
+            heaterActor.getType(),
+            isInSchedule
+        );
     }
 
     private boolean isActiveSchedule(final Schedule schedule, final double temperature) {

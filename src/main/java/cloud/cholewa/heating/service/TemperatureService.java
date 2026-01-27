@@ -22,7 +22,7 @@ public class TemperatureService {
         return Mono.fromCallable(() -> temperatureMapper.toEntity(message))
             .flatMap(temperatureRepository::save)
             .doOnNext(entity ->
-                log.info("Saved temperature: {}C for room {}", entity.temperature(), entity.room()))
+                log.info("Saved temperature: {}°C for room: {}", entity.temperature(), entity.room()))
             .flatMap(entity ->
                 homeService.processRoomTemperature(RoomName.fromValue(entity.room()), entity.temperature()));
     }

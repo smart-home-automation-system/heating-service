@@ -20,7 +20,7 @@ public class RabbitTemperatureConsumer {
         return temperatureService.handleTemperature(message)
             .doOnSubscribe(subscription ->
                 log.info(
-                    "Received temperature message room: {} value: {}C",
+                    "Temperature message received for room: {} value: {}°C",
                     message.getRoom(),
                     message.getTemperature()
                 ))

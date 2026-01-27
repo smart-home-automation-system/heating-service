@@ -56,7 +56,7 @@ public class HeatingService {
         return Mono.fromSupplier(() -> isStatusStale(heaterActor))
             .filter(Boolean::booleanValue)
             .flatMap(refreshNeeded -> shellyClient.getHeaterActorStatus(heaterActor.getType(), roomName))
-            .doOnNext(statusResponse -> updateHeaterStatus(statusResponse, heaterActor))
+            .doOnNext(statusResponse -> updateHeaterStatus(roomName, statusResponse, heaterActor))
             .then(controlHeaterActor(heaterActor, roomName))
             .thenReturn(heaterActor);
     }
@@ -69,9 +69,20 @@ public class HeatingService {
         return LocalDateTime.now(clock).minusMinutes(5).isAfter(lastUpdate);
     }
 
-    private void updateHeaterStatus(final ShellyPro4StatusResponse statusResponse, final HeaterActor heaterActor) {
+    private void updateHeaterStatus(
+        final RoomName roomName,
+        final ShellyPro4StatusResponse statusResponse,
+        final HeaterActor heaterActor
+    ) {
         boolean isOn = Boolean.TRUE.equals(statusResponse.getOutput());
-        log.info("Heater actor {} status updated: {}", heaterActor.getType(), isOn);
+        
+        log.info(
+            "Heater status was stale. Update room: {} actor: {} status: {}",
+            roomName.getValue(),
+            heaterActor.getType(),
+            isOn ? "on" : "off"
+        );
+        
         heaterActor.setWorking(isOn);
         heaterActor.setLastStatusUpdate(LocalDateTime.now(clock));
     }
@@ -102,10 +113,10 @@ public class HeatingService {
         return shellyClient.controlHeaterActor(heaterActor.getType(), roomName, enabled)
             .doOnNext(response -> {
                 log.info(
-                    "Switching heater actor {} for room {} to {}",
+                    "Switching heater actor: {} in room: {} to: {}",
                     heaterActor.getType(),
                     roomName,
-                    Boolean.TRUE.equals(response.getIson())
+                    Boolean.TRUE.equals(response.getIson()) ? "on" : "off"
                 );
                 heaterActor.setWorking(Boolean.TRUE.equals(response.getIson()));
                 heaterActor.setLastStatusUpdate(LocalDateTime.now(clock));
