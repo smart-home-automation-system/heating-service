@@ -25,8 +25,8 @@ public class HomeStatusConfig {
             repository.findFirstByOrderByDateDesc()
                 .doOnNext(entity -> {
                     log.info("Initial home status found in database: {}", entity.status());
-                    homeStatus.setHomeHeatingEnabled(entity.status());
-                    homeStatus.setUpdatedAt(entity.date());
+                    homeStatus.setEnabledHomeHeatingSystem(entity.status());
+                    homeStatus.setHomeHeatingSystemUpdatedAt(entity.date());
                 })
                 .doOnSuccess(entity -> {
                     if (entity == null) {
