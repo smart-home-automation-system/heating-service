@@ -26,12 +26,10 @@ public class HeatingService {
     private final HomeStatus homeStatus;
     private final ShellyClient shellyClient;
 
-    public Mono<SystemActiveReply> queryHeatingSystemActive() {
-        return Mono.just(SystemActiveReply.builder().active(homeStatus.isHomeHeatingEnabled()).build());
-    }
-
-    public Mono<Void> updateHomeStatus(final boolean enabled) {
-        return Mono.fromRunnable(() -> homeStatus.setHomeHeatingEnabled(enabled));
+    public Mono<SystemActiveReply> queryHeatingSystemEnabledAndActive() {
+        return Mono.just(SystemActiveReply.builder()
+            .active(homeStatus.isAnyHeaterActive() && homeStatus.isEnabledHomeHeatingSystem())
+            .build());
     }
 
     public Mono<Room> processHeatingRequest(final Room room) {
@@ -75,14 +73,14 @@ public class HeatingService {
         final HeaterActor heaterActor
     ) {
         boolean isOn = Boolean.TRUE.equals(statusResponse.getOutput());
-        
+
         log.info(
-            "Heater status was stale. Update room: {} actor: {} status: {}",
+            "Heater status was stale. Updated room: {}, actor: {}, status: {}",
             roomName.getValue(),
             heaterActor.getType(),
             isOn ? "on" : "off"
         );
-        
+
         heaterActor.setWorking(isOn);
         heaterActor.setLastStatusUpdate(LocalDateTime.now(clock));
     }
@@ -90,7 +88,7 @@ public class HeatingService {
     private Mono<ShellyProRelayResponse> controlHeaterActor(final HeaterActor heaterActor, final RoomName roomName) {
         return Mono.defer(() -> {
 
-            if (!homeStatus.isHomeHeatingEnabled() || !heaterActor.isInSchedule()) {
+            if (!homeStatus.isEnabledHomeHeatingSystem() || !heaterActor.isInSchedule()) {
                 if (heaterActor.isWorking()) {
                     return setHeaterActor(heaterActor, roomName, false);
                 }

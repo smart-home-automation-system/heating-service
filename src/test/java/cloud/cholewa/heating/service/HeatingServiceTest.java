@@ -48,32 +48,21 @@ class HeatingServiceTest {
 
     @Test
     void should_return_system_active_state() {
-        when(homeStatus.isHomeHeatingEnabled()).thenReturn(true);
+        when(homeStatus.isEnabledHomeHeatingSystem()).thenReturn(true);
+        when(homeStatus.isAnyHeaterActive()).thenReturn(true);
 
-        sut.queryHeatingSystemActive()
+        sut.queryHeatingSystemEnabledAndActive()
             .as(StepVerifier::create)
             .assertNext(reply -> assertThat(reply.getActive()).isTrue())
             .verifyComplete();
 
-        verify(homeStatus, times(1)).isHomeHeatingEnabled();
+        verify(homeStatus).isEnabledHomeHeatingSystem();
         verifyNoMoreInteractions(homeStatus, shellyClient);
-    }
-
-    @Test
-    void should_update_home_status() {
-        sut.updateHomeStatus(true)
-            .as(StepVerifier::create)
-            .verifyComplete();
-
-        verify(homeStatus, times(1)).setHomeHeatingEnabled(true);
-        verifyNoMoreInteractions(homeStatus, shellyClient);
-
-        assertThat(homeStatus.isHomeHeatingEnabled()).isTrue();
     }
 
     @Test
     void should_enable_room_heating_when_actor_not_working_for_and_schedule_active() {
-        homeStatus.setHomeHeatingEnabled(true);
+        homeStatus.setEnabledHomeHeatingSystem(true);
 
         final Room room = Room.builder()
             .name(RoomName.BEDROOM)
@@ -90,8 +79,7 @@ class HeatingServiceTest {
 
         sut.processHeatingRequest(room)
             .as(StepVerifier::create)
-            .assertNext(result ->
-                assertThat(result.isRoomHeatingEnabled()).isTrue())
+            .assertNext(result -> assertThat(result.isRoomHeatingEnabled()).isTrue())
             .verifyComplete();
 
         verify(shellyClient, times(1)).getHeaterActorStatus(any(), any());
@@ -102,7 +90,7 @@ class HeatingServiceTest {
 
     @Test
     void should_enable_room_heating_when_actor_working_for_and_schedule_active_and_fresh_status() {
-        homeStatus.setHomeHeatingEnabled(true);
+        homeStatus.setEnabledHomeHeatingSystem(true);
 
         final Room room = Room.builder()
             .name(RoomName.BEDROOM)
@@ -119,8 +107,7 @@ class HeatingServiceTest {
 
         sut.processHeatingRequest(room)
             .as(StepVerifier::create)
-            .assertNext(result ->
-                assertThat(result.isRoomHeatingEnabled()).isTrue())
+            .assertNext(result -> assertThat(result.isRoomHeatingEnabled()).isTrue())
             .verifyComplete();
 
         verify(shellyClient, never()).getHeaterActorStatus(any(), any());
@@ -131,7 +118,7 @@ class HeatingServiceTest {
 
     @Test
     void should_enable_room_heating_when_actor_not_working_for_and_schedule_active_and_fresh_status() {
-        homeStatus.setHomeHeatingEnabled(true);
+        homeStatus.setEnabledHomeHeatingSystem(true);
 
         final Room room = Room.builder()
             .name(RoomName.BEDROOM)
@@ -150,8 +137,7 @@ class HeatingServiceTest {
 
         sut.processHeatingRequest(room)
             .as(StepVerifier::create)
-            .assertNext(result ->
-                assertThat(result.isRoomHeatingEnabled()).isTrue())
+            .assertNext(result -> assertThat(result.isRoomHeatingEnabled()).isTrue())
             .verifyComplete();
 
         verify(shellyClient, never()).getHeaterActorStatus(any(), any());
@@ -162,7 +148,7 @@ class HeatingServiceTest {
 
     @Test
     void should_enable_room_heating_when_any_actor_working_for_two_heaters_schedule_first_active_second_inactive() {
-        homeStatus.setHomeHeatingEnabled(true);
+        homeStatus.setEnabledHomeHeatingSystem(true);
 
         final Room room = Room.builder()
             .name(RoomName.BEDROOM)
@@ -183,8 +169,7 @@ class HeatingServiceTest {
 
         sut.processHeatingRequest(room)
             .as(StepVerifier::create)
-            .assertNext(result ->
-                assertThat(result.isRoomHeatingEnabled()).isTrue())
+            .assertNext(result -> assertThat(result.isRoomHeatingEnabled()).isTrue())
             .verifyComplete();
 
         verify(shellyClient, times(1)).getHeaterActorStatus(eq(RADIATOR), any());
@@ -196,7 +181,7 @@ class HeatingServiceTest {
 
     @Test
     void should_enable_room_heating_when_all_actor_working_for_two_heaters_schedule_all_active() {
-        homeStatus.setHomeHeatingEnabled(true);
+        homeStatus.setEnabledHomeHeatingSystem(true);
 
         final Room room = Room.builder()
             .name(RoomName.BEDROOM)
@@ -220,8 +205,7 @@ class HeatingServiceTest {
 
         sut.processHeatingRequest(room)
             .as(StepVerifier::create)
-            .assertNext(result ->
-                assertThat(result.isRoomHeatingEnabled()).isTrue())
+            .assertNext(result -> assertThat(result.isRoomHeatingEnabled()).isTrue())
             .verifyComplete();
 
         verify(shellyClient, times(1)).getHeaterActorStatus(eq(RADIATOR), any());
@@ -234,7 +218,7 @@ class HeatingServiceTest {
 
     @Test
     void should_disable_room_heating_when_no_actor_working() {
-        homeStatus.setHomeHeatingEnabled(true);
+        homeStatus.setEnabledHomeHeatingSystem(true);
 
         Room room = Room.builder()
             .name(RoomName.BEDROOM)
@@ -259,7 +243,7 @@ class HeatingServiceTest {
 
     @Test
     void should_refresh_actor_status_when_stale() {
-        homeStatus.setHomeHeatingEnabled(true);
+        homeStatus.setEnabledHomeHeatingSystem(true);
 
         HeaterActor actor = HeaterActor.builder()
             .type(RADIATOR)
@@ -291,7 +275,7 @@ class HeatingServiceTest {
 
     @Test
     void should_not_refresh_actor_status_when_fresh() {
-        homeStatus.setHomeHeatingEnabled(true);
+        homeStatus.setEnabledHomeHeatingSystem(true);
 
         HeaterActor actor = HeaterActor.builder()
             .type(RADIATOR)
@@ -321,7 +305,7 @@ class HeatingServiceTest {
 
     @Test
     void should_turn_off_actor_when_system_disabled_and_output_on() {
-        homeStatus.setHomeHeatingEnabled(false);
+        homeStatus.setEnabledHomeHeatingSystem(false);
 
         HeaterActor actor = HeaterActor.builder().type(RADIATOR).inSchedule(true).working(true).build();
 
@@ -350,7 +334,7 @@ class HeatingServiceTest {
 
     @Test
     void should_turn_off_actor_when_out_of_schedule_and_output_on() {
-        homeStatus.setHomeHeatingEnabled(true);
+        homeStatus.setEnabledHomeHeatingSystem(true);
 
         HeaterActor actor = HeaterActor.builder().type(RADIATOR).inSchedule(false).working(true).build();
 
@@ -379,7 +363,7 @@ class HeatingServiceTest {
 
     @Test
     void should_control_actor_when_output_differs_from_expected() {
-        homeStatus.setHomeHeatingEnabled(true);
+        homeStatus.setEnabledHomeHeatingSystem(true);
 
         HeaterActor actor = HeaterActor.builder().type(RADIATOR).inSchedule(true)
             .working(false) // expected not working
@@ -407,7 +391,7 @@ class HeatingServiceTest {
 
     @Test
     void should_update_actor_status_from_relay_response() {
-        homeStatus.setHomeHeatingEnabled(true);
+        homeStatus.setEnabledHomeHeatingSystem(true);
 
         HeaterActor actor = HeaterActor.builder().type(RADIATOR).inSchedule(true).working(false).build();
 
