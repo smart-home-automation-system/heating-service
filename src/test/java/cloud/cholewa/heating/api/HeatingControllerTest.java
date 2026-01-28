@@ -23,7 +23,7 @@ class HeatingControllerTest {
 
     @Test
     void should_return_active_status() {
-        when(heatingService.queryHeatingSystemActive())
+        when(heatingService.queryHeatingSystemEnabledAndActive())
             .thenReturn(Mono.just(SystemActiveReply.builder().active(true).build()));
 
         webTestClient.get()

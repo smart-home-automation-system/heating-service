@@ -19,15 +19,15 @@ public class HeatingStatusController {
     private final HeatingStatusService service;
 
     @GetMapping
-    Mono<ResponseEntity<HeatingStatusReply>> queryHeatingStatus() {
-        return service.getHeatingStatus()
+    Mono<ResponseEntity<HeatingStatusReply>> queryHeatingStatusEnabled() {
+        return service.getHeatingStatusEnabled()
             .doOnSubscribe(subscription -> log.info("Incoming request to query heating status"))
             .map(ResponseEntity::ok);
     }
 
     @PostMapping
-    Mono<ResponseEntity<HeatingStatusReply>> updateHeatingStatus(@RequestParam final String turn) {
-        return service.updateHeatingStatus(turn)
+    Mono<ResponseEntity<HeatingStatusReply>> updateHeatingStatusEnabled(@RequestParam final String turn) {
+        return service.updateHeatingStatusEnabled(turn)
             .doOnSubscribe(subscription -> log.info("Incoming request to update heating status"))
             .map(ResponseEntity::ok);
     }

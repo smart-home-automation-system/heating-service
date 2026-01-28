@@ -20,11 +20,15 @@ public class HeatingStatusService {
     private final HeatingStatusRepository heatingStatusRepository;
     private final HeatingStatusMapper heatingStatusMapper;
 
-    public Mono<HeatingStatusReply> getHeatingStatus() {
-        return Mono.just(new HeatingStatusReply(homeStatus.isHomeHeatingEnabled(), homeStatus.getUpdatedAt()));
+    public Mono<HeatingStatusReply> getHeatingStatusEnabled() {
+        return Mono.just(
+            new HeatingStatusReply(
+                homeStatus.isEnabledHomeHeatingSystem(),
+                homeStatus.getHomeHeatingSystemUpdatedAt()
+            ));
     }
 
-    public Mono<HeatingStatusReply> updateHeatingStatus(final String turn) {
+    public Mono<HeatingStatusReply> updateHeatingStatusEnabled(final String turn) {
         return Mono.just(turn)
             .map(value -> value.equalsIgnoreCase("on"))
             .flatMap(isEnabled -> heatingStatusRepository.save(heatingStatusMapper.toEntity(isEnabled)))
@@ -36,7 +40,7 @@ public class HeatingStatusService {
 
     private void updateHeatingStatus(final HeatingStatusEntity entity) {
         log.info("Updated heating status to: {}", entity.status());
-        homeStatus.setHomeHeatingEnabled(entity.status());
-        homeStatus.setUpdatedAt(entity.date());
+        homeStatus.setEnabledHomeHeatingSystem(entity.status());
+        homeStatus.setHomeHeatingSystemUpdatedAt(entity.date());
     }
 }

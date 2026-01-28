@@ -17,8 +17,8 @@ public class HeatingController {
     private final HeatingService heatingService;
 
     @GetMapping("/status/active")
-    Mono<ResponseEntity<SystemActiveReply>> querySystemActive() {
-        return heatingService.queryHeatingSystemActive()
+    Mono<ResponseEntity<SystemActiveReply>> querySystemEnabledAndActive() {
+        return heatingService.queryHeatingSystemEnabledAndActive()
             .doOnSubscribe(subscription -> log.info("Querying the heating system for the current system status"))
             .map(ResponseEntity::ok);
     }
