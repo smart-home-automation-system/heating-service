@@ -31,6 +31,7 @@ import static cloud.cholewa.home.model.RoomName.WARDROBE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -38,11 +39,11 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class FloorPumpServiceTest {
 
-    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    @Mock(answer = Answers.RETURNS_SMART_NULLS)
     private Clock clock;
-    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    @Mock(answer = Answers.RETURNS_SMART_NULLS)
     private ShellyClient shellyClient;
-    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    @Mock(answer = Answers.RETURNS_SMART_NULLS)
     private Home home;
 
     @InjectMocks
@@ -90,8 +91,9 @@ class FloorPumpServiceTest {
         when(shellyClient.controlFloorPump(anyBoolean()))
             .thenReturn(Mono.just(ShellyProRelayResponse.builder().ison(true).build()));
 
-        when(home.rooms()).thenReturn(List.of(
-            Room.builder().name(WARDROBE).heaterActor(HeaterActor.builder().type(FLOOR).working(true).build()).build()));
+        when(home.rooms()).thenReturn(
+            List.of(Room.builder()
+                .name(WARDROBE).heaterActor(HeaterActor.builder().type(FLOOR).working(true).build()).build()));
 
         sut.processFloorPump()
             .as(StepVerifier::create)
@@ -109,14 +111,43 @@ class FloorPumpServiceTest {
     }
 
     @Test
+    void should_not_turn_on_floor_second_time_when_was_activated_first_time_pump_when_floor_heaters_are_active() {
+        when(shellyClient.getFloorPumpStatus()).thenReturn(Mono.just(ShellyPro4StatusResponse.builder().output(false).build()));
+
+        when(shellyClient.controlFloorPump(anyBoolean()))
+            .thenReturn(Mono.just(ShellyProRelayResponse.builder().ison(true).build()));
+
+        when(home.rooms()).thenReturn(List.of(
+            Room.builder().name(WARDROBE).heaterActor(HeaterActor.builder().type(FLOOR).working(true).build()).build()));
+
+        sut.processFloorPump()
+            .as(StepVerifier::create)
+            .verifyComplete();
+        sut.processFloorPump()
+            .as(StepVerifier::create)
+            .verifyComplete();
+
+        verify(shellyClient).getFloorPumpStatus();
+        verify(shellyClient).controlFloorPump(true);
+        verify(home, times(2)).rooms();
+        verifyNoMoreInteractions(shellyClient, home);
+
+        FloorPump floorPump = (FloorPump) ReflectionTestUtils.getField(sut, "floorPump");
+        assertThat(floorPump).isNotNull();
+        assertThat(floorPump.isWorking()).isTrue();
+        assertThat(floorPump.getUpdatedAt()).isEqualTo(LocalDateTime.now(clock));
+    }
+
+    @Test
     void should_turn_off_floor_pump_when_floor_heaters_are_inactive() {
         when(shellyClient.getFloorPumpStatus()).thenReturn(Mono.just(ShellyPro4StatusResponse.builder().output(true).build()));
 
         when(shellyClient.controlFloorPump(anyBoolean()))
             .thenReturn(Mono.just(ShellyProRelayResponse.builder().ison(false).build()));
 
-        when(home.rooms()).thenReturn(List.of(
-            Room.builder().name(BATHROOM_UP).heaterActor(HeaterActor.builder().type(FLOOR).working(false).build()).build()));
+        when(home.rooms()).thenReturn(
+            List.of(Room.builder()
+                .name(BATHROOM_UP).heaterActor(HeaterActor.builder().type(FLOOR).working(false).build()).build()));
 
         sut.processFloorPump()
             .as(StepVerifier::create)

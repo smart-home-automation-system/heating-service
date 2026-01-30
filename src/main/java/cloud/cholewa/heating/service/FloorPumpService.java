@@ -15,7 +15,6 @@ import reactor.core.publisher.Mono;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.List;
 
 import static cloud.cholewa.home.model.RoomName.BATHROOM_UP;
 import static cloud.cholewa.home.model.RoomName.WARDROBE;
@@ -60,13 +59,23 @@ public class FloorPumpService {
             .filter(heaterActor -> heaterActor.getType().equals(HeaterType.FLOOR))
             .map(HeaterActor::isWorking)
             .reduce(Boolean::logicalOr)
-            .flatMap(isWorking -> shellyClient.controlFloorPump(isWorking)
+            .flatMap(anyFloorWorks -> Flux.just(anyFloorWorks, floorPump.isWorking())
+                .reduce(Boolean::logicalXor)
+                .flatMap(shouldToggle -> optionallyControlPump(shouldToggle, anyFloorWorks))
+            );
+    }
+
+    private Mono<Void> optionallyControlPump(final boolean shouldToggle, final boolean anyFloorWorks) {
+        if (shouldToggle) {
+            return shellyClient.controlFloorPump(anyFloorWorks)
                 .doOnNext(response -> {
                     floorPump.setWorking(Boolean.TRUE.equals(response.getIson()));
                     floorPump.setUpdatedAt(LocalDateTime.now(clock));
-                    log.info("Setting floor pump to: {}", isWorking ? "on" : "off");
+                    log.info("Setting floor pump to: {}", anyFloorWorks ? "on" : "off");
                 })
                 .doOnError(throwable -> log.error("Error setting floor pump: {}", throwable.getMessage()))
-                .then());
+                .then();
+        }
+        return Mono.empty();
     }
 }
