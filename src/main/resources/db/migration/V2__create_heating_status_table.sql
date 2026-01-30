@@ -1,0 +1,6 @@
+CREATE TABLE heating_status
+(
+    id     INT PRIMARY KEY NOT NULL UNIQUE GENERATED ALWAYS AS IDENTITY,
+    date   TIMESTAMP       NOT NULL,
+    status BOOLEAN         NOT NULL
+)

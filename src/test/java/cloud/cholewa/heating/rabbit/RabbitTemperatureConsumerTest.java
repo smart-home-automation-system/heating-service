@@ -30,4 +30,13 @@ class RabbitTemperatureConsumerTest {
             .as(StepVerifier::create)
             .verifyComplete();
     }
+
+    @Test
+    void should_not_fail_when_service_fails() {
+        when(temperatureService.handleTemperature(any())).thenReturn(Mono.error(new RuntimeException("Async Fail")));
+
+        sut.consumeTemperature(new TemperatureMessage())
+            .as(StepVerifier::create)
+            .verifyComplete();
+    }
 }
