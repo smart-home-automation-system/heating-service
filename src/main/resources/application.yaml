@@ -32,6 +32,10 @@ server:
 management:
   server:
     port: 8200
+  endpoint:
+    health:
+      probes:
+        enabled: true
 
 logbook:
   format:

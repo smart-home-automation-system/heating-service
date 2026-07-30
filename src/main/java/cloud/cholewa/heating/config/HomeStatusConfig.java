@@ -7,11 +7,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
+import reactor.util.retry.Retry;
+
+import java.time.Duration;
 
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
 public class HomeStatusConfig {
+
+    private static final long RETRY_ATTEMPTS = 3;
+    private static final Duration RETRY_BACKOFF = Duration.ofMillis(500);
 
     @Bean
     HomeStatus homeStatus() {
@@ -19,6 +26,7 @@ public class HomeStatusConfig {
     }
 
     @Bean
+    @Profile("!test")
     CommandLineRunner initHomeStatus(final HomeStatus homeStatus, final HeatingStatusRepository repository) {
         return args -> {
             log.info("Starting initial home status update from database via CommandLineRunner...");
@@ -35,12 +43,13 @@ public class HomeStatusConfig {
                         log.info("Initial home status updated successfully.");
                     }
                 })
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, RETRY_BACKOFF))
                 .doOnError(throwable -> log.error(
                     "Error updating home status from database: {}",
                     throwable.getMessage()
                 ))
-                .onErrorComplete()
-                .subscribe();
+                //blocking on purpose: startup must fail loudly instead of serving traffic with heating disabled
+                .block();
         };
     }
 }
