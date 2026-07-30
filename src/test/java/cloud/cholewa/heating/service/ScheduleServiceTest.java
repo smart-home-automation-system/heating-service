@@ -10,7 +10,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.Answers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -34,7 +33,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ScheduleServiceTest {
 
-    @Mock(answer = Answers.RETURNS_SMART_NULLS)
+    @Mock
     private Clock clock;
 
     @InjectMocks
@@ -72,7 +71,8 @@ class ScheduleServiceTest {
                 assertThat(room).isNotNull();
                 assertThat(room.getHeaterActors()).isNotEmpty();
                 assertThat(room.getHeaterActors()).extracting(HeaterActor::isInSchedule).containsExactly(expectedStates);
-                assertThat(room.getHeaterActors()).extracting(HeaterActor::getTargetTemperature).containsExactly(expectedTargetTemperatures);
+                assertThat(room.getHeaterActors()).extracting(HeaterActor::getTargetTemperature).containsExactly(
+                    expectedTargetTemperatures);
             })
             .verifyComplete();
     }
