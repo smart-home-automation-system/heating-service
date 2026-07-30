@@ -14,6 +14,11 @@ spring:
     virtual-host: /temperature
     connection-timeout: 10s
     requested-heartbeat: 10s
+    listener:
+      simple:
+        # keep the in-flight messages below the database pool size - the listener returns a Mono,
+        # so the container does not wait for one message before taking the next one
+        prefetch: 5
   flyway:
     url: ${flyway-url:jdbc:postgresql://${database.host}:${database.port}/${database.name}}
     user: ${database-user:dummyUser}
