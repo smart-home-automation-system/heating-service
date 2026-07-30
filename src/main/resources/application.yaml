@@ -14,30 +14,43 @@ spring:
     virtual-host: /temperature
     connection-timeout: 10s
     requested-heartbeat: 10s
-  datasource:
-    host: ${database-host:localhost}
-    port: ${database-port:1433}
-    database: ${database-name:dummyName}
-    username: ${database-user:dummyUser}
-    password: ${database-password:dummyPassword}
+    listener:
+      simple:
+        # the listener returns a Mono; with the default AUTO mode the container acks before the
+        # write even starts, so prefetch throttles nothing and the ack is sent twice
+        acknowledge-mode: manual
+        # in-flight messages stay below the database pool size
+        prefetch: 5
   flyway:
-    url: ${flyway-url:localhost}
+    url: ${flyway-url:jdbc:postgresql://${database.host}:${database.port}/${database.name}}
     user: ${database-user:dummyUser}
     password: ${database-password:dummyPassword}
     enabled: on
-  jpa:
-    show-sql: true
+
+database:
+  host: ${database-host:localhost}
+  port: ${database-port:5432}
+  name: ${database-name:dummyName}
+  username: ${database-user:dummyUser}
+  password: ${database-password:dummyPassword}
 
 server:
   port: 6200
+management:
+  server:
+    port: 8200
+  endpoint:
+    health:
+      probes:
+        enabled: true
 
 logbook:
   format:
-    style: http
+    style: json
 
 logging:
   level:
-    org.zalando.logbook: off
+    org.zalando.logbook: trace
 
 rabbitmq:
   queue:
@@ -88,6 +101,10 @@ server:
 management:
   server:
     port: 8002
+
+logbook:
+  format:
+    style: http
 
 rabbitmq:
   queue:

@@ -12,8 +12,10 @@ import org.springframework.boot.CommandLineRunner;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -57,15 +59,21 @@ class HomeStatusConfigTest {
     }
 
     @Test
-    void should_handle_error_on_initialization() throws Exception {
+    void should_fail_startup_when_database_is_unavailable() {
         HomeStatus homeStatus = new HomeStatus();
 
-        when(repository.findFirstByOrderByDateDesc()).thenReturn(Mono.error(new RuntimeException("DB Error")));
+        AtomicInteger subscriptions = new AtomicInteger();
+        when(repository.findFirstByOrderByDateDesc()).thenReturn(Mono.defer(() -> {
+            subscriptions.incrementAndGet();
+            return Mono.error(new RuntimeException("DB Error"));
+        }));
 
         CommandLineRunner runner = sut.initHomeStatus(homeStatus, repository);
-        runner.run();
+
+        assertThatThrownBy(runner::run).hasRootCauseMessage("DB Error");
 
         assertThat(homeStatus.getHomeHeatingSystemUpdatedAt()).isNull();
+        assertThat(subscriptions).hasValue(4);
         verify(repository).findFirstByOrderByDateDesc();
     }
 }

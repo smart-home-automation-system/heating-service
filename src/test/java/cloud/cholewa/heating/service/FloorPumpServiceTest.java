@@ -39,7 +39,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class FloorPumpServiceTest {
 
-    @Mock(answer = Answers.RETURNS_SMART_NULLS)
+    @Mock
     private Clock clock;
     @Mock(answer = Answers.RETURNS_SMART_NULLS)
     private ShellyClient shellyClient;

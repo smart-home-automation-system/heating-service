@@ -1,66 +1,56 @@
 package cloud.cholewa.heating.config;
 
+import io.r2dbc.pool.ConnectionPool;
+import io.r2dbc.pool.ConnectionPoolConfiguration;
 import io.r2dbc.spi.ConnectionFactories;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.Option;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.r2dbc.core.DefaultReactiveDataAccessStrategy;
-import org.springframework.data.r2dbc.core.R2dbcEntityOperations;
-import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
-import org.springframework.data.r2dbc.dialect.PostgresDialect;
 import org.springframework.data.r2dbc.repository.config.EnableR2dbcRepositories;
-import org.springframework.r2dbc.connection.init.ConnectionFactoryInitializer;
-import org.springframework.r2dbc.core.DatabaseClient;
+
+import java.time.Duration;
 
 @Configuration
+@RequiredArgsConstructor
 @EnableR2dbcRepositories
+@EnableConfigurationProperties(DatabaseProperties.class)
 public class DbConfig {
 
-    @Value("${spring.datasource.username}")
-    private String username;
+    private static final int POOL_INITIAL_SIZE = 2;
+    private static final int POOL_MAX_SIZE = 8;
+    private static final Duration POOL_MAX_ACQUIRE_TIME = Duration.ofSeconds(10);
+    private static final Duration POOL_MAX_IDLE_TIME = Duration.ofMinutes(5);
 
-    @Value("${spring.datasource.password}")
-    private String password;
+    private final DatabaseProperties databaseProperties;
 
-    @Value("${spring.datasource.host}")
-    private String host;
-
-    @Value("${spring.datasource.port}")
-    private Integer port;
-
-    @Value("${spring.datasource.database}")
-    private String database;
-
-    @Bean
+    //destroyMethod is explicit: the inferred close() returns a cold Publisher nobody subscribes to,
+    //so the pooled connections would survive every shutdown
+    @Bean(destroyMethod = "dispose")
     ConnectionFactory postgresConnectionFactory() {
-        return ConnectionFactories.get(ConnectionFactoryOptions.builder()
+        ConnectionFactory connectionFactory = ConnectionFactories.get(ConnectionFactoryOptions.builder()
             .option(ConnectionFactoryOptions.DRIVER, "postgresql")
-            .option(ConnectionFactoryOptions.HOST, host)
-            .option(ConnectionFactoryOptions.PORT, port)
-            .option(ConnectionFactoryOptions.DATABASE, database)
-            .option(ConnectionFactoryOptions.USER, username)
-            .option(ConnectionFactoryOptions.PASSWORD, password)
+            .option(ConnectionFactoryOptions.HOST, databaseProperties.host())
+            .option(ConnectionFactoryOptions.PORT, databaseProperties.port())
+            .option(ConnectionFactoryOptions.DATABASE, databaseProperties.name())
+            .option(ConnectionFactoryOptions.USER, databaseProperties.username())
+            .option(ConnectionFactoryOptions.PASSWORD, databaseProperties.password())
             .option(Option.valueOf("sslMode"), "REQUIRE")
             .build()
         );
-    }
 
-    @Bean
-    R2dbcEntityOperations entityTemplate(final ConnectionFactory postgresConnectionFactory) {
-        DefaultReactiveDataAccessStrategy strategy = new DefaultReactiveDataAccessStrategy(PostgresDialect.INSTANCE);
-
-        DatabaseClient databaseClient = DatabaseClient.builder().connectionFactory(postgresConnectionFactory).build();
-
-        return new R2dbcEntityTemplate(databaseClient, strategy);
-    }
-
-    @Bean
-    ConnectionFactoryInitializer initializer(ConnectionFactory postgresConnectionFactory) {
-        ConnectionFactoryInitializer initializer = new ConnectionFactoryInitializer();
-        initializer.setConnectionFactory(postgresConnectionFactory);
-        return initializer;
+        //without the pool every query opens its own physical connection - a RabbitMQ backlog
+        //exhausts the connection limit of the managed database within seconds
+        return new ConnectionPool(ConnectionPoolConfiguration.builder(connectionFactory)
+            .name("heating-service")
+            .initialSize(POOL_INITIAL_SIZE)
+            .maxSize(POOL_MAX_SIZE)
+            .maxAcquireTime(POOL_MAX_ACQUIRE_TIME)
+            .maxIdleTime(POOL_MAX_IDLE_TIME)
+            .build()
+        );
     }
 }
