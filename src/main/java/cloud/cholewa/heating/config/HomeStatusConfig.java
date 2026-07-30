@@ -19,6 +19,7 @@ public class HomeStatusConfig {
 
     private static final long RETRY_ATTEMPTS = 3;
     private static final Duration RETRY_BACKOFF = Duration.ofMillis(500);
+    private static final Duration STARTUP_TIMEOUT = Duration.ofSeconds(30);
 
     @Bean
     HomeStatus homeStatus() {
@@ -44,12 +45,13 @@ public class HomeStatusConfig {
                     }
                 })
                 .retryWhen(Retry.backoff(RETRY_ATTEMPTS, RETRY_BACKOFF))
-                .doOnError(throwable -> log.error(
-                    "Error updating home status from database: {}",
-                    throwable.getMessage()
-                ))
-                //blocking on purpose: startup must fail loudly instead of serving traffic with heating disabled
-                .block();
+                //log the throwable, not its message: Retry.backoff replaces it with "Retries exhausted"
+                //and the actual database error survives only as the cause
+                .doOnError(throwable -> log.error("Error updating home status from database", throwable))
+                //blocking on purpose: startup must fail loudly instead of serving traffic with heating
+                //disabled. The timeout matters - a hung query would leave the pod ready-less forever,
+                //with liveness still UP, so kubernetes would never restart it
+                .block(STARTUP_TIMEOUT);
         };
     }
 }

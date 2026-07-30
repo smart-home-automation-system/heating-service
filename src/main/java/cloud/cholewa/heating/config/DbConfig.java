@@ -27,7 +27,9 @@ public class DbConfig {
 
     private final DatabaseProperties databaseProperties;
 
-    @Bean
+    //destroyMethod is explicit: the inferred close() returns a cold Publisher nobody subscribes to,
+    //so the pooled connections would survive every shutdown
+    @Bean(destroyMethod = "dispose")
     ConnectionFactory postgresConnectionFactory() {
         ConnectionFactory connectionFactory = ConnectionFactories.get(ConnectionFactoryOptions.builder()
             .option(ConnectionFactoryOptions.DRIVER, "postgresql")

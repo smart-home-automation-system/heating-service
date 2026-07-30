@@ -6,6 +6,7 @@ import cloud.cholewa.home.model.RoomName;
 import cloud.cholewa.home.model.TemperatureMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -30,7 +31,10 @@ public class TemperatureService {
             //retry the write only - retrying the whole chain would resend the relay commands
             .flatMap(entity -> temperatureRepository.save(entity)
                 .retryWhen(Retry.backoff(SAVE_RETRY_ATTEMPTS, SAVE_RETRY_BACKOFF)
-                    .filter(TransientDataAccessException.class::isInstance)))
+                    //a lost or refused connection arrives as DataAccessResourceFailureException,
+                    //which is not a TransientDataAccessException
+                    .filter(throwable -> throwable instanceof TransientDataAccessException
+                        || throwable instanceof DataAccessResourceFailureException)))
             .doOnNext(entity ->
                 log.info("Saved temperature: {}°C for room: {}", entity.temperature(), entity.room()))
             .flatMap(entity ->

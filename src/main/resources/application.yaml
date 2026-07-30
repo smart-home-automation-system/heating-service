@@ -16,8 +16,10 @@ spring:
     requested-heartbeat: 10s
     listener:
       simple:
-        # keep the in-flight messages below the database pool size - the listener returns a Mono,
-        # so the container does not wait for one message before taking the next one
+        # the listener returns a Mono; with the default AUTO mode the container acks before the
+        # write even starts, so prefetch throttles nothing and the ack is sent twice
+        acknowledge-mode: manual
+        # in-flight messages stay below the database pool size
         prefetch: 5
   flyway:
     url: ${flyway-url:jdbc:postgresql://${database.host}:${database.port}/${database.name}}
