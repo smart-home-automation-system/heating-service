@@ -43,12 +43,19 @@ management:
     health:
       probes:
         enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
 
 logbook:
   format:
     style: json
 
 logging:
+  structured:
+    format:
+      console: logstash
   level:
     org.zalando.logbook: trace
 
@@ -105,6 +112,11 @@ management:
 logbook:
   format:
     style: http
+
+logging:
+  structured:
+    format:
+      console: ""
 
 rabbitmq:
   queue:
