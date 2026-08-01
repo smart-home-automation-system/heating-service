@@ -6,6 +6,10 @@ spring:
     active: home
   webflux:
     base-path: "/home/heating"
+  reactor:
+    # default LIMITED restores ThreadLocals only in "tap" and "handle", so traceId would be
+    # missing from the MDC of every log statement inside a reactive chain
+    context-propagation: auto
   rabbitmq:
     host: rabbitmq-headless
     port: 5672
@@ -14,8 +18,13 @@ spring:
     virtual-host: /temperature
     connection-timeout: 10s
     requested-heartbeat: 10s
+    template:
+      # both default to false; without them the trace breaks at the queue between
+      # amx-service, heating-service and notification-service
+      observation-enabled: true
     listener:
       simple:
+        observation-enabled: true
         # the listener returns a Mono; with the default AUTO mode the container acks before the
         # write even starts, so prefetch throttles nothing and the ack is sent twice
         acknowledge-mode: manual
@@ -47,6 +56,11 @@ management:
     web:
       exposure:
         include: health,info,prometheus
+  tracing:
+    sampling:
+      # default 0.1; a home system generates so little traffic that sampling everything is free,
+      # and a partially sampled trace is useless when it is the only record of a request
+      probability: 1.0
 
 logbook:
   format:
