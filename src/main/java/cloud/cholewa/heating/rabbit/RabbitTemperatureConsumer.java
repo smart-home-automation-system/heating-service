@@ -27,6 +27,10 @@ public class RabbitTemperatureConsumer {
             .onErrorResume(throwable -> {
                 log.error("Error while consuming temperature message: {}", throwable.getMessage());
                 return Mono.empty();
-            });
+            })
+            //the listener observation lives in a ThreadLocal, but the container subscribes in a way that
+            //does not trigger the automatic capture, so the reactor context stays empty and traceId is
+            //lost on the first thread switch; this captures it at subscribe, where it is still present
+            .contextCapture();
     }
 }
