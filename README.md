@@ -61,6 +61,11 @@ properties and `spring.rabbitmq.*`; in the cluster they are injected from Kubern
 secrets. The `local` profile points RabbitMQ at `localhost` and uses the
 `temperature.dev.heating` queue.
 
+The `ConnectionFactory` itself is built by `cholewa-commons`, not by this service. Only the
+pool size is pinned here — `database.pool.max-size: 8` — because the managed database allows
+22 backend connections in total and this service holds the largest share of them; the
+remaining pool settings come from the library defaults.
+
 ## API
 
 All paths are served under the `/home/heating` base path (`spring.webflux.base-path`), which

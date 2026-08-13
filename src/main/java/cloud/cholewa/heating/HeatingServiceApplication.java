@@ -7,8 +7,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-@EnableConfigurationProperties({RelayConfig.class})
 @EnableScheduling
+@EnableConfigurationProperties({RelayConfig.class})
 public class HeatingServiceApplication {
 
     public static void main(String[] args) {
