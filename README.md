@@ -13,7 +13,7 @@
 
 ![GitHub top language](https://img.shields.io/github/languages/top/smart-home-automation-system/heating-service?style=plastic)
 ![Java](https://img.shields.io/badge/java-21-yellow?style=plastic)
-![SpringBoot](https://img.shields.io/badge/SpringBoot-4.1.0-blue?style=plastic)
+![SpringBoot](https://img.shields.io/badge/SpringBoot-4.1.1-blue?style=plastic)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=smart-home-automation-system_heating-service&metric=coverage)](https://sonarcloud.io/summary/new_code?id=smart-home-automation-system_heating-service)
 [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=smart-home-automation-system_heating-service&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=smart-home-automation-system_heating-service)
 
@@ -62,9 +62,10 @@ secrets. The `local` profile points RabbitMQ at `localhost` and uses the
 `temperature.dev.heating` queue.
 
 The `ConnectionFactory` itself is built by `cholewa-commons`, not by this service. Only the
-pool size is pinned here — `database.pool.max-size: 8` — because the managed database allows
-22 backend connections in total and this service holds the largest share of them; the
-remaining pool settings come from the library defaults.
+pool size is pinned here — `database.pool.max-size: 4` — because the managed database allows
+22 backend connections in total, shared by four services; the remaining pool settings come
+from the library defaults, which since `cholewa-commons` 1.5 include validating every
+connection on acquire.
 
 ## API
 
@@ -88,7 +89,7 @@ Kubernetes probes, live on the management port, not on the application one.
 
 Messages are produced by `amx-service`; both sides use `JacksonJsonMessageConverter`. The
 listener acknowledges manually — it returns a `Mono`, so the acknowledgement has to wait for
-the reactive pipeline to finish — and the prefetch is kept below the database connection
-pool size, so a backlog is held by the broker instead of the service. The service does not
+the reactive pipeline to finish — and the prefetch (3) is kept below the database connection
+pool size (4), so a backlog is held by the broker instead of the service. The service does not
 publish to RabbitMQ; outgoing traffic goes to the Shelly devices over HTTP and to
 PostgreSQL.
