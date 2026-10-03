@@ -41,6 +41,7 @@
 		<tidy-maven-plugin.version>1.4.0</tidy-maven-plugin.version>
 		<versions-maven-plugin.version>2.21.0</versions-maven-plugin.version>
 	</properties>
+
 	<dependencies>
 		<!--  internal dependencies versions-->
 		<dependency>
