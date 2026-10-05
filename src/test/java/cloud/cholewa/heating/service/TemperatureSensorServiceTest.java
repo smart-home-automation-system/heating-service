@@ -68,6 +68,34 @@ class TemperatureSensorServiceTest {
             .verifyComplete();
     }
 
+    @Test
+    void should_fail_the_query_when_a_room_cannot_be_read() {
+        when(temperatureRepository.findFirstByRoomOrderByDateDesc("office"))
+            .thenReturn(Mono.error(new IllegalStateException("database down")));
+
+        sut.querySensors()
+            .as(StepVerifier::create)
+            .verifyError(IllegalStateException.class);
+    }
+
+    @Test
+    void should_leave_out_room_that_cannot_be_read_and_go_on_with_the_others() {
+        final LocalDateTime reading = NOW.minusHours(1);
+
+        when(temperatureRepository.findFirstByRoomOrderByDateDesc("office"))
+            .thenReturn(Mono.error(new IllegalStateException("database down")));
+        when(temperatureRepository.findFirstByRoomOrderByDateDesc("garage"))
+            .thenReturn(Mono.just(new TemperatureEntity(2L, reading, "garage", 12.0)));
+        when(temperatureRepository.findFirstByRoomOrderByDateDesc("loft"))
+            .thenReturn(Mono.just(new TemperatureEntity(3L, reading, "loft", 18.0)));
+
+        sut.queryReadableSensors()
+            .as(StepVerifier::create)
+            .expectNext(new TemperatureSensorReply(RoomName.GARAGE, reading, false, true))
+            .expectNext(new TemperatureSensorReply(RoomName.LOFT, reading, false, false))
+            .verifyComplete();
+    }
+
     private static Room room(final RoomName name) {
         return Room.builder().name(name).build();
     }

@@ -61,7 +61,11 @@ review.
 - **`heating.sensor-monitor.muted-rooms`** takes a sensor out of the alerts (a retired one would
   otherwise remind every day forever). The values bind to `RoomName` by constant name
   (`living-room`, not `living room`); an unknown name fails the startup. A muted room is still
-  listed by the endpoint, with `muted: true`.
+  listed by the endpoint, with `muted: true`, and an alert row it still had is deleted without
+  a message.
+- **The check reads the rooms with `queryReadableSensors`**: a room whose last reading cannot
+  be read is logged and skipped, so one failing query does not end the pass for the rooms
+  after it. The endpoint uses the strict `querySensors` and fails as a whole.
 - **"Now" is read inside the chain** in `SensorMonitorService` and `TemperatureSensorService`:
   Spring calls the reactive `@Scheduled` method once and re-subscribes to the same `Mono`.
   The test subscribes twice with the clock moved on.

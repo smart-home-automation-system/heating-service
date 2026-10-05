@@ -49,8 +49,7 @@ public class SensorMonitorService {
     }
 
     private Mono<Void> checkSensors(final Map<String, TemperatureSensorAlertEntity> alerts, final LocalDateTime now) {
-        return temperatureSensorService.querySensors()
-            .filter(sensor -> !sensor.muted())
+        return temperatureSensorService.queryReadableSensors()
             .concatMap(sensor -> checkSensor(sensor, alerts.get(sensor.room().getValue()), now)
                 //one failing sensor must not hide the others
                 .onErrorResume(throwable -> {
@@ -65,6 +64,11 @@ public class SensorMonitorService {
         final TemperatureSensorAlertEntity alert,
         final LocalDateTime now
     ) {
+        if (sensor.muted()) {
+            //muted while it was silent: left in place, the row would produce a "reporting again"
+            //message on the day the room is un-muted, about a recovery long past
+            return alert == null ? Mono.empty() : alertRepository.delete(alert);
+        }
         if (sensor.stale()) {
             return alert == null ? raise(sensor, now) : remind(sensor, alert, now);
         }

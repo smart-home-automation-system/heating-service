@@ -63,7 +63,7 @@ class SensorMonitorServiceTest {
 
     @Test
     void should_raise_alert_once_when_sensor_becomes_stale() {
-        when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(true)));
+        when(temperatureSensorService.queryReadableSensors()).thenReturn(Flux.just(sensor(true)));
         when(alertRepository.findAll()).thenReturn(Flux.empty());
         when(notificationPublisher.publishAlert(SILENT_MESSAGE)).thenReturn(Mono.empty());
         when(alertRepository.save(any())).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
@@ -75,7 +75,7 @@ class SensorMonitorServiceTest {
 
     @Test
     void should_stay_quiet_when_stale_sensor_was_reported_less_than_reminder_interval_ago() {
-        when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(true)));
+        when(temperatureSensorService.queryReadableSensors()).thenReturn(Flux.just(sensor(true)));
         when(alertRepository.findAll()).thenReturn(Flux.just(
             new TemperatureSensorAlertEntity(7L, "office", NOW.minusHours(23), NOW.minusHours(23))));
 
@@ -89,7 +89,7 @@ class SensorMonitorServiceTest {
     void should_remind_when_sensor_is_still_stale_after_reminder_interval() {
         final LocalDateTime staleSince = NOW.minusHours(24);
 
-        when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(true)));
+        when(temperatureSensorService.queryReadableSensors()).thenReturn(Flux.just(sensor(true)));
         when(alertRepository.findAll()).thenReturn(Flux.just(
             new TemperatureSensorAlertEntity(7L, "office", staleSince, staleSince)));
         when(notificationPublisher.publishAlert(SILENT_MESSAGE)).thenReturn(Mono.empty());
@@ -106,7 +106,7 @@ class SensorMonitorServiceTest {
     @Test
     void should_remind_after_exactly_one_interval_despite_scheduler_jitter() {
         clock.moveTo(NOW.plusNanos(4_000_000));
-        when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(true)));
+        when(temperatureSensorService.queryReadableSensors()).thenReturn(Flux.just(sensor(true)));
         when(alertRepository.findAll()).thenReturn(Flux.empty());
         when(notificationPublisher.publishAlert(SILENT_MESSAGE)).thenReturn(Mono.empty());
         when(alertRepository.save(any())).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
@@ -129,7 +129,7 @@ class SensorMonitorServiceTest {
         final TemperatureSensorAlertEntity alert =
             new TemperatureSensorAlertEntity(7L, "office", NOW.minusDays(2), NOW.minusHours(3));
 
-        when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(false)));
+        when(temperatureSensorService.queryReadableSensors()).thenReturn(Flux.just(sensor(false)));
         when(alertRepository.findAll()).thenReturn(Flux.just(alert));
         when(notificationPublisher.publishInfo(
             "Temperature sensor in room office is reporting again (last reading 2026-10-04 10:30)"))
@@ -147,7 +147,7 @@ class SensorMonitorServiceTest {
         final TemperatureSensorAlertEntity alert =
             new TemperatureSensorAlertEntity(7L, "office", NOW.minusDays(2), NOW.minusHours(3));
 
-        when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(false)));
+        when(temperatureSensorService.queryReadableSensors()).thenReturn(Flux.just(sensor(false)));
         when(alertRepository.findAll()).thenReturn(Flux.just(alert));
         when(notificationPublisher.publishInfo(anyString()))
             .thenReturn(Mono.error(new IllegalStateException("not routed")));
@@ -160,7 +160,7 @@ class SensorMonitorServiceTest {
 
     @Test
     void should_do_nothing_for_reporting_sensor_without_alert() {
-        when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(false)));
+        when(temperatureSensorService.queryReadableSensors()).thenReturn(Flux.just(sensor(false)));
         when(alertRepository.findAll()).thenReturn(Flux.empty());
 
         sut.checkSensors().as(StepVerifier::create).verifyComplete();
@@ -171,7 +171,7 @@ class SensorMonitorServiceTest {
 
     @Test
     void should_skip_muted_sensor_even_when_stale() {
-        when(temperatureSensorService.querySensors()).thenReturn(Flux.just(
+        when(temperatureSensorService.queryReadableSensors()).thenReturn(Flux.just(
             new TemperatureSensorReply(RoomName.SAUNA, LAST_READING, true, true)));
         when(alertRepository.findAll()).thenReturn(Flux.empty());
 
@@ -182,8 +182,25 @@ class SensorMonitorServiceTest {
     }
 
     @Test
+    void should_forget_alert_of_muted_sensor_without_any_notification() {
+        final TemperatureSensorAlertEntity alert =
+            new TemperatureSensorAlertEntity(9L, "sauna", NOW.minusDays(30), NOW.minusHours(5));
+
+        when(temperatureSensorService.queryReadableSensors()).thenReturn(Flux.just(
+            new TemperatureSensorReply(RoomName.SAUNA, LAST_READING, false, true)));
+        when(alertRepository.findAll()).thenReturn(Flux.just(alert));
+        when(alertRepository.delete(alert)).thenReturn(Mono.empty());
+
+        sut.checkSensors().as(StepVerifier::create).verifyComplete();
+
+        verify(alertRepository).delete(alert);
+        verify(notificationPublisher, never()).publishInfo(anyString());
+        verify(notificationPublisher, never()).publishAlert(anyString());
+    }
+
+    @Test
     void should_not_store_alert_when_notification_was_not_published() {
-        when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(true)));
+        when(temperatureSensorService.queryReadableSensors()).thenReturn(Flux.just(sensor(true)));
         when(alertRepository.findAll()).thenReturn(Flux.empty());
         when(notificationPublisher.publishAlert(SILENT_MESSAGE))
             .thenReturn(Mono.error(new IllegalStateException("broker down")));
@@ -198,7 +215,7 @@ class SensorMonitorServiceTest {
     void should_check_remaining_sensors_when_one_fails() {
         final TemperatureSensorReply garage = new TemperatureSensorReply(RoomName.GARAGE, LAST_READING, true, false);
 
-        when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(true), garage));
+        when(temperatureSensorService.queryReadableSensors()).thenReturn(Flux.just(sensor(true), garage));
         when(alertRepository.findAll()).thenReturn(Flux.empty());
         when(notificationPublisher.publishAlert(SILENT_MESSAGE))
             .thenReturn(Mono.error(new IllegalStateException("broker down")));
@@ -216,7 +233,7 @@ class SensorMonitorServiceTest {
     //run - a fresh call per run would hide a "now" frozen when the Mono was built
     @Test
     void should_read_the_clock_on_every_subscription_of_the_same_mono() {
-        when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(true)));
+        when(temperatureSensorService.queryReadableSensors()).thenReturn(Flux.just(sensor(true)));
         when(alertRepository.findAll()).thenReturn(Flux.empty());
         when(notificationPublisher.publishAlert(SILENT_MESSAGE)).thenReturn(Mono.empty());
         when(alertRepository.save(any())).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
