@@ -96,7 +96,7 @@ Kubernetes probes, live on the management port, not on the application one.
 | Direction | Queue / exchange | Virtual host | Payload |
 |---|---|---|---|
 | consumes | queue `temperature.prod.heating` (`temperature.dev.heating` in the `local` profile) | `/temperature` | `cloud.cholewa.home.model.TemperatureMessage` (`smart-home-sdk`) |
-| publishes | exchange `notification` (headers), `category=alert\|info`, `env=prod` (`dev` in the `local` profile) | `/notification` | plain text (`text/plain`, UTF-8) |
+| publishes | exchange `notification` (headers), `category=alert\|info`, `env=prod` (`dev` in the `local` profile), `level=error\|warn\|info` | `/notification` | plain text (`text/plain`, UTF-8) |
 
 Messages are produced by `amx-service`; both sides use `JacksonJsonMessageConverter`. The
 listener acknowledges manually — it returns a `Mono`, so the acknowledgement has to wait for
@@ -109,7 +109,9 @@ from `notification-rabbitmq-password` — it has no default, the service does no
 it). The exchange is a headers exchange: the routing key is
 ignored and the queue — `notification.<env>.<category>` — is chosen by the `category` and
 `env` headers. A sensor that went silent or is still silent is an `alert`, a sensor that came
-back an `info`. A notification counts as sent only when the broker has confirmed it and has
+back an `info`. A third header, `level`, is not routed by: `notification-service` picks the
+color on Discord from it — `error` for the first alert, `warn` for the reminders, `info` for
+the recovery. A notification counts as sent only when the broker has confirmed it and has
 not returned it as unroutable; until then the sensor state is not updated and the next check
 tries again. The check is configured under `heating.sensor-monitor` (`cron`, `stale-after`,
 `reminder-interval` — a bare number is hours, the minimum is one hour — and `muted-rooms`,
