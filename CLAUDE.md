@@ -50,6 +50,10 @@ review.
   correlated confirms + mandatory). A `send` that merely returns proves nothing: an unroutable
   message is confirmed too, and the alert row would be written for a notification that reached
   no queue.
+- **The `level` header (`error` / `warn` / `info`) is for the reader, not for the broker**: the
+  exchange routes by `category` and `env` only, and `notification-service` colors the Discord
+  message by `level`. The first alert is an `error`, a reminder a `warn` — both on the `alert`
+  queue — and a recovery an `info`.
 - **Notifications are plain text, not JSON.** `notification-service` reads the message as a
   `String` with the default converter; through `JacksonJsonMessageConverter` the text would
   arrive quoted and typed `application/json`.

@@ -26,7 +26,6 @@ import java.util.Set;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -92,13 +91,15 @@ class SensorMonitorServiceTest {
         when(temperatureSensorService.queryReadableSensors()).thenReturn(Flux.just(sensor(true)));
         when(alertRepository.findAll()).thenReturn(Flux.just(
             new TemperatureSensorAlertEntity(7L, "office", staleSince, staleSince)));
-        when(notificationPublisher.publishAlert(SILENT_MESSAGE)).thenReturn(Mono.empty());
+        when(notificationPublisher.publishReminder(SILENT_MESSAGE)).thenReturn(Mono.empty());
         when(alertRepository.save(any())).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
         sut.checkSensors().as(StepVerifier::create).verifyComplete();
 
         //the same row moves on: stale since stays, only the last alert is new
         verify(alertRepository).save(new TemperatureSensorAlertEntity(7L, "office", staleSince, NOW));
+        //a reminder, not a second alert: it is shown in another color
+        verify(notificationPublisher, never()).publishAlert(anyString());
     }
 
     //the pass a day later starts a few milliseconds earlier within its second than the one that
@@ -117,10 +118,12 @@ class SensorMonitorServiceTest {
         clock.moveTo(NOW.plusHours(24).plusNanos(1_000_000));
         when(alertRepository.findAll()).thenReturn(Flux.just(
             new TemperatureSensorAlertEntity(7L, "office", NOW, NOW)));
+        when(notificationPublisher.publishReminder(SILENT_MESSAGE)).thenReturn(Mono.empty());
 
         sut.checkSensors().as(StepVerifier::create).verifyComplete();
 
-        verify(notificationPublisher, times(2)).publishAlert(SILENT_MESSAGE);
+        verify(notificationPublisher).publishAlert(SILENT_MESSAGE);
+        verify(notificationPublisher).publishReminder(SILENT_MESSAGE);
         verify(alertRepository).save(new TemperatureSensorAlertEntity(7L, "office", NOW, NOW.plusHours(24)));
     }
 

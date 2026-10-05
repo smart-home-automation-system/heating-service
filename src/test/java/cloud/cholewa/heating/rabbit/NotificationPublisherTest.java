@@ -62,6 +62,22 @@ class NotificationPublisherTest {
         assertThat(message.getMessageProperties().getContentEncoding()).isEqualTo("UTF-8");
         assertThat(message.getMessageProperties().getHeaders())
             .containsEntry("category", "alert")
+            .containsEntry("level", "error")
+            .containsEntry("env", "dev");
+    }
+
+    //the same queue as the alert, another color on Discord
+    @Test
+    void should_publish_reminder_as_alert_with_warn_level() {
+        brokerAnswers(correlationData -> correlationData.getFuture().complete(new CorrelationData.Confirm(true, null)));
+
+        sut.publishReminder("Sensor is still not reporting").as(StepVerifier::create).verifyComplete();
+
+        verify(rabbitOperations).send(eq("notification"), eq(""), messageCaptor.capture(), any(CorrelationData.class));
+
+        assertThat(messageCaptor.getValue().getMessageProperties().getHeaders())
+            .containsEntry("category", "alert")
+            .containsEntry("level", "warn")
             .containsEntry("env", "dev");
     }
 
@@ -75,6 +91,7 @@ class NotificationPublisherTest {
 
         assertThat(messageCaptor.getValue().getMessageProperties().getHeaders())
             .containsEntry("category", "info")
+            .containsEntry("level", "info")
             .containsEntry("env", "dev");
     }
 

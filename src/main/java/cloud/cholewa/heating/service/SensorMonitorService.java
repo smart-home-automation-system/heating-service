@@ -92,7 +92,7 @@ public class SensorMonitorService {
         if (alert.lastAlertAt().plus(properties.reminderInterval()).isAfter(now)) {
             return Mono.empty();
         }
-        return notificationPublisher.publishAlert(silentMessage(sensor))
+        return notificationPublisher.publishReminder(silentMessage(sensor))
             .then(alertRepository.save(
                 new TemperatureSensorAlertEntity(alert.id(), alert.room(), alert.staleSince(), now)))
             .then();
