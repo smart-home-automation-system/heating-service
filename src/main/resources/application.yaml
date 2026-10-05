@@ -82,6 +82,25 @@ rabbitmq:
   queue:
     name: temperature.prod.heating
 
+# the notification exchange is on the same broker as spring.rabbitmq.*, on its own virtual host;
+# it is a headers exchange and "env" is one of the two headers it routes by
+notification:
+  virtual-host: /notification
+  username: notification
+  # no default on purpose: with one the pod would start, turn Ready and fail every publish
+  password: ${notification-rabbitmq-password}
+  exchange: notification
+  env: prod
+
+heating:
+  sensor-monitor:
+    cron: "0 0 * * * *"
+    # a bare number is hours
+    stale-after: 24h
+    reminder-interval: 24h
+    # rooms whose sensor is not reported, e.g. one taken out of service: [sauna, garden]
+    muted-rooms: []
+
 shelly:
   actor:
     scheme: http
@@ -141,6 +160,9 @@ rabbitmq:
   queue:
     name: temperature.dev.heating
 
+notification:
+  env: dev
+
 ---
 
 spring:
@@ -149,6 +171,9 @@ spring:
       on-profile: test
   flyway:
     enabled: false
+
+notification:
+  password: dummyPassword
 
 logbook:
   format:

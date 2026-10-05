@@ -1,6 +1,8 @@
 package cloud.cholewa.heating;
 
+import cloud.cholewa.heating.config.NotificationProperties;
 import cloud.cholewa.heating.config.RelayConfig;
+import cloud.cholewa.heating.config.SensorMonitorProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -8,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-@EnableConfigurationProperties({RelayConfig.class})
+@EnableConfigurationProperties({RelayConfig.class, SensorMonitorProperties.class, NotificationProperties.class})
 public class HeatingServiceApplication {
 
     public static void main(String[] args) {

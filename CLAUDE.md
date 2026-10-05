@@ -14,8 +14,10 @@ review.
 ## Role in the system
 
 - Consumes: `temperature.prod.heating` on the `/temperature` virtual host
-  (`TemperatureMessage` from `smart-home-sdk`), published by `amx-service`. It does not
-  publish anything.
+  (`TemperatureMessage` from `smart-home-sdk`), published by `amx-service`.
+- Publishes: plain-text notifications about silent temperature sensors to the headers exchange
+  `notification` on the `/notification` virtual host (HAS-94), consumed by
+  `notification-service` and posted on Discord.
 - Is called by: `boiler-service` (`GET /home/heating/status/active`) and, through
   `api-gateway-service`, by whoever switches the heating on and off (`/home/heating`).
 - Calls: the Shelly relays on the LAN over HTTP, and PostgreSQL.
@@ -34,6 +36,42 @@ review.
 
 ## Specifics
 
+- **The notification connection is deliberately not a bean** (`NotificationRabbitConfig`).
+  The exchange is on another virtual host, so it takes a second connection — but a
+  `ConnectionFactory` or `RabbitOperations` bean makes `RabbitAutoConfiguration` back off, and
+  the temperature listener would lose the auto-configured connection with its manual ack,
+  prefetch and observation. The factory and the template are built by hand inside the
+  `NotificationPublisher` bean method; observation is switched on there explicitly, because
+  `spring.rabbitmq.template.*` never reaches this template. The connection is opened on the
+  first publish, so a wrong password shows up in the hourly check, not at startup — a missing
+  one does fail the startup, `notification.password` has no default outside the `test`
+  document.
+- **A publish completes only on a broker confirm without a return** (`NotificationPublisher`,
+  correlated confirms + mandatory). A `send` that merely returns proves nothing: an unroutable
+  message is confirmed too, and the alert row would be written for a notification that reached
+  no queue.
+- **Notifications are plain text, not JSON.** `notification-service` reads the message as a
+  `String` with the default converter; through `JacksonJsonMessageConverter` the text would
+  arrive quoted and typed `application/json`.
+- **The sensor check publishes first and writes the alert row second.** A failed write repeats
+  the message on the next pass; the other order would lose it. `temperature_sensor_alert`
+  holds one row per sensor that is silent right now — it changes on a state change or a
+  reminder, never on a plain check. "Now" is truncated to the minute there, so two passes a
+  reminder interval apart do not miss each other by scheduler jitter.
+- **`heating.sensor-monitor.muted-rooms`** takes a sensor out of the alerts (a retired one would
+  otherwise remind every day forever). The values bind to `RoomName` by constant name
+  (`living-room`, not `living room`); an unknown name fails the startup. A muted room is still
+  listed by the endpoint, with `muted: true`, and an alert row it still had is deleted without
+  a message.
+- **The check reads the rooms with `queryReadableSensors`**: a room whose last reading cannot
+  be read is logged and skipped, so one failing query does not end the pass for the rooms
+  after it. The endpoint uses the strict `querySensors` and fails as a whole.
+- **"Now" is read inside the chain** in `SensorMonitorService` and `TemperatureSensorService`:
+  Spring calls the reactive `@Scheduled` method once and re-subscribes to the same `Mono`.
+  The test subscribes twice with the clock moved on.
+- **The last reading is one indexed query per room** (`room_temperature (room, date DESC)`),
+  run one room at a time so a pass holds a single pooled connection. A `GROUP BY` over the
+  whole table would read every row.
 - **`database.pool.max-size` is 4, and `prefetch` is 3 because of it.** The listener returns
   a `Mono`, so every in-flight message may hold a connection; the prefetch has to stay below
   the pool size or a backlog is pulled into the service and waits on the pool instead of in
