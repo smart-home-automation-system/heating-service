@@ -87,7 +87,8 @@ rabbitmq:
 notification:
   virtual-host: /notification
   username: notification
-  password: ${notification-rabbitmq-password:dummyPassword}
+  # no default on purpose: with one the pod would start, turn Ready and fail every publish
+  password: ${notification-rabbitmq-password}
   exchange: notification
   env: prod
 
@@ -97,6 +98,8 @@ heating:
     # a bare number is hours
     stale-after: 24h
     reminder-interval: 24h
+    # rooms whose sensor is not reported, e.g. one taken out of service: [sauna, garden]
+    muted-rooms: []
 
 shelly:
   actor:
@@ -168,6 +171,9 @@ spring:
       on-profile: test
   flyway:
     enabled: false
+
+notification:
+  password: dummyPassword
 
 logbook:
   format:

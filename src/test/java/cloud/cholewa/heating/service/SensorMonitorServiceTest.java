@@ -21,10 +21,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -52,7 +54,7 @@ class SensorMonitorServiceTest {
     void setUp() {
         sut = new SensorMonitorService(
             clock,
-            new SensorMonitorProperties("0 0 * * * *", Duration.ofHours(24), Duration.ofHours(24)),
+            new SensorMonitorProperties("0 0 * * * *", Duration.ofHours(24), Duration.ofHours(24), Set.of()),
             temperatureSensorService,
             alertRepository,
             notificationPublisher
@@ -62,7 +64,7 @@ class SensorMonitorServiceTest {
     @Test
     void should_raise_alert_once_when_sensor_becomes_stale() {
         when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(true)));
-        when(alertRepository.findByRoom("office")).thenReturn(Mono.empty());
+        when(alertRepository.findAll()).thenReturn(Flux.empty());
         when(notificationPublisher.publishAlert(SILENT_MESSAGE)).thenReturn(Mono.empty());
         when(alertRepository.save(any())).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
@@ -74,7 +76,7 @@ class SensorMonitorServiceTest {
     @Test
     void should_stay_quiet_when_stale_sensor_was_reported_less_than_reminder_interval_ago() {
         when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(true)));
-        when(alertRepository.findByRoom("office")).thenReturn(Mono.just(
+        when(alertRepository.findAll()).thenReturn(Flux.just(
             new TemperatureSensorAlertEntity(7L, "office", NOW.minusHours(23), NOW.minusHours(23))));
 
         sut.checkSensors().as(StepVerifier::create).verifyComplete();
@@ -88,7 +90,7 @@ class SensorMonitorServiceTest {
         final LocalDateTime staleSince = NOW.minusHours(24);
 
         when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(true)));
-        when(alertRepository.findByRoom("office")).thenReturn(Mono.just(
+        when(alertRepository.findAll()).thenReturn(Flux.just(
             new TemperatureSensorAlertEntity(7L, "office", staleSince, staleSince)));
         when(notificationPublisher.publishAlert(SILENT_MESSAGE)).thenReturn(Mono.empty());
         when(alertRepository.save(any())).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
@@ -99,13 +101,36 @@ class SensorMonitorServiceTest {
         verify(alertRepository).save(new TemperatureSensorAlertEntity(7L, "office", staleSince, NOW));
     }
 
+    //the pass a day later starts a few milliseconds earlier within its second than the one that
+    //raised the alert; compared exactly, the reminder would wait for the next hour
+    @Test
+    void should_remind_after_exactly_one_interval_despite_scheduler_jitter() {
+        clock.moveTo(NOW.plusNanos(4_000_000));
+        when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(true)));
+        when(alertRepository.findAll()).thenReturn(Flux.empty());
+        when(notificationPublisher.publishAlert(SILENT_MESSAGE)).thenReturn(Mono.empty());
+        when(alertRepository.save(any())).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+
+        sut.checkSensors().as(StepVerifier::create).verifyComplete();
+        verify(alertRepository).save(new TemperatureSensorAlertEntity(null, "office", NOW, NOW));
+
+        clock.moveTo(NOW.plusHours(24).plusNanos(1_000_000));
+        when(alertRepository.findAll()).thenReturn(Flux.just(
+            new TemperatureSensorAlertEntity(7L, "office", NOW, NOW)));
+
+        sut.checkSensors().as(StepVerifier::create).verifyComplete();
+
+        verify(notificationPublisher, times(2)).publishAlert(SILENT_MESSAGE);
+        verify(alertRepository).save(new TemperatureSensorAlertEntity(7L, "office", NOW, NOW.plusHours(24)));
+    }
+
     @Test
     void should_publish_info_and_forget_alert_when_sensor_reports_again() {
         final TemperatureSensorAlertEntity alert =
             new TemperatureSensorAlertEntity(7L, "office", NOW.minusDays(2), NOW.minusHours(3));
 
         when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(false)));
-        when(alertRepository.findByRoom("office")).thenReturn(Mono.just(alert));
+        when(alertRepository.findAll()).thenReturn(Flux.just(alert));
         when(notificationPublisher.publishInfo(
             "Temperature sensor in room office is reporting again (last reading 2026-10-04 10:30)"))
             .thenReturn(Mono.empty());
@@ -118,9 +143,25 @@ class SensorMonitorServiceTest {
     }
 
     @Test
+    void should_keep_alert_when_recovery_info_was_not_published() {
+        final TemperatureSensorAlertEntity alert =
+            new TemperatureSensorAlertEntity(7L, "office", NOW.minusDays(2), NOW.minusHours(3));
+
+        when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(false)));
+        when(alertRepository.findAll()).thenReturn(Flux.just(alert));
+        when(notificationPublisher.publishInfo(anyString()))
+            .thenReturn(Mono.error(new IllegalStateException("not routed")));
+        //assembled eagerly by then(...), but must never be subscribed
+        when(alertRepository.delete(alert)).thenReturn(Mono.error(new AssertionError("alert forgotten")));
+
+        //the row stays, so the next pass tries the info again
+        sut.checkSensors().as(StepVerifier::create).verifyComplete();
+    }
+
+    @Test
     void should_do_nothing_for_reporting_sensor_without_alert() {
         when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(false)));
-        when(alertRepository.findByRoom("office")).thenReturn(Mono.empty());
+        when(alertRepository.findAll()).thenReturn(Flux.empty());
 
         sut.checkSensors().as(StepVerifier::create).verifyComplete();
 
@@ -129,9 +170,21 @@ class SensorMonitorServiceTest {
     }
 
     @Test
+    void should_skip_muted_sensor_even_when_stale() {
+        when(temperatureSensorService.querySensors()).thenReturn(Flux.just(
+            new TemperatureSensorReply(RoomName.SAUNA, LAST_READING, true, true)));
+        when(alertRepository.findAll()).thenReturn(Flux.empty());
+
+        sut.checkSensors().as(StepVerifier::create).verifyComplete();
+
+        verify(notificationPublisher, never()).publishAlert(anyString());
+        verify(alertRepository, never()).save(any());
+    }
+
+    @Test
     void should_not_store_alert_when_notification_was_not_published() {
         when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(true)));
-        when(alertRepository.findByRoom("office")).thenReturn(Mono.empty());
+        when(alertRepository.findAll()).thenReturn(Flux.empty());
         when(notificationPublisher.publishAlert(SILENT_MESSAGE))
             .thenReturn(Mono.error(new IllegalStateException("broker down")));
         //assembled eagerly by then(...), but must never be subscribed
@@ -143,12 +196,15 @@ class SensorMonitorServiceTest {
 
     @Test
     void should_check_remaining_sensors_when_one_fails() {
-        final TemperatureSensorReply garage = new TemperatureSensorReply(RoomName.GARAGE, LAST_READING, true);
+        final TemperatureSensorReply garage = new TemperatureSensorReply(RoomName.GARAGE, LAST_READING, true, false);
 
         when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(true), garage));
-        when(alertRepository.findByRoom("office")).thenReturn(Mono.error(new IllegalStateException("database down")));
-        when(alertRepository.findByRoom("garage")).thenReturn(Mono.empty());
-        when(notificationPublisher.publishAlert(anyString())).thenReturn(Mono.empty());
+        when(alertRepository.findAll()).thenReturn(Flux.empty());
+        when(notificationPublisher.publishAlert(SILENT_MESSAGE))
+            .thenReturn(Mono.error(new IllegalStateException("broker down")));
+        when(notificationPublisher.publishAlert(
+            "Temperature sensor in room garage is not reporting (last reading 2026-10-04 10:30)"))
+            .thenReturn(Mono.empty());
         when(alertRepository.save(any())).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
         sut.checkSensors().as(StepVerifier::create).verifyComplete();
@@ -161,7 +217,7 @@ class SensorMonitorServiceTest {
     @Test
     void should_read_the_clock_on_every_subscription_of_the_same_mono() {
         when(temperatureSensorService.querySensors()).thenReturn(Flux.just(sensor(true)));
-        when(alertRepository.findByRoom("office")).thenReturn(Mono.empty());
+        when(alertRepository.findAll()).thenReturn(Flux.empty());
         when(notificationPublisher.publishAlert(SILENT_MESSAGE)).thenReturn(Mono.empty());
         when(alertRepository.save(any())).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
@@ -177,7 +233,7 @@ class SensorMonitorServiceTest {
     }
 
     private static TemperatureSensorReply sensor(final boolean stale) {
-        return new TemperatureSensorReply(RoomName.OFFICE, LAST_READING, stale);
+        return new TemperatureSensorReply(RoomName.OFFICE, LAST_READING, stale, false);
     }
 
     //a Clock mock cannot be moved between two subscriptions without re-stubbing, and Mockito

@@ -13,7 +13,8 @@ import reactor.core.publisher.Mono;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Optional;
+import java.time.temporal.ChronoUnit;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -30,39 +31,44 @@ public class SensorMonitorService {
 
     /**
      * One pass over all sensors: a sensor that went silent is reported once and then again every
-     * reminder interval, a sensor that came back is reported once.
+     * reminder interval, a sensor that came back is reported once. Muted rooms are skipped.
      */
     public Mono<Void> checkSensors() {
         //deferred: Spring calls a reactive @Scheduled method once and subscribes to the same Mono
         //for every run, so "now" read outside the chain would stay at the start of the service
         return Mono.defer(() -> {
-            final LocalDateTime now = LocalDateTime.now(clock);
+            //to the minute: two passes a reminder interval apart start milliseconds off each
+            //other, and compared exactly the reminder would be due or not by that jitter
+            final LocalDateTime now = LocalDateTime.now(clock).truncatedTo(ChronoUnit.MINUTES);
 
-            return temperatureSensorService.querySensors()
-                .concatMap(sensor -> checkSensor(sensor, now)
-                    //one failing sensor must not hide the others
-                    .onErrorResume(throwable -> {
-                        log.error("Error while checking temperature sensor of room: {}", sensor.room(), throwable);
-                        return Mono.empty();
-                    }))
-                .then();
+            //the table holds only the sensors that are silent right now, so one read for the pass
+            return alertRepository.findAll()
+                .collectMap(TemperatureSensorAlertEntity::room)
+                .flatMap(alerts -> checkSensors(alerts, now));
         });
     }
 
-    private Mono<Void> checkSensor(final TemperatureSensorReply sensor, final LocalDateTime now) {
-        return alertRepository.findByRoom(sensor.room().getValue())
-            .map(Optional::of)
-            .defaultIfEmpty(Optional.empty())
-            .flatMap(alert -> {
-                if (sensor.stale()) {
-                    return alert
-                        .map(existing -> remind(sensor, existing, now))
-                        .orElseGet(() -> raise(sensor, now));
-                }
-                return alert
-                    .map(existing -> recover(sensor, existing))
-                    .orElseGet(Mono::empty);
-            });
+    private Mono<Void> checkSensors(final Map<String, TemperatureSensorAlertEntity> alerts, final LocalDateTime now) {
+        return temperatureSensorService.querySensors()
+            .filter(sensor -> !sensor.muted())
+            .concatMap(sensor -> checkSensor(sensor, alerts.get(sensor.room().getValue()), now)
+                //one failing sensor must not hide the others
+                .onErrorResume(throwable -> {
+                    log.error("Error while checking temperature sensor of room: {}", sensor.room(), throwable);
+                    return Mono.empty();
+                }))
+            .then();
+    }
+
+    private Mono<Void> checkSensor(
+        final TemperatureSensorReply sensor,
+        final TemperatureSensorAlertEntity alert,
+        final LocalDateTime now
+    ) {
+        if (sensor.stale()) {
+            return alert == null ? raise(sensor, now) : remind(sensor, alert, now);
+        }
+        return alert == null ? Mono.empty() : recover(sensor, alert);
     }
 
     //the notification goes first in all three: when the write that follows fails, the next pass

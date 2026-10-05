@@ -38,8 +38,9 @@ public class NotificationRabbitConfig {
         connectionFactory.setPassword(notificationProperties.password());
         connectionFactory.setConnectionNameStrategy(factory -> "heating-service-notification-" + hostname);
         //a message matching no binding is dropped by the broker without a word; with returns it
-        //comes back and is at least logged
+        //comes back, and with correlated confirms the publisher learns the outcome of each send
         connectionFactory.setPublisherReturns(true);
+        connectionFactory.setPublisherConfirmType(CachingConnectionFactory.ConfirmType.CORRELATED);
         if (rabbitProperties.getConnectionTimeout() != null) {
             connectionFactory.setConnectionTimeout((int) rabbitProperties.getConnectionTimeout().toMillis());
         }

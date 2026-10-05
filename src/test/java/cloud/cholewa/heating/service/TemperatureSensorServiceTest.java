@@ -21,6 +21,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Set;
 
 import static org.mockito.Mockito.when;
 
@@ -40,7 +41,8 @@ class TemperatureSensorServiceTest {
         sut = new TemperatureSensorService(
             Clock.fixed(NOW.atZone(ZONE).toInstant(), ZONE),
             new Home(List.of(room(RoomName.OFFICE), room(RoomName.GARAGE), room(RoomName.LOFT))),
-            new SensorMonitorProperties("0 0 * * * *", Duration.ofHours(24), Duration.ofHours(24)),
+            new SensorMonitorProperties(
+                "0 0 * * * *", Duration.ofHours(24), Duration.ofHours(24), Set.of(RoomName.GARAGE)),
             temperatureRepository
         );
     }
@@ -60,8 +62,9 @@ class TemperatureSensorServiceTest {
         sut.querySensors()
             .as(StepVerifier::create)
             //exactly the limit is still fine, the sensor is stale only past it
-            .expectNext(new TemperatureSensorReply(RoomName.OFFICE, fresh, false))
-            .expectNext(new TemperatureSensorReply(RoomName.GARAGE, stale, true))
+            .expectNext(new TemperatureSensorReply(RoomName.OFFICE, fresh, false, false))
+            //a muted room is still listed, with its real state
+            .expectNext(new TemperatureSensorReply(RoomName.GARAGE, stale, true, true))
             .verifyComplete();
     }
 

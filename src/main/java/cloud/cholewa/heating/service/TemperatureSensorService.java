@@ -36,7 +36,8 @@ public class TemperatureSensorService {
                     .map(entity -> new TemperatureSensorReply(
                         room,
                         entity.date(),
-                        entity.date().isBefore(staleBefore)
+                        entity.date().isBefore(staleBefore),
+                        properties.mutedRooms().contains(room)
                     )));
         });
     }

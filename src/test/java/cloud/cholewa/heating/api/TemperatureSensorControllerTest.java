@@ -27,8 +27,8 @@ class TemperatureSensorControllerTest {
     @Test
     void queryTemperatureSensors() {
         when(temperatureSensorService.querySensors()).thenReturn(Flux.just(
-            new TemperatureSensorReply(RoomName.OFFICE, LocalDateTime.of(2026, 10, 5, 11, 30), false),
-            new TemperatureSensorReply(RoomName.LIVING_ROOM, LocalDateTime.of(2026, 10, 3, 8, 0), true)
+            new TemperatureSensorReply(RoomName.OFFICE, LocalDateTime.of(2026, 10, 5, 11, 30), false, false),
+            new TemperatureSensorReply(RoomName.LIVING_ROOM, LocalDateTime.of(2026, 10, 3, 8, 0), true, true)
         ));
 
         webTestClient.get()
@@ -41,7 +41,9 @@ class TemperatureSensorControllerTest {
             .jsonPath("$[0].lastReadingAt").isEqualTo("2026-10-05T11:30:00")
             .jsonPath("$[0].stale").isEqualTo(false)
             .jsonPath("$[1].room").isEqualTo("living room")
-            .jsonPath("$[1].stale").isEqualTo(true);
+            .jsonPath("$[0].muted").isEqualTo(false)
+            .jsonPath("$[1].stale").isEqualTo(true)
+            .jsonPath("$[1].muted").isEqualTo(true);
     }
 
     @Test

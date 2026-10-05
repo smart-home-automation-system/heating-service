@@ -49,7 +49,8 @@ through `notification-service` (which posts it on Discord), the report is repeat
 hours for as long as the sensor stays silent, and one more message says that it is reporting
 again. Which sensors are currently reported is kept in Postgres, so a restart neither repeats
 an alert nor loses the "back again" message. A room that has never stored a reading is not
-watched — the service cannot tell a broken sensor from a room without one.
+watched — the service cannot tell a broken sensor from a room without one. A sensor taken
+out of service is silenced by listing its room in `heating.sensor-monitor.muted-rooms`.
 
 ## Run locally
 
@@ -84,7 +85,7 @@ is also the path the Kubernetes ingress routes to this service.
 |---|---|---|
 | `GET` | `/home/heating` | Current state of the heating system switch, with the timestamp of the last change |
 | `POST` | `/home/heating?turn=on\|off` | Enables or disables the heating system and persists the change |
-| `GET` | `/home/heating/temperature/sensors` | Last reading of every temperature sensor: `room`, `lastReadingAt` and `stale` (silent for longer than `heating.sensor-monitor.stale-after`); rooms that never reported are left out |
+| `GET` | `/home/heating/temperature/sensors` | Last reading of every temperature sensor: `room`, `lastReadingAt`, `stale` (silent for longer than `heating.sensor-monitor.stale-after`) and `muted` (excluded from the alerts); rooms that never reported are left out |
 | `GET` | `/home/heating/status/active` | Whether the system is enabled and any heater is currently active — polled by `boiler-service` |
 
 Actuator endpoints, including the `readiness` and `liveness` health groups used by the
@@ -104,8 +105,12 @@ pool size (4), so a backlog is held by the broker instead of the service.
 
 Notifications about silent sensors go to the `notification` exchange, which lives on another
 virtual host, so the service holds a second connection for it (user `notification`, password
-from `notification-rabbitmq-password`). The exchange is a headers exchange: the routing key is
+from `notification-rabbitmq-password` — it has no default, the service does not start without
+it). The exchange is a headers exchange: the routing key is
 ignored and the queue — `notification.<env>.<category>` — is chosen by the `category` and
 `env` headers. A sensor that went silent or is still silent is an `alert`, a sensor that came
-back an `info`. The check is configured under `heating.sensor-monitor` (`cron`,
-`stale-after`, `reminder-interval`; a bare number is hours, the minimum is one hour).
+back an `info`. A notification counts as sent only when the broker has confirmed it and has
+not returned it as unroutable; until then the sensor state is not updated and the next check
+tries again. The check is configured under `heating.sensor-monitor` (`cron`, `stale-after`,
+`reminder-interval` — a bare number is hours, the minimum is one hour — and `muted-rooms`,
+a list of room names such as `[sauna, living-room]`).

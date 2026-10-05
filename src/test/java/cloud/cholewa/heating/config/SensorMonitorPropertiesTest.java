@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.config;
 
+import cloud.cholewa.home.model.RoomName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -25,6 +26,7 @@ class SensorMonitorPropertiesTest {
 
             assertThat(properties.staleAfter()).isEqualTo(Duration.ofHours(24));
             assertThat(properties.reminderInterval()).isEqualTo(Duration.ofHours(24));
+            assertThat(properties.mutedRooms()).isEmpty();
         });
     }
 
@@ -55,6 +57,22 @@ class SensorMonitorPropertiesTest {
     void should_refuse_reminder_interval_shorter_than_one_hour() {
         contextRunner
             .withPropertyValues("heating.sensor-monitor.reminder-interval=59m")
+            .run(context -> assertThat(context).hasFailed());
+    }
+
+    @Test
+    void should_read_muted_rooms_by_enum_name() {
+        contextRunner
+            .withPropertyValues("heating.sensor-monitor.muted-rooms=sauna,living-room")
+            .run(context -> assertThat(context.getBean(SensorMonitorProperties.class).mutedRooms())
+                .containsExactlyInAnyOrder(RoomName.SAUNA, RoomName.LIVING_ROOM));
+    }
+
+    //a typo must not silently leave the room watched
+    @Test
+    void should_refuse_unknown_muted_room() {
+        contextRunner
+            .withPropertyValues("heating.sensor-monitor.muted-rooms=attic")
             .run(context -> assertThat(context).hasFailed());
     }
 

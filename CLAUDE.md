@@ -43,14 +43,25 @@ review.
   prefetch and observation. The factory and the template are built by hand inside the
   `NotificationPublisher` bean method; observation is switched on there explicitly, because
   `spring.rabbitmq.template.*` never reaches this template. The connection is opened on the
-  first publish, so a wrong password shows up in the hourly check, not at startup.
+  first publish, so a wrong password shows up in the hourly check, not at startup — a missing
+  one does fail the startup, `notification.password` has no default outside the `test`
+  document.
+- **A publish completes only on a broker confirm without a return** (`NotificationPublisher`,
+  correlated confirms + mandatory). A `send` that merely returns proves nothing: an unroutable
+  message is confirmed too, and the alert row would be written for a notification that reached
+  no queue.
 - **Notifications are plain text, not JSON.** `notification-service` reads the message as a
   `String` with the default converter; through `JacksonJsonMessageConverter` the text would
   arrive quoted and typed `application/json`.
 - **The sensor check publishes first and writes the alert row second.** A failed write repeats
   the message on the next pass; the other order would lose it. `temperature_sensor_alert`
   holds one row per sensor that is silent right now — it changes on a state change or a
-  reminder, never on a plain check.
+  reminder, never on a plain check. "Now" is truncated to the minute there, so two passes a
+  reminder interval apart do not miss each other by scheduler jitter.
+- **`heating.sensor-monitor.muted-rooms`** takes a sensor out of the alerts (a retired one would
+  otherwise remind every day forever). The values bind to `RoomName` by constant name
+  (`living-room`, not `living room`); an unknown name fails the startup. A muted room is still
+  listed by the endpoint, with `muted: true`.
 - **"Now" is read inside the chain** in `SensorMonitorService` and `TemperatureSensorService`:
   Spring calls the reactive `@Scheduled` method once and re-subscribes to the same `Mono`.
   The test subscribes twice with the clock moved on.
