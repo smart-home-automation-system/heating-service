@@ -82,6 +82,22 @@ rabbitmq:
   queue:
     name: temperature.prod.heating
 
+# the notification exchange is on the same broker as spring.rabbitmq.*, on its own virtual host;
+# it is a headers exchange and "env" is one of the two headers it routes by
+notification:
+  virtual-host: /notification
+  username: notification
+  password: ${notification-rabbitmq-password:dummyPassword}
+  exchange: notification
+  env: prod
+
+heating:
+  sensor-monitor:
+    cron: "0 0 * * * *"
+    # a bare number is hours
+    stale-after: 24h
+    reminder-interval: 24h
+
 shelly:
   actor:
     scheme: http
@@ -140,6 +156,9 @@ logging:
 rabbitmq:
   queue:
     name: temperature.dev.heating
+
+notification:
+  env: dev
 
 ---
 

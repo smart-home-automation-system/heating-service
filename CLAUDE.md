@@ -14,8 +14,10 @@ review.
 ## Role in the system
 
 - Consumes: `temperature.prod.heating` on the `/temperature` virtual host
-  (`TemperatureMessage` from `smart-home-sdk`), published by `amx-service`. It does not
-  publish anything.
+  (`TemperatureMessage` from `smart-home-sdk`), published by `amx-service`.
+- Publishes: plain-text notifications about silent temperature sensors to the headers exchange
+  `notification` on the `/notification` virtual host (HAS-94), consumed by
+  `notification-service` and posted on Discord.
 - Is called by: `boiler-service` (`GET /home/heating/status/active`) and, through
   `api-gateway-service`, by whoever switches the heating on and off (`/home/heating`).
 - Calls: the Shelly relays on the LAN over HTTP, and PostgreSQL.
@@ -34,6 +36,27 @@ review.
 
 ## Specifics
 
+- **The notification connection is deliberately not a bean** (`NotificationRabbitConfig`).
+  The exchange is on another virtual host, so it takes a second connection — but a
+  `ConnectionFactory` or `RabbitOperations` bean makes `RabbitAutoConfiguration` back off, and
+  the temperature listener would lose the auto-configured connection with its manual ack,
+  prefetch and observation. The factory and the template are built by hand inside the
+  `NotificationPublisher` bean method; observation is switched on there explicitly, because
+  `spring.rabbitmq.template.*` never reaches this template. The connection is opened on the
+  first publish, so a wrong password shows up in the hourly check, not at startup.
+- **Notifications are plain text, not JSON.** `notification-service` reads the message as a
+  `String` with the default converter; through `JacksonJsonMessageConverter` the text would
+  arrive quoted and typed `application/json`.
+- **The sensor check publishes first and writes the alert row second.** A failed write repeats
+  the message on the next pass; the other order would lose it. `temperature_sensor_alert`
+  holds one row per sensor that is silent right now — it changes on a state change or a
+  reminder, never on a plain check.
+- **"Now" is read inside the chain** in `SensorMonitorService` and `TemperatureSensorService`:
+  Spring calls the reactive `@Scheduled` method once and re-subscribes to the same `Mono`.
+  The test subscribes twice with the clock moved on.
+- **The last reading is one indexed query per room** (`room_temperature (room, date DESC)`),
+  run one room at a time so a pass holds a single pooled connection. A `GROUP BY` over the
+  whole table would read every row.
 - **`database.pool.max-size` is 4, and `prefetch` is 3 because of it.** The listener returns
   a `Mono`, so every in-flight message may hold a connection; the prefetch has to stay below
   the pool size or a backlog is pulled into the service and waits on the pool instead of in

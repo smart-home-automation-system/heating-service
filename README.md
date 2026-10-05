@@ -43,6 +43,14 @@ The aggregate state ("is heating required right now") is exposed over REST and p
 can also be switched on and off through the API; that switch is persisted in Postgres and
 restored on startup.
 
+The service also watches the sensors themselves. Once an hour it compares the last stored
+reading of every room with the clock: a sensor silent for more than 24 hours is reported
+through `notification-service` (which posts it on Discord), the report is repeated every 24
+hours for as long as the sensor stays silent, and one more message says that it is reporting
+again. Which sensors are currently reported is kept in Postgres, so a restart neither repeats
+an alert nor loses the "back again" message. A room that has never stored a reading is not
+watched — the service cannot tell a broken sensor from a room without one.
+
 ## Run locally
 
 ```bash
@@ -56,10 +64,10 @@ mvn spring-boot:run -Dspring-boot.run.profiles=local
 | in the cluster (`home` profile) | 6200 | 8200 |
 
 Needs a PostgreSQL database (R2DBC at runtime, Flyway for migrations) and a RabbitMQ broker
-with the `/temperature` virtual host. Connection details come from the `database.*`
+with the `/temperature` and `/notification` virtual hosts. Connection details come from the `database.*`
 properties and `spring.rabbitmq.*`; in the cluster they are injected from Kubernetes
 secrets. The `local` profile points RabbitMQ at `localhost` and uses the
-`temperature.dev.heating` queue.
+`temperature.dev.heating` queue, and publishes its notifications with `env=dev`.
 
 The `ConnectionFactory` itself is built by `cholewa-commons`, not by this service. Only the
 pool size is pinned here — `database.pool.max-size: 4` — because the managed database allows
@@ -76,6 +84,7 @@ is also the path the Kubernetes ingress routes to this service.
 |---|---|---|
 | `GET` | `/home/heating` | Current state of the heating system switch, with the timestamp of the last change |
 | `POST` | `/home/heating?turn=on\|off` | Enables or disables the heating system and persists the change |
+| `GET` | `/home/heating/temperature/sensors` | Last reading of every temperature sensor: `room`, `lastReadingAt` and `stale` (silent for longer than `heating.sensor-monitor.stale-after`); rooms that never reported are left out |
 | `GET` | `/home/heating/status/active` | Whether the system is enabled and any heater is currently active — polled by `boiler-service` |
 
 Actuator endpoints, including the `readiness` and `liveness` health groups used by the
@@ -83,13 +92,20 @@ Kubernetes probes, live on the management port, not on the application one.
 
 ## Messaging
 
-| Direction | Queue | Virtual host | Payload |
+| Direction | Queue / exchange | Virtual host | Payload |
 |---|---|---|---|
-| consumes | `temperature.prod.heating` (`temperature.dev.heating` in the `local` profile) | `/temperature` | `cloud.cholewa.home.model.TemperatureMessage` (`smart-home-sdk`) |
+| consumes | queue `temperature.prod.heating` (`temperature.dev.heating` in the `local` profile) | `/temperature` | `cloud.cholewa.home.model.TemperatureMessage` (`smart-home-sdk`) |
+| publishes | exchange `notification` (headers), `category=alert\|info`, `env=prod` (`dev` in the `local` profile) | `/notification` | plain text (`text/plain`, UTF-8) |
 
 Messages are produced by `amx-service`; both sides use `JacksonJsonMessageConverter`. The
 listener acknowledges manually — it returns a `Mono`, so the acknowledgement has to wait for
 the reactive pipeline to finish — and the prefetch (3) is kept below the database connection
-pool size (4), so a backlog is held by the broker instead of the service. The service does not
-publish to RabbitMQ; outgoing traffic goes to the Shelly devices over HTTP and to
-PostgreSQL.
+pool size (4), so a backlog is held by the broker instead of the service.
+
+Notifications about silent sensors go to the `notification` exchange, which lives on another
+virtual host, so the service holds a second connection for it (user `notification`, password
+from `notification-rabbitmq-password`). The exchange is a headers exchange: the routing key is
+ignored and the queue — `notification.<env>.<category>` — is chosen by the `category` and
+`env` headers. A sensor that went silent or is still silent is an `alert`, a sensor that came
+back an `info`. The check is configured under `heating.sensor-monitor` (`cron`,
+`stale-after`, `reminder-interval`; a bare number is hours, the minimum is one hour).
