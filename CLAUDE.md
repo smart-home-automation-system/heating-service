@@ -76,12 +76,65 @@ review.
 - **The last reading is one indexed query per room** (`room_temperature (room, date DESC)`),
   run one room at a time so a pass holds a single pooled connection. A `GROUP BY` over the
   whole table would read every row.
-- **`database.pool.max-size` is 4, and `prefetch` is 3 because of it.** The listener returns
-  a `Mono`, so every in-flight message may hold a connection; the prefetch has to stay below
-  the pool size or a backlog is pulled into the service and waits on the pool instead of in
-  the broker. Change one, check the other. The pool was 8 (prefetch 5) until 1.3.2; in the
-  metrics of 2026-10-02/03 the service held 1-2 connections, and the managed database has 22
-  for everyone (heating 4 / database 6 / water 4 / presence 2).
+- **`database.pool.max-size` is 2, and `prefetch` stays 3 — above the pool, on purpose.** The
+  pool was 8 (prefetch 5) until 1.3.2 and 4 up to and including 1.6.0; the managed database
+  has 22 connections for everyone (heating 2 / database 4 / water 2 / presence 2 = 10). The
+  size is what keeps a rollout inside that budget (HAS-169): the Deployment rolls, so the old
+  and the new pod each hold a pool and Flyway adds one JDBC connection — with this split even
+  the three rolling services at once stay at 21.
+  The old rule "prefetch below the pool size" assumed that an in-flight message holds a
+  connection. It does not: the message takes one for the `save` of its reading, hands it
+  back, and spends the rest of its time in the Shelly calls. So three messages in flight
+  compete for two connections only for the length of a write, while a prefetch of 1 would
+  make the whole chain serial — one slow relay holding up the readings of every room.
+  What the small pool costs: with both connections in use — a write, a query of the hourly
+  sensor pass, an endpoint — the next statement waits and fails after `max-acquire-time`
+  (10 s). In the listener that failure is retried as transient (`Retry.backoff(2, …)`), so a
+  starved write can hold its slot for about 30 s before the reading is logged and dropped;
+  `POST /home/heating` answers it as its usual 400 "Heater problem". It works because nothing
+  here holds two connections at once — no transaction, no parallel queries; code that does
+  needs the size re-thought first. Watch `r2dbc_pool_pending_connections`:
+  `HeatingServiceApplicationTest` pins the size, not the load.
+- **Every Shelly call has a connect and a response timeout** — `shelly.actor.connect-timeout`
+  (10 s) and `shelly.actor.response-timeout` (5 s), the defaults of `ShellyTimeoutProperties`
+  (HAS-169; the values of `boiler-service`), set on the `HttpClient` in `AppConfig`. A bare
+  number is seconds and anything outside 1–60 s is refused at startup — zero would switch
+  netty's timeout off, and "5000" meant as milliseconds would be 83 minutes. Until then a relay that accepted the connection and never answered
+  held its message for good, and three such messages stalled the consumer. The response
+  timeout is netty's: the longest silence while the response is read, not a limit on the
+  whole call — a device trickling bytes is not cut off, and waiting for a pooled HTTP
+  connection (45 s by default) is not covered either.
+  A timeout ends the call the way every device error does: `ShellyClient` logs it at ERROR
+  and wraps it in a `BoilerException` that carries the cause. **What that aborts** was the
+  point of the review. `HeatingService.handleHeaterActor` skips an actor whose device call
+  failed (WARN) — the other actors of the room are still driven and the pass goes on to
+  `anyHeaterActive` and the floor pump. Before, one actor cancelled the rest and the pass ended
+  there; harmless while a slow relay merely answered late, not once slow became an error.
+  Only a `BoilerException` is skipped: anything else — a room missing from `ShellyConfig` or
+  the relay map — still ends the pass, and `HomeService` logs why. One room is in that state
+  today: SANCTUM has a radiator of its own, but it is driven outside these services — for now
+  by a scene in the Shelly cloud, from the temperature sensor of that room (owner,
+  2026-10-06). `HomeConfig` models the radiator as an actor while `ShellyConfig` and the
+  relay map have no entry for it, deliberately: this service must not switch it. A SANCTUM
+  reading reaching the listener would therefore end its pass with "Unknown configuration for
+  room heater" — do not "fix" that by adding a relay entry.
+  What to know about the skip:
+  - State is written only from a device response, never from the intent, so a skipped actor
+    keeps what it last reported. **That value can be old, and it still feeds
+    `roomHeatingEnabled`, `anyHeaterActive` and the floor pump**: a relay that went away
+    while "on" keeps the furnace requested for as long as it is away. That was so before
+    the skip too (every other room's pass recomputed the flag from the same state); nothing
+    here ages the state out.
+  - After a failed **status read** the timestamp stays stale and the next reading of the
+    room asks again. After a failed **switch command** the status was just refreshed, so the
+    relay is not re-read for five minutes — if it did switch and only answered too late, the
+    service is wrong about it for that long.
+  - The floor pump is still fail-fast: a failed pump status read ends the message before
+    `setFloorPump`, so the pump waits for the next reading of any room.
+  - A new step in that chain gets its own error handling; do not write state before the
+    device answered.
+  `ShellyTimeoutPropertiesTest` pins the values and the bounds, `AppConfigTest` that they
+  reach the client and that a silent device ends as a timeout, `HeatingServiceTest` the skip.
 - **The listener acknowledges manually** (`acknowledge-mode: manual`): with the default the
   container acks before the reactive pipeline runs, so the prefetch would throttle nothing.
 - **`.contextCapture()` is the last operator of the listener chain** in

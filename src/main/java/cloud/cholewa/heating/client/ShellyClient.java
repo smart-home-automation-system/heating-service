@@ -26,8 +26,12 @@ public class ShellyClient {
             .retrieve()
             .bodyToMono(ShellyPro4StatusResponse.class)
             .doOnError(throwable ->
-                log.error("Error while getting actor status for room: {}, heater type: {}", roomName, heaterType))
-            .onErrorMap(throwable -> new BoilerException("Error while getting actor status for room: " + roomName + ", heater type: " + heaterType));
+                log.error(
+                    "Error while getting actor status for room: {}, heater type: {}: {}",
+                    roomName, heaterType, throwable.toString()
+                ))
+            .onErrorMap(throwable -> new BoilerException(
+                "Error while getting actor status for room: " + roomName + ", heater type: " + heaterType, throwable));
     }
 
     public Mono<ShellyProRelayResponse> controlHeaterActor(
@@ -40,8 +44,12 @@ public class ShellyClient {
             .retrieve()
             .bodyToMono(ShellyProRelayResponse.class)
             .doOnError(throwable ->
-                log.error("Error while controlling actor for room: {}, heater type: {}", roomName, heaterType))
-            .onErrorMap(throwable -> new BoilerException("Error while controlling actor for room: " + roomName + ", heater type: " + heaterType));
+                log.error(
+                    "Error while controlling actor for room: {}, heater type: {}: {}",
+                    roomName, heaterType, throwable.toString()
+                ))
+            .onErrorMap(throwable -> new BoilerException(
+                "Error while controlling actor for room: " + roomName + ", heater type: " + heaterType, throwable));
     }
 
     public Mono<ShellyPro4StatusResponse> getFloorPumpStatus() {
@@ -50,8 +58,8 @@ public class ShellyClient {
             .retrieve()
             .bodyToMono(ShellyPro4StatusResponse.class)
             .doOnError(throwable ->
-                log.error("Error while getting floor pump status"))
-            .onErrorMap(throwable -> new BoilerException("Error while getting floor pump status"));
+                log.error("Error while getting floor pump status: {}", throwable.toString()))
+            .onErrorMap(throwable -> new BoilerException("Error while getting floor pump status", throwable));
     }
 
     public Mono<ShellyProRelayResponse> controlFloorPump(final boolean enable) {
@@ -60,7 +68,7 @@ public class ShellyClient {
             .retrieve()
             .bodyToMono(ShellyProRelayResponse.class)
             .doOnError(throwable ->
-                log.error("Error while controlling floor pump"))
-            .onErrorMap(throwable -> new BoilerException("Error while controlling floor pump"));
+                log.error("Error while controlling floor pump: {}", throwable.toString()))
+            .onErrorMap(throwable -> new BoilerException("Error while controlling floor pump", throwable));
     }
 }

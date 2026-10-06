@@ -38,7 +38,7 @@ public class HomeService {
             })
             .flatMap(heatingService::processHeatingRequest)
             .onErrorResume(throwable -> {
-                log.error("Error processing heating request for room: {}", roomName);
+                log.error("Error processing heating request for room: {}: {}", roomName, throwable.toString());
                 return Mono.empty();
             })
             .flatMap(this::determineAnyHeaterActive)

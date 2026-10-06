@@ -1,6 +1,8 @@
 package cloud.cholewa.heating.service;
 
 import cloud.cholewa.heating.client.ShellyClient;
+import cloud.cholewa.heating.infrastructure.error.BoilerException;
+import cloud.cholewa.heating.infrastructure.error.HeatingException;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.HomeStatus;
 import cloud.cholewa.heating.model.Room;
@@ -14,6 +16,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -33,7 +37,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, OutputCaptureExtension.class})
 class HeatingServiceTest {
 
     @Mock
@@ -412,6 +416,99 @@ class HeatingServiceTest {
                 assertThat(actor.getLastStatusUpdate()).isNotNull();
             })
             .verifyComplete();
+    }
+
+    //a failing actor - since the calls have a timeout, also a slow one - must not cancel the others
+    @Test
+    void should_control_the_other_actor_and_finish_the_pass_when_a_status_read_fails(final CapturedOutput output) {
+        homeStatus.setEnabledHomeHeatingSystem(true);
+
+        final HeaterActor radiator = HeaterActor.builder().type(RADIATOR).inSchedule(true).working(false).build();
+        final HeaterActor floor = HeaterActor.builder().type(FLOOR).inSchedule(true).working(false).build();
+        final Room room = Room.builder().name(RoomName.BEDROOM).heaterActor(radiator).heaterActor(floor).build();
+
+        mockClock();
+
+        when(shellyClient.getHeaterActorStatus(eq(RADIATOR), any()))
+            .thenReturn(Mono.error(new BoilerException("no answer", new IllegalStateException("read timed out"))));
+
+        when(shellyClient.getHeaterActorStatus(eq(FLOOR), any()))
+            .thenReturn(Mono.just(ShellyPro4StatusResponse.builder().output(false).build()));
+
+        when(shellyClient.controlHeaterActor(eq(FLOOR), any(), anyBoolean()))
+            .thenReturn(Mono.just(ShellyProRelayResponse.builder().ison(true).build()));
+
+        sut.processHeatingRequest(room)
+            .as(StepVerifier::create)
+            .assertNext(result -> assertThat(result.isRoomHeatingEnabled()).isTrue())
+            .verifyComplete();
+
+        //the state of the failed actor is what it last reported, and stays stale to be re-read
+        assertThat(radiator.isWorking()).isFalse();
+        assertThat(radiator.getLastStatusUpdate()).isNull();
+        assertThat(floor.isWorking()).isTrue();
+
+        verify(shellyClient).controlHeaterActor(eq(FLOOR), any(), eq(true));
+        verify(shellyClient, never()).controlHeaterActor(eq(RADIATOR), any(), anyBoolean());
+
+        //the skip is the handled outcome: WARN with the cause, the ERROR is the client's
+        assertThat(output.getAll().lines().filter(line -> line.contains("Skipping heater actor")))
+            .singleElement()
+            .satisfies(line -> assertThat(line).contains("WARN").contains("read timed out"));
+    }
+
+    //the relay may have switched and answered too late: the state stays what the status read said
+    @Test
+    void should_control_the_other_actor_and_finish_the_pass_when_a_switch_command_fails() {
+        homeStatus.setEnabledHomeHeatingSystem(true);
+
+        final HeaterActor radiator = HeaterActor.builder().type(RADIATOR).inSchedule(true).working(true).build();
+        final HeaterActor floor = HeaterActor.builder().type(FLOOR).inSchedule(true).working(false).build();
+        final Room room = Room.builder().name(RoomName.BEDROOM).heaterActor(radiator).heaterActor(floor).build();
+
+        mockClock();
+
+        when(shellyClient.getHeaterActorStatus(any(), any()))
+            .thenReturn(Mono.just(ShellyPro4StatusResponse.builder().output(false).build()));
+
+        when(shellyClient.controlHeaterActor(eq(RADIATOR), any(), anyBoolean()))
+            .thenReturn(Mono.error(new BoilerException("no answer")));
+
+        when(shellyClient.controlHeaterActor(eq(FLOOR), any(), anyBoolean()))
+            .thenReturn(Mono.just(ShellyProRelayResponse.builder().ison(true).build()));
+
+        sut.processHeatingRequest(room)
+            .as(StepVerifier::create)
+            .assertNext(result -> assertThat(result.isRoomHeatingEnabled()).isTrue())
+            .verifyComplete();
+
+        //the status read said "off" and the command got no answer, so "off" it stays
+        assertThat(radiator.isWorking()).isFalse();
+        assertThat(floor.isWorking()).isTrue();
+
+        verify(shellyClient).controlHeaterActor(eq(RADIATOR), any(), eq(true));
+        verify(shellyClient).controlHeaterActor(eq(FLOOR), any(), eq(true));
+    }
+
+    //skipping is for a device that fails; a broken configuration must not pass as a quiet skip.
+    //ShellyConfig throws while the request is built, before the client's own error mapping
+    @Test
+    void should_end_the_pass_when_the_failure_is_not_a_device_failure() {
+        homeStatus.setEnabledHomeHeatingSystem(true);
+
+        final Room room = Room.builder()
+            .name(RoomName.BEDROOM)
+            .heaterActor(HeaterActor.builder().type(RADIATOR).inSchedule(true).working(false).build())
+            .build();
+
+        mockClock();
+
+        when(shellyClient.getHeaterActorStatus(any(), any()))
+            .thenThrow(new HeatingException("Unknown configuration for room heater: BEDROOM"));
+
+        sut.processHeatingRequest(room)
+            .as(StepVerifier::create)
+            .verifyError(HeatingException.class);
     }
 
     private void mockClock() {
