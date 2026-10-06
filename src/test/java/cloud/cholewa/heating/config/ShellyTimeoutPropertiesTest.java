@@ -62,6 +62,18 @@ class ShellyTimeoutPropertiesTest {
             .run(context -> assertThat(context).hasFailed());
     }
 
+    //"5000", meant as milliseconds, would be 83 minutes
+    @Test
+    void should_refuse_timeout_longer_than_a_minute() {
+        contextRunner
+            .withPropertyValues("shelly.actor.response-timeout=5000")
+            .run(context -> assertThat(context).hasFailed());
+
+        contextRunner
+            .withPropertyValues("shelly.actor.connect-timeout=61")
+            .run(context -> assertThat(context).hasFailed());
+    }
+
     @Configuration
     @EnableConfigurationProperties(ShellyTimeoutProperties.class)
     static class TestConfig {

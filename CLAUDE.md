@@ -98,8 +98,8 @@ review.
 - **Every Shelly call has a connect and a response timeout** — `shelly.actor.connect-timeout`
   (10 s) and `shelly.actor.response-timeout` (5 s), the defaults of `ShellyTimeoutProperties`
   (HAS-169; the values of `boiler-service`), set on the `HttpClient` in `AppConfig`. A bare
-  number is seconds and anything under one second is refused at startup — zero would switch
-  netty's timeout off. Until then a relay that accepted the connection and never answered
+  number is seconds and anything outside 1–60 s is refused at startup — zero would switch
+  netty's timeout off, and "5000" meant as milliseconds would be 83 minutes. Until then a relay that accepted the connection and never answered
   held its message for good, and three such messages stalled the consumer. The response
   timeout is netty's: the longest silence while the response is read, not a limit on the
   whole call — a device trickling bytes is not cut off, and waiting for a pooled HTTP
@@ -111,7 +111,11 @@ review.
   `anyHeaterActive` and the floor pump. Before, one actor cancelled the rest and the pass ended
   there; harmless while a slow relay merely answered late, not once slow became an error.
   Only a `BoilerException` is skipped: anything else — a room missing from `ShellyConfig` or
-  the relay map — still ends the pass, loudly. What to know about the skip:
+  the relay map — still ends the pass, and `HomeService` logs why. That case is real:
+  `HomeConfig` gives SANCTUM a radiator actor, but `ShellyConfig` and the relay map have no
+  entry for it, so a SANCTUM reading ends its pass with "Unknown configuration for room
+  heater" (latent — no SANCTUM reading in the logs of 2026-10-06). What to know about the
+  skip:
   - State is written only from a device response, never from the intent, so a skipped actor
     keeps what it last reported. **That value can be old, and it still feeds
     `roomHeatingEnabled`, `anyHeaterActive` and the floor pump**: a relay that went away
