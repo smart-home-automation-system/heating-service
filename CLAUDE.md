@@ -145,6 +145,13 @@ review.
   there is no `DbConfig` here and no `@EnableR2dbcRepositories`. Since `cholewa-commons` 1.5
   the pool validates every connection on acquire (`SELECT 1`, 2 s) — before that this
   service kept a broken connection for as long as it was in use.
+- **The RabbitMQ connection is named after the pod** (`RabbitConfig`, HAS-106): the broker shows
+  `heating-service-<pod id>`, which tells the old pod from the new one during a rollout.
+  `HOSTNAME` is taken only when it starts with `spring.application.name` — outside the cluster
+  it is missing, empty, a workstation or a container id, and the name is then
+  `heating-service-local`. The same convention holds in every service that talks to the broker.
+  The second connection, the one publishing notifications, takes the name from the same
+  strategy and adds `/notification`.
 - **Surefire activates the `test` profile for every class** (`spring.profiles.active` in the
   pom), so a test without `@ActiveProfiles` does not fall through to the shared document and
   switch the log output to JSON for the classes that follow.
