@@ -414,6 +414,40 @@ class HeatingServiceTest {
             .verifyComplete();
     }
 
+    //a failing actor - since the calls have a timeout, also a slow one - must not cancel the others
+    @Test
+    void should_control_the_other_actor_and_finish_the_pass_when_one_actor_fails() {
+        homeStatus.setEnabledHomeHeatingSystem(true);
+
+        final HeaterActor radiator = HeaterActor.builder().type(RADIATOR).inSchedule(true).working(false).build();
+        final HeaterActor floor = HeaterActor.builder().type(FLOOR).inSchedule(true).working(false).build();
+        final Room room = Room.builder().name(RoomName.BEDROOM).heaterActor(radiator).heaterActor(floor).build();
+
+        mockClock();
+
+        when(shellyClient.getHeaterActorStatus(eq(RADIATOR), any()))
+            .thenReturn(Mono.error(new IllegalStateException("no answer")));
+
+        when(shellyClient.getHeaterActorStatus(eq(FLOOR), any()))
+            .thenReturn(Mono.just(ShellyPro4StatusResponse.builder().output(false).build()));
+
+        when(shellyClient.controlHeaterActor(eq(FLOOR), any(), anyBoolean()))
+            .thenReturn(Mono.just(ShellyProRelayResponse.builder().ison(true).build()));
+
+        sut.processHeatingRequest(room)
+            .as(StepVerifier::create)
+            .assertNext(result -> assertThat(result.isRoomHeatingEnabled()).isTrue())
+            .verifyComplete();
+
+        //the state of the failed actor is what it last reported, and stays stale to be re-read
+        assertThat(radiator.isWorking()).isFalse();
+        assertThat(radiator.getLastStatusUpdate()).isNull();
+        assertThat(floor.isWorking()).isTrue();
+
+        verify(shellyClient).controlHeaterActor(eq(FLOOR), any(), eq(true));
+        verify(shellyClient, never()).controlHeaterActor(eq(RADIATOR), any(), anyBoolean());
+    }
+
     private void mockClock() {
         when(clock.instant())
             .thenReturn(LocalDateTime.of(2026, 1, 19, 12, 0).atZone(ZoneId.systemDefault()).toInstant());

@@ -95,20 +95,26 @@ review.
   here holds two connections at once — no transaction, no parallel queries; code that does
   needs the size re-thought first. Watch `r2dbc_pool_pending_connections`:
   `HeatingServiceApplicationTest` pins the size, not the load.
-- **Every Shelly call is bounded: 10 s to connect, 5 s for the response** (`AppConfig`, since
-  HAS-169; the values of `boiler-service`). Until then a relay that accepted the connection
+- **Every Shelly call has a connect and a response timeout** — `shelly.actor.connect-timeout`
+  (10 s) and `shelly.actor.response-timeout` (5 s), set on the `HttpClient` in `AppConfig`
+  (HAS-169; the values of `boiler-service`). Until then a relay that accepted the connection
   and never answered held its message for good, and three such messages stalled the consumer.
-  A timeout ends the call the way every device error already did — `ShellyClient` turns it
-  into a `BoilerException` — so know what that path does before changing it:
-  `HeatingService.processHeatingRequest` runs the heater actors of a room in one `flatMap`,
-  so one failing actor cancels the others of that room, and `HomeService` then swallows the
-  error and ends the message there: `anyHeaterActive` is not recomputed and the floor pump
-  is not looked at until the next reading of any room. That is safe because actor and pump
-  state is written only from a device response, never from the intent — a call that timed
-  out leaves the old state and its stale timestamp, and the next reading asks the device
-  again. A command the relay did carry out but answered too late is caught the same way:
-  the cached status goes stale after five minutes, and the reading of that room after that
-  re-reads the relay. `AppConfigTest` pins both values and the mapping.
+  The response timeout is netty's: the longest silence while the response is read, not a
+  limit on the whole call — a device trickling bytes is not cut off, and waiting for a pooled
+  HTTP connection (45 s by default) is not covered either.
+  A timeout ends the call the way every device error does — `ShellyClient` logs the cause and
+  turns it into a `BoilerException`. **What that aborts** was the point of the review:
+  `HeatingService.handleHeaterActor` now has its own `onErrorResume`, so a failing or slow
+  actor is skipped while the other actors of the room are still driven and the pass goes on
+  to `anyHeaterActive` and the floor pump. Before, one actor cancelled the rest and the pass
+  ended there — harmless while a slow relay merely answered late, not once slow became an
+  error. Skipping is safe only because actor and pump state is written from a device
+  response, never from the intent: the skipped actor keeps what it last reported, and its
+  status, stale after five minutes, is re-read with the next reading of the room. A command
+  the relay carried out but answered too late is corrected the same way. A new step in that
+  chain gets its own `onErrorResume`; do not write state before the device answered.
+  The floor pump is still fail-fast: an error there ends the message, after everything else
+  has been decided. `AppConfigTest` pins the timeouts, `HeatingServiceTest` the skipping.
 - **The listener acknowledges manually** (`acknowledge-mode: manual`): with the default the
   container acks before the reactive pipeline runs, so the prefetch would throttle nothing.
 - **`.contextCapture()` is the last operator of the listener chain** in

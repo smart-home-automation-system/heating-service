@@ -56,7 +56,15 @@ public class HeatingService {
             .flatMap(refreshNeeded -> shellyClient.getHeaterActorStatus(heaterActor.getType(), roomName))
             .doOnNext(statusResponse -> updateHeaterStatus(roomName, statusResponse, heaterActor))
             .then(controlHeaterActor(heaterActor, roomName))
-            .thenReturn(heaterActor);
+            .thenReturn(heaterActor)
+            //an actor that fails - since the calls have a timeout, also one that is merely slow -
+            //must not cancel the other actors of the room nor end the pass before the furnace and
+            //the floor pump are decided. Safe because the state is written only from a device
+            //response: this actor keeps what it last reported, and its stale status is re-read
+            .onErrorResume(throwable -> {
+                log.error("Skipping heater actor: {} in room: {}", heaterActor.getType(), roomName);
+                return Mono.just(heaterActor);
+            });
     }
 
     private boolean isStatusStale(final HeaterActor heaterActor) {
