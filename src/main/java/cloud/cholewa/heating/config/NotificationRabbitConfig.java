@@ -4,8 +4,8 @@ import cloud.cholewa.heating.rabbit.NotificationPublisher;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionNameStrategy;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.amqp.autoconfigure.RabbitProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -20,6 +20,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class NotificationRabbitConfig {
 
+    static final String NOTIFICATION_CONNECTION_SUFFIX = "/notification";
+
     private CachingConnectionFactory connectionFactory;
 
     @Bean
@@ -27,7 +29,7 @@ public class NotificationRabbitConfig {
         final RabbitProperties rabbitProperties,
         final NotificationProperties notificationProperties,
         final ApplicationContext applicationContext,
-        @Value("${HOSTNAME:heating-service-local}") final String hostname
+        final ConnectionNameStrategy connectionNameStrategy
     ) {
         connectionFactory = new CachingConnectionFactory(
             rabbitProperties.determineHost(),
@@ -36,8 +38,10 @@ public class NotificationRabbitConfig {
         connectionFactory.setVirtualHost(notificationProperties.virtualHost());
         connectionFactory.setUsername(notificationProperties.username());
         connectionFactory.setPassword(notificationProperties.password());
-        //the second connection of the same pod, so the pod with what the connection is for
-        connectionFactory.setConnectionNameStrategy(factory -> hostname + "/notification");
+        //the second connection of the same pod: its name, from the strategy of the first, with
+        //what this one is for
+        connectionFactory.setConnectionNameStrategy(
+            factory -> connectionNameStrategy.obtainNewConnectionName(factory) + NOTIFICATION_CONNECTION_SUFFIX);
         //a message matching no binding is dropped by the broker without a word; with returns it
         //comes back, and with correlated confirms the publisher learns the outcome of each send
         connectionFactory.setPublisherReturns(true);
