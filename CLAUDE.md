@@ -112,10 +112,12 @@ review.
   there; harmless while a slow relay merely answered late, not once slow became an error.
   Only a `BoilerException` is skipped: anything else — a room missing from `ShellyConfig` or
   the relay map — still ends the pass, and `HomeService` logs why. One room is in that state
-  today: SANCTUM is not part of the house the furnace heats (owner, 2026-10-06), so it has no
-  relay, yet `HomeConfig` still gives it a radiator actor — a SANCTUM reading would end its
-  pass with "Unknown configuration for room heater". The leftover is the actor, not a
-  missing relay entry; rooms outside the heating (`loft`, `sauna`, `garden`) have none.
+  today: SANCTUM has a radiator of its own, but it is driven outside these services — for now
+  by a scene in the Shelly cloud, from the temperature sensor of that room (owner,
+  2026-10-06). `HomeConfig` models the radiator as an actor while `ShellyConfig` and the
+  relay map have no entry for it, deliberately: this service must not switch it. A SANCTUM
+  reading reaching the listener would therefore end its pass with "Unknown configuration for
+  room heater" — do not "fix" that by adding a relay entry.
   What to know about the skip:
   - State is written only from a device response, never from the intent, so a skipped actor
     keeps what it last reported. **That value can be old, and it still feeds
