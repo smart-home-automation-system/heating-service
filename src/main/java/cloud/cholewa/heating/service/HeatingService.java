@@ -1,6 +1,7 @@
 package cloud.cholewa.heating.service;
 
 import cloud.cholewa.heating.client.ShellyClient;
+import cloud.cholewa.heating.infrastructure.error.BoilerException;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.HomeStatus;
 import cloud.cholewa.heating.model.Room;
@@ -57,12 +58,17 @@ public class HeatingService {
             .doOnNext(statusResponse -> updateHeaterStatus(roomName, statusResponse, heaterActor))
             .then(controlHeaterActor(heaterActor, roomName))
             .thenReturn(heaterActor)
-            //an actor that fails - since the calls have a timeout, also one that is merely slow -
+            //a device that fails - since the calls have a timeout, also one that is merely slow -
             //must not cancel the other actors of the room nor end the pass before the furnace and
-            //the floor pump are decided. Safe because the state is written only from a device
-            //response: this actor keeps what it last reported, and its stale status is re-read
-            .onErrorResume(throwable -> {
-                log.error("Skipping heater actor: {} in room: {}", heaterActor.getType(), roomName);
+            //the floor pump are decided. The state is written only from a device response, so this
+            //actor keeps what it last reported. Only the device failure is skipped (ShellyClient
+            //has logged it at ERROR): anything else, a room missing from the configuration
+            //included, still ends the pass
+            .onErrorResume(BoilerException.class, exception -> {
+                log.warn(
+                    "Skipping heater actor: {} in room: {}: {}",
+                    heaterActor.getType(), roomName, String.valueOf(exception.getCause())
+                );
                 return Mono.just(heaterActor);
             });
     }

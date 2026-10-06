@@ -3,6 +3,7 @@ package cloud.cholewa.heating.config;
 import cloud.cholewa.heating.client.ShellyClient;
 import cloud.cholewa.heating.infrastructure.error.BoilerException;
 import io.netty.channel.ChannelOption;
+import io.netty.handler.timeout.ReadTimeoutException;
 import lombok.SneakyThrows;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -13,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.zalando.logbook.Logbook;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.resources.ConnectionProvider;
@@ -42,7 +44,10 @@ class AppConfigTest {
     @Test
     void should_build_the_shelly_client_with_the_configured_timeouts() {
         HttpClient httpClient = sut.httpClient(
-            connectionProvider, Logbook.create(), Duration.ofSeconds(10), Duration.ofSeconds(5));
+            connectionProvider,
+            Logbook.create(),
+            new ShellyTimeoutProperties(Duration.ofSeconds(10), Duration.ofSeconds(5))
+        );
 
         assertThat(httpClient.configuration().responseTimeout()).isEqualTo(Duration.ofSeconds(5));
         assertThat(httpClient.configuration().options().get(ChannelOption.CONNECT_TIMEOUT_MILLIS))
@@ -61,13 +66,19 @@ class AppConfigTest {
                 .setBody("{\"output\": false}"));
 
             HttpClient httpClient = sut.httpClient(
-                connectionProvider, Logbook.create(), Duration.ofSeconds(10), Duration.ofMillis(300));
+                connectionProvider,
+                Logbook.create(),
+                new ShellyTimeoutProperties(Duration.ofSeconds(10), Duration.ofMillis(300))
+            );
             ShellyClient shellyClient = new ShellyClient(
                 sut.shellyWebClient(WebClient.builder(), httpClient), shellyConfig(mockWebServer));
 
             Duration elapsed = shellyClient.getFloorPumpStatus()
                 .as(StepVerifier::create)
-                .expectError(BoilerException.class)
+                .expectErrorSatisfies(throwable -> assertThat(throwable)
+                    .isInstanceOf(BoilerException.class)
+                    .hasCauseInstanceOf(WebClientRequestException.class)
+                    .hasRootCauseInstanceOf(ReadTimeoutException.class))
                 .verify(Duration.ofSeconds(3));
 
             //the request did reach the device, and the call ended on the timeout - not at once,

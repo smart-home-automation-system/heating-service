@@ -111,10 +111,6 @@ shelly:
   actor:
     scheme: http
     port: 80
-    # a relay that accepts the connection and never answers would otherwise hold its message,
-    # and one of the listener's prefetch slots, for good
-    connect-timeout: PT10S
-    response-timeout: PT5S
     pro4:
       down_left:
         host: 10.78.30.39
