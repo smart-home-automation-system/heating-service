@@ -14,16 +14,18 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitConfig {
 
-    @Value("${HOSTNAME:local}")
-    private String hostname;
-
     @Bean
     MessageConverter messageConverter() {
         return new JacksonJsonMessageConverter();
     }
 
+    //the name the broker shows for the connection: the pod, which already says which service it
+    //is and tells the old pod from the new one during a rollout. Kubernetes sets HOSTNAME;
+    //outside the cluster there is none
     @Bean
-    ConnectionNameStrategy connectionNameStrategy() {
-        return connectionFactory -> "heating-service-" + hostname;
+    ConnectionNameStrategy connectionNameStrategy(
+        @Value("${HOSTNAME:heating-service-local}") final String hostname
+    ) {
+        return connectionFactory -> hostname;
     }
 }

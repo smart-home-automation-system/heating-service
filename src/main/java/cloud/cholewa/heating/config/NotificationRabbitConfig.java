@@ -27,7 +27,7 @@ public class NotificationRabbitConfig {
         final RabbitProperties rabbitProperties,
         final NotificationProperties notificationProperties,
         final ApplicationContext applicationContext,
-        @Value("${HOSTNAME:local}") final String hostname
+        @Value("${HOSTNAME:heating-service-local}") final String hostname
     ) {
         connectionFactory = new CachingConnectionFactory(
             rabbitProperties.determineHost(),
@@ -36,7 +36,8 @@ public class NotificationRabbitConfig {
         connectionFactory.setVirtualHost(notificationProperties.virtualHost());
         connectionFactory.setUsername(notificationProperties.username());
         connectionFactory.setPassword(notificationProperties.password());
-        connectionFactory.setConnectionNameStrategy(factory -> "heating-service-notification-" + hostname);
+        //the second connection of the same pod, so the pod with what the connection is for
+        connectionFactory.setConnectionNameStrategy(factory -> hostname + "/notification");
         //a message matching no binding is dropped by the broker without a word; with returns it
         //comes back, and with correlated confirms the publisher learns the outcome of each send
         connectionFactory.setPublisherReturns(true);
