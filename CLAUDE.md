@@ -76,19 +76,28 @@ review.
 - **The last reading is one indexed query per room** (`room_temperature (room, date DESC)`),
   run one room at a time so a pass holds a single pooled connection. A `GROUP BY` over the
   whole table would read every row.
-- **`database.pool.max-size` is 2, and `prefetch` is 1 because of it.** The listener returns
-  a `Mono`, so every in-flight message may hold a connection; the prefetch has to stay below
-  the pool size or a backlog is pulled into the service and waits on the pool instead of in
-  the broker. Change one, check the other. The pool was 8 (prefetch 5) until 1.3.2 and 4
-  (prefetch 3) up to and including 1.6.0; the managed database has 22 connections for
-  everyone (heating 2 / database 4 / water 2 / presence 2 = 10). The size is what keeps a rollout inside
-  that budget (HAS-169): the Deployment rolls, so the old and the new pod each hold a pool
-  and Flyway adds one JDBC connection — with this split even the three rolling services at
-  once stay at 21. What it costs: temperature messages are handled one at a time, and while
-  the hourly sensor pass holds one connection and a message the other, an endpoint that
-  needs the database waits (`max-acquire-time`, 10 s). It works because nothing here holds
-  two connections at once — no transaction, no parallel queries; code that does needs the
-  size re-thought first. Watch `r2dbc_pool_pending_connections` when the traffic grows.
+- **`database.pool.max-size` is 2, and `prefetch` stays 3 — above the pool, on purpose.** The
+  pool was 8 (prefetch 5) until 1.3.2 and 4 up to and including 1.6.0; the managed database
+  has 22 connections for everyone (heating 2 / database 4 / water 2 / presence 2 = 10). The
+  size is what keeps a rollout inside that budget (HAS-169): the Deployment rolls, so the old
+  and the new pod each hold a pool and Flyway adds one JDBC connection — with this split even
+  the three rolling services at once stay at 21.
+  The old rule "prefetch below the pool size" assumed that an in-flight message holds a
+  connection. It does not: the message takes one for the `save` of its reading, hands it
+  back, and spends the rest of its time in the Shelly calls. So three messages in flight
+  compete for two connections only for the length of a write, while a prefetch of 1 would
+  make the whole chain serial — one slow relay holding up the readings of every room. (The
+  Shelly `WebClient` has **no** connect or response timeout, so a relay that accepts the
+  connection and never answers holds its message's slot for good; three such messages stall
+  the consumer whatever the prefetch. Before adding a timeout, check what it aborts.)
+  What the small pool costs: with both connections in use — a write, a query of the hourly
+  sensor pass, an endpoint — the next statement waits and fails after `max-acquire-time`
+  (10 s). In the listener that failure is retried as transient (`Retry.backoff(2, …)`), so a
+  starved write can hold its slot for about 30 s before the reading is logged and dropped;
+  `POST /home/heating` answers it as its usual 400 "Heater problem". It works because nothing
+  here holds two connections at once — no transaction, no parallel queries; code that does
+  needs the size re-thought first. Watch `r2dbc_pool_pending_connections`:
+  `HeatingServiceApplicationTest` pins the size, not the load.
 - **The listener acknowledges manually** (`acknowledge-mode: manual`): with the default the
   container acks before the reactive pipeline runs, so the prefetch would throttle nothing.
 - **`.contextCapture()` is the last operator of the listener chain** in
