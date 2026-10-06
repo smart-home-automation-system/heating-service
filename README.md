@@ -71,8 +71,8 @@ secrets. The `local` profile points RabbitMQ at `localhost` and uses the
 `temperature.dev.heating` queue, and publishes its notifications with `env=dev`.
 
 The `ConnectionFactory` itself is built by `cholewa-commons`, not by this service. Only the
-pool size is pinned here — `database.pool.max-size: 4` — because the managed database allows
-22 backend connections in total, shared by four services; the remaining pool settings come
+pool size is pinned here — `database.pool.max-size: 2` — because the managed database allows
+22 backend connections in total, shared by four services, and a rollout holds the pool twice; the remaining pool settings come
 from the library defaults, which since `cholewa-commons` 1.5 include validating every
 connection on acquire.
 
@@ -100,8 +100,8 @@ Kubernetes probes, live on the management port, not on the application one.
 
 Messages are produced by `amx-service`; both sides use `JacksonJsonMessageConverter`. The
 listener acknowledges manually — it returns a `Mono`, so the acknowledgement has to wait for
-the reactive pipeline to finish — and the prefetch (3) is kept below the database connection
-pool size (4), so a backlog is held by the broker instead of the service.
+the reactive pipeline to finish — and the prefetch (1) is kept below the database connection
+pool size (2), so a backlog is held by the broker instead of the service.
 
 Notifications about silent sensors go to the `notification` exchange, which lives on another
 virtual host, so the service holds a second connection for it (user `notification`, password
