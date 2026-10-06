@@ -111,11 +111,12 @@ review.
   `anyHeaterActive` and the floor pump. Before, one actor cancelled the rest and the pass ended
   there; harmless while a slow relay merely answered late, not once slow became an error.
   Only a `BoilerException` is skipped: anything else — a room missing from `ShellyConfig` or
-  the relay map — still ends the pass, and `HomeService` logs why. That case is real:
-  `HomeConfig` gives SANCTUM a radiator actor, but `ShellyConfig` and the relay map have no
-  entry for it, so a SANCTUM reading ends its pass with "Unknown configuration for room
-  heater" (latent — no SANCTUM reading in the logs of 2026-10-06). What to know about the
-  skip:
+  the relay map — still ends the pass, and `HomeService` logs why. One room is in that state
+  today: SANCTUM is not part of the house the furnace heats (owner, 2026-10-06), so it has no
+  relay, yet `HomeConfig` still gives it a radiator actor — a SANCTUM reading would end its
+  pass with "Unknown configuration for room heater". The leftover is the actor, not a
+  missing relay entry; rooms outside the heating (`loft`, `sauna`, `garden`) have none.
+  What to know about the skip:
   - State is written only from a device response, never from the intent, so a skipped actor
     keeps what it last reported. **That value can be old, and it still feeds
     `roomHeatingEnabled`, `anyHeaterActive` and the floor pump**: a relay that went away
