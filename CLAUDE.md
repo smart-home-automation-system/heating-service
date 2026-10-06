@@ -86,10 +86,7 @@ review.
   connection. It does not: the message takes one for the `save` of its reading, hands it
   back, and spends the rest of its time in the Shelly calls. So three messages in flight
   compete for two connections only for the length of a write, while a prefetch of 1 would
-  make the whole chain serial — one slow relay holding up the readings of every room. (The
-  Shelly `WebClient` has **no** connect or response timeout, so a relay that accepts the
-  connection and never answers holds its message's slot for good; three such messages stall
-  the consumer whatever the prefetch. Before adding a timeout, check what it aborts.)
+  make the whole chain serial — one slow relay holding up the readings of every room.
   What the small pool costs: with both connections in use — a write, a query of the hourly
   sensor pass, an endpoint — the next statement waits and fails after `max-acquire-time`
   (10 s). In the listener that failure is retried as transient (`Retry.backoff(2, …)`), so a
@@ -98,6 +95,20 @@ review.
   here holds two connections at once — no transaction, no parallel queries; code that does
   needs the size re-thought first. Watch `r2dbc_pool_pending_connections`:
   `HeatingServiceApplicationTest` pins the size, not the load.
+- **Every Shelly call is bounded: 10 s to connect, 5 s for the response** (`AppConfig`, since
+  HAS-169; the values of `boiler-service`). Until then a relay that accepted the connection
+  and never answered held its message for good, and three such messages stalled the consumer.
+  A timeout ends the call the way every device error already did — `ShellyClient` turns it
+  into a `BoilerException` — so know what that path does before changing it:
+  `HeatingService.processHeatingRequest` runs the heater actors of a room in one `flatMap`,
+  so one failing actor cancels the others of that room, and `HomeService` then swallows the
+  error and ends the message there: `anyHeaterActive` is not recomputed and the floor pump
+  is not looked at until the next reading of any room. That is safe because actor and pump
+  state is written only from a device response, never from the intent — a call that timed
+  out leaves the old state and its stale timestamp, and the next reading asks the device
+  again. A command the relay did carry out but answered too late is caught the same way:
+  the cached status goes stale after five minutes, and the reading of that room after that
+  re-reads the relay. `AppConfigTest` pins both values and the mapping.
 - **The listener acknowledges manually** (`acknowledge-mode: manual`): with the default the
   container acks before the reactive pipeline runs, so the prefetch would throttle nothing.
 - **`.contextCapture()` is the last operator of the listener chain** in
