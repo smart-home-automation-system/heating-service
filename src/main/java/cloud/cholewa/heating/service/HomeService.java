@@ -47,8 +47,9 @@ public class HomeService {
     }
 
     private void updateRoomTemperature(final Room room, final double temperature) {
-        room.getTemperature().setUpdatedAt(LocalDateTime.now(clock));
+        //the value first: the timestamp is what tells a reader of the rooms that a reading exists
         room.getTemperature().setValue(temperature);
+        room.getTemperature().setUpdatedAt(LocalDateTime.now(clock));
     }
 
     private Mono<Room> determineAnyHeaterActive(final Room room) {
