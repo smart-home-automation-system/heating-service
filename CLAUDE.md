@@ -147,8 +147,9 @@ review.
   **and** the room is colder than it asks), not "a schedule is on"; and the state is read from
   an HTTP thread while the listener writes it — the fields are `volatile`, so a reader sees what
   was written, but a reply is not an atomic snapshot. Two pairs are made consistent: a
-  temperature and its time are written, seeded and read under one lock (the `Temperature`
-  object - `HomeService`, `RoomTemperatureSeeder`, `RoomMapper`), and `RoomMapper` makes
+  temperature and its time are written, seeded and read as one, through the synchronized
+  `update` / `updateIfAbsent` / `snapshot` of `Temperature` (`HomeService`,
+  `RoomTemperatureSeeder`, `RoomMapper`), and `RoomMapper` makes
   `inSchedule` and `targetTemperature` agree with each other. At a start `RoomTemperatureSeeder` gives every room its
   last stored temperature with the time of the measurement (owner, 2026-10-08), so a rollout does
   not blank the dashboard. It changes what a reader sees and nothing else: no pass is started,

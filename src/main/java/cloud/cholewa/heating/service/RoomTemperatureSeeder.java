@@ -4,7 +4,6 @@ import cloud.cholewa.heating.db.model.TemperatureEntity;
 import cloud.cholewa.heating.db.repository.TemperatureRepository;
 import cloud.cholewa.heating.model.Home;
 import cloud.cholewa.heating.model.Room;
-import cloud.cholewa.heating.model.Temperature;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -46,22 +45,15 @@ public class RoomTemperatureSeeder {
     }
 
     private void seedRoom(final Room room, final TemperatureEntity entity) {
-        final Temperature temperature = room.getTemperature();
-
         //the listener is consuming by now: a reading that arrived in the meantime is newer than the
-        //row read here and must stay. Checked and written under the lock HomeService writes a
-        //reading under - otherwise a stored value could land between the two halves of a live one,
-        //and the pass of that reading would decide on it
-        synchronized (temperature) {
-            if (temperature.getUpdatedAt() != null) {
-                return;
-            }
-            temperature.setValue(entity.temperature());
-            temperature.setUpdatedAt(entity.date());
+        //row read here and must stay. Checked and written as one, under the lock HomeService writes
+        //a reading under - otherwise a stored value could land between the two halves of a live
+        //one, and the pass of that reading would decide on it
+        if (room.getTemperature().updateIfAbsent(entity.temperature(), entity.date())) {
+            log.info(
+                "Room: {} starts with its last stored temperature: {}°C of {}",
+                room.getName(), entity.temperature(), entity.date()
+            );
         }
-        log.info(
-            "Room: {} starts with its last stored temperature: {}°C of {}",
-            room.getName(), entity.temperature(), entity.date()
-        );
     }
 }
