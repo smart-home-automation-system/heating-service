@@ -87,7 +87,61 @@ is also the path the Kubernetes ingress routes to this service.
 | `GET` | `/home/heating` | Current state of the heating system switch, with the timestamp of the last change |
 | `POST` | `/home/heating?turn=on\|off` | Enables or disables the heating system and persists the change |
 | `GET` | `/home/heating/temperature/sensors` | Last reading of every temperature sensor: `room`, `lastReadingAt`, `stale` (silent for longer than `heating.sensor-monitor.stale-after`) and `muted` (excluded from the alerts); rooms that never reported are left out |
+| `GET` | `/home/heating/rooms` | Every room of the house with its temperature, heaters and schedules — see below |
+| `GET` | `/home/heating/rooms/{name}` | One room; `404` with the code `NOT_FOUND_ROOM` for an unknown name |
+| `GET` | `/home/heating/floor-pump` | What the relay of the floor pump last reported: `working`, `updatedAt` |
 | `GET` | `/home/heating/status/active` | Whether the system is enabled and any heater is currently active — polled by `boiler-service` |
+
+### Rooms and the floor pump
+
+`/rooms`, `/rooms/{name}` and `/floor-pump` answer the state the service holds in memory;
+they ask neither a device nor the database, and the state starts empty with every start of
+the service.
+
+```json
+{
+  "name": "living room",
+  "mode": "HEATING",
+  "heatingEnabled": true,
+  "temperature": {"value": 19.4, "updatedAt": "2026-10-08T18:30:00"},
+  "heaters": [
+    {
+      "type": "radiator",
+      "working": true,
+      "updatedAt": "2026-10-08T18:31:00",
+      "inSchedule": true,
+      "targetTemperature": 20.5,
+      "schedules": [
+        {"type": "HEATING", "days": ["MONDAY", "TUESDAY"], "startTime": "07:00:00", "endTime": "23:00:00", "temperature": 20.5}
+      ]
+    }
+  ]
+}
+```
+
+- **A missing field means "not known", never "off" or zero.** `temperature` is missing until
+  the first reading of the room, `humidity` until one is reported (nothing reports it today),
+  `working` and `updatedAt` of a heater until its relay has answered, `mode` for a room that
+  has none configured. `heaters` is always there, empty for a room without a heater.
+- **After a start of the service every room is without a temperature** until its sensor
+  reports again, and every heater without `working` until its relay is asked - the last stored
+  reading of a room is in `/temperature/sensors`.
+- `heatingEnabled` says whether any heater of the room was working at the end of the last
+  control pass that reached its heaters. For `sanctum`, whose radiator is switched outside this
+  service, it is always `false`.
+- `working` is what the relay last reported and `updatedAt` when: a relay is asked again only
+  with a reading of its room, so both stay as they were while the sensor is silent.
+- `inSchedule` is the decision made with the last reading: a schedule covered that moment
+  **and** the room was colder than it asks for. It is as old as the `temperature` of the room,
+  and the switch of the whole heating is not part of it: with the heating off a heater can be
+  "in schedule" and not working. `targetTemperature` is there only while `inSchedule` is
+  true — the target of a room that is warm enough is read from `schedules`.
+- `days` run from Monday to Sunday; `startTime` and `endTime` are local times of the house.
+- `{name}` is the name the list gives a room (`living room`, percent-encoded in the path), in
+  any case. An unknown one is a `404` with the code `NOT_FOUND_ROOM`; a `404` without a code
+  is a path that is not served.
+- `/floor-pump` answers `{"working": true, "updatedAt": "…"}`, and `{}` until the relay of
+  the pump has answered once.
 
 Actuator endpoints, including the `readiness` and `liveness` health groups used by the
 Kubernetes probes, live on the management port, not on the application one.

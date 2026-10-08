@@ -135,6 +135,26 @@ review.
     device answered.
   `ShellyTimeoutPropertiesTest` pins the values and the bounds, `AppConfigTest` that they
   reach the client and that a silent device ends as a timeout, `HeatingServiceTest` the skip.
+- **The rooms are served from memory, as replies of their own** (HAS-197: `GET /rooms`,
+  `/rooms/{name}`, `/floor-pump`; `RoomReply`, `FloorPumpReply`, mapped by hand in
+  `RoomMapper`). The internal `Room` is mutable and starts with defaults — a temperature of
+  0.0, a heater that is "not working" — so the mapper leaves a value out unless the timestamp
+  next to it says it was measured or reported: **never serialize `Room`, `HeaterActor` or
+  `FloorPump` themselves**, and a new field of the state gets the same question ("how does a
+  reader tell it was never set?"). The JSON is the contract of the web dashboard, pinned whole
+  and strict in `RoomControllerTest`. Two things a reader of it has to know: `inSchedule` /
+  `targetTemperature` are the control loop's decision at the last reading (a schedule is on
+  **and** the room is colder than it asks), not "a schedule is on"; and the state is read from
+  an HTTP thread while the listener writes it — the fields are `volatile`, so a reader sees what
+  was written, but a reply is not an atomic snapshot: `HomeService` writes a value before its
+  timestamp, so a first reading never shows as 0.0, and `RoomMapper` makes `inSchedule` and
+  `targetTemperature` agree with each other. The state is empty after every start: a rollout
+  blanks the rooms until the sensors report again (seeding from the stored readings was not
+  done - the control loop would then decide on a reading of unknown age).
+  An unknown room is a 404 with the code `NOT_FOUND_ROOM`; the names of `HeatingErrorId` are
+  wire contract, pinned by `HeatingErrorIdTest`, and the WARN of the processor by
+  `RoomControllerTest`. `HeaterType` goes out as `radiator` / `floor` (`@JsonValue`); `mode`,
+  the schedule `type` and `days` as constant names.
 - **The listener acknowledges manually** (`acknowledge-mode: manual`): with the default the
   container acks before the reactive pipeline runs, so the prefetch would throttle nothing.
 - **`.contextCapture()` is the last operator of the listener chain** in
