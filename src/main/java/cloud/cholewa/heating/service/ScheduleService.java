@@ -30,8 +30,9 @@ public class ScheduleService {
             .filter(schedule -> isActiveSchedule(schedule, room.getTemperature().getValue()))
             .findFirst()
             .ifPresentOrElse(schedule -> {
-                heaterActor.setInSchedule(true);
+                //the target first: "in schedule" is never there without one for a reader (RoomMapper)
                 heaterActor.setTargetTemperature(schedule.getTemperature());
+                heaterActor.setInSchedule(true);
             }, () -> {
                 heaterActor.setInSchedule(false);
                 heaterActor.setTargetTemperature(null);

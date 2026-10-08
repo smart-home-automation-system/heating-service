@@ -1,6 +1,7 @@
 package cloud.cholewa.heating.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -30,6 +31,7 @@ public class HeaterActor {
     private volatile Double targetTemperature;
     //whether a control pass has decided inSchedule since the service started. Until then the false
     //above is only the value the state starts with, and a reader is not told it (RoomMapper)
+    @Setter(AccessLevel.NONE)
     private volatile boolean scheduleDecided;
 
     public void setInSchedule(final boolean inSchedule) {

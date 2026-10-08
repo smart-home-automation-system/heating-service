@@ -53,9 +53,11 @@ public class RoomMapper {
         final LocalDateTime updatedAt = heaterActor.getLastStatusUpdate();
         //the listener writes the two one after the other while this thread reads them, so each is read
         //once and the reply is made to agree with itself: a target only with "in schedule", and both or none
+        //"decided" is read first, as it is written last: read after the value, the first decision of
+        //a heater could be told as "no" while it was being written as "yes"
+        final boolean decided = heaterActor.isScheduleDecided();
         final Double targetTemperature = heaterActor.getTargetTemperature();
         final boolean inSchedule = heaterActor.isInSchedule() && targetTemperature != null;
-        final boolean decided = heaterActor.isScheduleDecided();
 
         return new RoomReply.Heater(
             heaterActor.getType(),

@@ -233,7 +233,7 @@ class RoomMapperTest {
 
     //both ends are exclusive, as in the control loop: the two use Schedule.covers
     @Test
-    void should_not_count_the_minute_a_schedule_starts_or_ends_at() {
+    void should_not_count_the_moment_a_schedule_starts_or_ends_at() {
         final Room room = roomWith(weekdays(7, 23, 20.5));
 
         assertThat(scheduledTemperature(mapperAt(LocalDateTime.of(2026, 10, 8, 7, 0)), room)).isNull();
