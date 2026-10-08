@@ -162,7 +162,9 @@ review.
   meantime. The heaters are not seeded, and
   `inSchedule` / `heatingEnabled` are left out of a reply until a pass has decided them: the
   setters `HeaterActor.setInSchedule` and `Room.setRoomHeatingEnabled` are written by hand and
-  mark "decided" - set those fields through them only.
+  mark "decided" - set those fields through them only. The builders write the fields directly
+  and leave "decided" false, which is what the tests of the control loop use them for; a
+  builder is no way to hand a decision to `RoomMapper`.
   An unknown room is a 404 with the code `NOT_FOUND_ROOM`; the names of `HeatingErrorId` are
   wire contract, pinned by `HeatingErrorIdTest`, and the WARN of the processor by
   `RoomControllerTest`. `HeaterType` goes out as `radiator` / `floor` (`@JsonValue`); `mode`,

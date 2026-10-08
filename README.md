@@ -123,7 +123,9 @@ they ask neither a device nor the database.
   the first reading of the room, `humidity` until one is reported (nothing reports it today),
   `working` and `updatedAt` of a heater until its relay has answered, `inSchedule` and
   `heatingEnabled` until a control pass has decided them, `mode` for a room that has none
-  configured. `heaters` is always there, empty for a room without a heater.
+  configured. `heaters` is always there, empty for a room without a heater. The two
+  temperatures of a heater are the exception: `targetTemperature` and `scheduledTemperature`
+  are missing when there is none to tell - no schedule is on - which is known, not unknown.
 - **A room starts with its last stored temperature.** At every start the service reads the
   last reading of each room from the database, with the time it was measured at - so
   `temperature.updatedAt` can be days old for a silent sensor, and only a room that never
