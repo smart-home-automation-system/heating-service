@@ -11,13 +11,12 @@ import java.util.List;
 /**
  * A room as a client sees it - a copy of the state held in memory, taken when it was asked for.
  * Whatever has not been measured or reported yet is left out, never filled with a default:<br>
- * {@code temperature} - missing until the first reading of the room since the service started.<br>
+ * {@code temperature} - the last reading of the room; after a start of the service the last one
+ * stored, with the time it was measured at. Missing only for a room that never reported.<br>
  * {@code humidity} - missing until a humidity is reported; nothing reports one today.<br>
  * {@code heatingEnabled} - whether any heater of the room was working at the end of the last pass
  * that got as far as its heaters. A pass that ends early leaves it as it was, and SANCTUM, whose
- * radiator is switched outside this service, never has one: there it is always false.<br>
- * The state lives in memory only: after a start of the service every room is without a
- * temperature until its sensor reports again.
+ * radiator is switched outside this service, never has one: there it is always false.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record RoomReply(
