@@ -7,6 +7,7 @@ import lombok.Setter;
 import lombok.Singular;
 
 import java.time.DayOfWeek;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Set;
 
@@ -26,4 +27,13 @@ public class Schedule {
     private LocalTime endTime;
 
     private double temperature;
+
+    //whether the schedule is on at that moment, whatever the temperature of the room. Both ends
+    //are exclusive. The one place for this rule: the control loop decides by it (ScheduleService)
+    //and a reader is told by it (RoomMapper)
+    public boolean covers(final LocalDateTime moment) {
+        return startTime.isBefore(moment.toLocalTime())
+            && endTime.isAfter(moment.toLocalTime())
+            && days.contains(moment.getDayOfWeek());
+    }
 }

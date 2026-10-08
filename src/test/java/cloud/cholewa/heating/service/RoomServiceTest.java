@@ -15,6 +15,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.time.LocalDateTime;
+import java.time.Clock;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,7 +31,7 @@ class RoomServiceTest {
         .temperature(Temperature.builder().build())
         .build();
 
-    private final RoomService sut = new RoomService(new Home(List.of(office, livingRoom)), new RoomMapper());
+    private final RoomService sut = new RoomService(new Home(List.of(office, livingRoom)), new RoomMapper(Clock.systemDefaultZone()));
 
     @Test
     void should_list_the_rooms_in_the_order_of_the_configuration() {

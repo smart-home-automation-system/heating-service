@@ -10,8 +10,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Clock;
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 
 @Slf4j
 @Service
@@ -48,10 +47,6 @@ public class ScheduleService {
     }
 
     private boolean isActiveSchedule(final Schedule schedule, final double temperature) {
-        return schedule.getStartTime().isBefore(LocalTime.now(clock))
-            && schedule.getEndTime().isAfter(LocalTime.now(clock))
-            && schedule.getDays().stream().anyMatch(
-            dayOfWeek -> dayOfWeek.equals(LocalDate.now(clock).getDayOfWeek()))
-            && temperature < schedule.getTemperature();
+        return schedule.covers(LocalDateTime.now(clock)) && temperature < schedule.getTemperature();
     }
 }

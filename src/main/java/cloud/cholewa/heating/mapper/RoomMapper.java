@@ -6,15 +6,20 @@ import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.model.RoomReply;
 import cloud.cholewa.heating.model.Schedule;
 import cloud.cholewa.heating.model.Temperature;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 
 //Written by hand, not by MapStruct: the point of the reply is what it leaves out. The state in
 //memory starts with defaults - a temperature of 0.0, a heater that is "not working" - and only
 //the timestamp next to a value tells whether it was ever measured or reported
 @Component
+@RequiredArgsConstructor
 public class RoomMapper {
+
+    private final Clock clock;
 
     public RoomReply toReply(final Room room) {
         return new RoomReply(
@@ -58,8 +63,22 @@ public class RoomMapper {
             updatedAt,
             decided ? inSchedule : null,
             decided && inSchedule ? targetTemperature : null,
+            toScheduledTemperature(heaterActor),
             heaterActor.getSchedules().stream().map(this::toSchedule).toList()
         );
+    }
+
+    //Unlike the two above, not a decision of the control loop: worked out when asked, by the clock
+    //of the house, from the schedules alone. The highest of the schedules that are on, because
+    //that is what the loop heats to - it takes the first one the room is still colder than
+    private Double toScheduledTemperature(final HeaterActor heaterActor) {
+        final LocalDateTime now = LocalDateTime.now(clock);
+
+        return heaterActor.getSchedules().stream()
+            .filter(schedule -> schedule.covers(now))
+            .map(Schedule::getTemperature)
+            .max(Double::compare)
+            .orElse(null);
     }
 
     private RoomReply.HeaterSchedule toSchedule(final Schedule schedule) {

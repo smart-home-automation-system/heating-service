@@ -51,11 +51,12 @@ class RoomControllerTest {
                 LocalDateTime.of(2026, 10, 8, 18, 31),
                 true,
                 20.5,
+                20.5,
                 List.of(new RoomReply.HeaterSchedule(
                     ScheduleType.HEATING, List.of(MONDAY, SUNDAY), LocalTime.of(7, 0), LocalTime.of(23, 0), 20.5
                 ))
             ),
-            new RoomReply.Heater(HeaterType.FLOOR, null, null, null, null, List.of())
+            new RoomReply.Heater(HeaterType.FLOOR, null, null, null, null, null, List.of())
         )
     );
 
@@ -73,6 +74,7 @@ class RoomControllerTest {
               "updatedAt": "2026-10-08T18:31:00",
               "inSchedule": true,
               "targetTemperature": 20.5,
+              "scheduledTemperature": 20.5,
               "schedules": [
                 {"type": "HEATING", "days": ["MONDAY", "SUNDAY"], "startTime": "07:00:00", "endTime": "23:00:00", "temperature": 20.5}
               ]

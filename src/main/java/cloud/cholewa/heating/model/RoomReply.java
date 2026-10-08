@@ -44,7 +44,12 @@ public record RoomReply(
      * sensor fell silent keeps the last decision, and the switch of the whole heating is not part
      * of it - with the heating off a heater can be "in schedule" and not working.<br>
      * {@code targetTemperature} - the temperature of that schedule, present only while
-     * {@code inSchedule} is true.
+     * {@code inSchedule} is true.<br>
+     * {@code scheduledTemperature} - what the schedules ask for at the moment of the question,
+     * whether or not the room has reached it: the highest temperature of the schedules that are
+     * on now, missing when none is. Worked out when asked, by the clock of the house - it needs
+     * no reading and is there from the start of the service. It is the figure to show as the
+     * target of a room; {@code targetTemperature} disappears as soon as the room is warm enough.
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record Heater(
@@ -53,6 +58,7 @@ public record RoomReply(
         LocalDateTime updatedAt,
         Boolean inSchedule,
         Double targetTemperature,
+        Double scheduledTemperature,
         List<HeaterSchedule> schedules
     ) {
     }
