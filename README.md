@@ -110,6 +110,7 @@ they ask neither a device nor the database.
       "updatedAt": "2026-10-08T18:31:00",
       "inSchedule": true,
       "targetTemperature": 20.5,
+      "scheduledTemperature": 20.5,
       "schedules": [
         {"type": "HEATING", "days": ["MONDAY", "TUESDAY"], "startTime": "07:00:00", "endTime": "23:00:00", "temperature": 20.5}
       ]
@@ -138,7 +139,13 @@ they ask neither a device nor the database.
   **and** the room was colder than it asks for. It is as old as the `temperature` of the room,
   and the switch of the whole heating is not part of it: with the heating off a heater can be
   "in schedule" and not working. `targetTemperature` is there only while `inSchedule` is
-  true — the target of a room that is warm enough is read from `schedules`.
+  true, so it disappears as soon as the room is warm enough.
+- `scheduledTemperature` is what the schedules ask for at the moment of the call, whether or
+  not the room has reached it: the highest temperature of the schedules that are on now,
+  missing when none is. **It is the figure to show as the target of a room** - a client does
+  not work it out from `schedules` with a clock of its own. It is computed when asked, by the
+  clock of the house, so it needs no reading and is there right after a start; the control loop
+  does not use it.
 - `days` run from Monday to Sunday; `startTime` and `endTime` are local times of the house.
 - `{name}` is the name the list gives a room (`living room`, percent-encoded in the path), in
   any case. An unknown one is a `404` with the code `NOT_FOUND_ROOM`; a `404` without a code

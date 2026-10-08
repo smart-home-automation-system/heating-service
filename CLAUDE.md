@@ -142,7 +142,10 @@ review.
   next to it says it was measured or reported: **never serialize `Room`, `HeaterActor` or
   `FloorPump` themselves**, and a new field of the state gets the same question ("how does a
   reader tell it was never set?"). The JSON is the contract of the web dashboard, pinned whole
-  and strict in `RoomControllerTest`. Two things a reader of it has to know: `inSchedule` /
+  and strict in `RoomControllerTest`. `scheduledTemperature` is the one
+  field worked out when asked (`RoomMapper`, by the `Clock` bean) instead of copied from the
+  state: the highest of the schedules that are on now, by `Schedule.covers` - the rule the
+  control loop decides by as well, so change it there and nowhere else. Two things a reader of it has to know: `inSchedule` /
   `targetTemperature` are the control loop's decision at the last reading (a schedule is on
   **and** the room is colder than it asks), not "a schedule is on"; and the state is read from
   an HTTP thread while the listener writes it — the fields are `volatile`, so a reader sees what
