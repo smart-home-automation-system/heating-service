@@ -126,8 +126,9 @@ they ask neither a device nor the database.
   last reading of each room from the database, with the time it was measured at - so
   `temperature.updatedAt` can be days old for a silent sensor, and only a room that never
   reported has no `temperature`. The heaters are not restored: `working` is missing until the
-  relay is asked, which happens with the next reading of the room, and `inSchedule` is false
-  until then.
+  relay is asked, which happens with the next reading of the room; until then `inSchedule`
+  and `heatingEnabled` are `false` because nothing was decided yet, not because the room is
+  warm - a heater without `working` is the sign of that.
 - `heatingEnabled` says whether any heater of the room was working at the end of the last
   control pass that reached its heaters. For `sanctum`, whose radiator is switched outside this
   service, it is always `false`.
