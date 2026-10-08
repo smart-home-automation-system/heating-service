@@ -95,8 +95,7 @@ is also the path the Kubernetes ingress routes to this service.
 ### Rooms and the floor pump
 
 `/rooms`, `/rooms/{name}` and `/floor-pump` answer the state the service holds in memory;
-they ask neither a device nor the database, and the state starts empty with every start of
-the service.
+they ask neither a device nor the database.
 
 ```json
 {
@@ -123,9 +122,12 @@ the service.
   the first reading of the room, `humidity` until one is reported (nothing reports it today),
   `working` and `updatedAt` of a heater until its relay has answered, `mode` for a room that
   has none configured. `heaters` is always there, empty for a room without a heater.
-- **After a start of the service every room is without a temperature** until its sensor
-  reports again, and every heater without `working` until its relay is asked - the last stored
-  reading of a room is in `/temperature/sensors`.
+- **A room starts with its last stored temperature.** At every start the service reads the
+  last reading of each room from the database, with the time it was measured at - so
+  `temperature.updatedAt` can be days old for a silent sensor, and only a room that never
+  reported has no `temperature`. The heaters are not restored: `working` is missing until the
+  relay is asked, which happens with the next reading of the room, and `inSchedule` is false
+  until then.
 - `heatingEnabled` says whether any heater of the room was working at the end of the last
   control pass that reached its heaters. For `sanctum`, whose radiator is switched outside this
   service, it is always `false`.
