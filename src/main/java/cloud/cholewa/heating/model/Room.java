@@ -21,7 +21,7 @@ public class Room {
 
     private boolean manualMode;
 
-    private boolean isRoomHeatingEnabled;
+    private volatile boolean isRoomHeatingEnabled;
 
     private final Temperature temperature;
 

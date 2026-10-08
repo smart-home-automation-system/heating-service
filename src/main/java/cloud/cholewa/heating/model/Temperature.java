@@ -10,6 +10,6 @@ import java.time.LocalDateTime;
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Temperature {
-    private double value;
-    private LocalDateTime updatedAt;
+    private volatile double value;
+    private volatile LocalDateTime updatedAt;
 }

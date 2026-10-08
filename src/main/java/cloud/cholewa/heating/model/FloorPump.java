@@ -6,6 +6,6 @@ import java.time.LocalDateTime;
 
 @Data
 public class FloorPump {
-    boolean isWorking;
-    LocalDateTime updatedAt;
+    volatile boolean isWorking;
+    volatile LocalDateTime updatedAt;
 }

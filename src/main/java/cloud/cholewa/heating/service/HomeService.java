@@ -47,7 +47,9 @@ public class HomeService {
     }
 
     private void updateRoomTemperature(final Room room, final double temperature) {
-        //the value first: the timestamp is what tells a reader of the rooms that a reading exists
+        //the value first, so that a reader of the rooms never sees the timestamp of a first reading next to
+        //the 0.0 the state starts with. The two are still not written as one: a reply may pair a new
+        //value with the time of the reading before
         room.getTemperature().setValue(temperature);
         room.getTemperature().setUpdatedAt(LocalDateTime.now(clock));
     }

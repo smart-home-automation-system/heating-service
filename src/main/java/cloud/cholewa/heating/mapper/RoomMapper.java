@@ -41,19 +41,24 @@ public class RoomMapper {
 
     private RoomReply.Heater toHeater(final HeaterActor heaterActor) {
         final LocalDateTime updatedAt = heaterActor.getLastStatusUpdate();
+        //the listener writes the two one after the other while this thread reads them, so each is read
+        //once and the reply is made to agree with itself: a target only with "in schedule", and both or none
+        final Double targetTemperature = heaterActor.getTargetTemperature();
+        final boolean inSchedule = heaterActor.isInSchedule() && targetTemperature != null;
 
         return new RoomReply.Heater(
             heaterActor.getType(),
             updatedAt == null ? null : heaterActor.isWorking(),
             updatedAt,
-            heaterActor.isInSchedule(),
-            heaterActor.getTargetTemperature(),
+            inSchedule,
+            inSchedule ? targetTemperature : null,
             heaterActor.getSchedules().stream().map(this::toSchedule).toList()
         );
     }
 
     private RoomReply.HeaterSchedule toSchedule(final Schedule schedule) {
         return new RoomReply.HeaterSchedule(
+            schedule.getType(),
             //the days are a set, and the order of a Set.of differs from one start of the JVM to the next
             schedule.getDays().stream().sorted().toList(),
             schedule.getStartTime(),

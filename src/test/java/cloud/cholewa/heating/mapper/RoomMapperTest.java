@@ -118,6 +118,7 @@ class RoomMapperTest {
             true,
             20.5,
             List.of(new RoomReply.HeaterSchedule(
+                ScheduleType.HEATING,
                 List.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY),
                 LocalTime.of(7, 0),
                 LocalTime.of(23, 0),
@@ -137,6 +138,28 @@ class RoomMapperTest {
         assertThat(sut.toReply(room).heaters()).singleElement().satisfies(heater -> {
             assertThat(heater.working()).isFalse();
             assertThat(heater.updatedAt()).isEqualTo(RELAY_AT);
+        });
+    }
+
+    //the two are written one after the other by the listener; a reply caught in between must not
+    //claim a schedule without a target, nor a target without a schedule
+    @Test
+    void should_never_report_a_target_without_in_schedule_nor_the_other_way_round() {
+        final HeaterActor withoutTarget = HeaterActor.builder().type(HeaterType.RADIATOR).build();
+        withoutTarget.setInSchedule(true);
+
+        final HeaterActor withoutSchedule = HeaterActor.builder().type(HeaterType.FLOOR).build();
+        withoutSchedule.setTargetTemperature(21.0);
+
+        final Room room = Room.builder()
+            .name(RoomName.BATHROOM_UP)
+            .heaterActor(withoutTarget)
+            .heaterActor(withoutSchedule)
+            .build();
+
+        assertThat(sut.toReply(room).heaters()).hasSize(2).allSatisfy(heater -> {
+            assertThat(heater.inSchedule()).isFalse();
+            assertThat(heater.targetTemperature()).isNull();
         });
     }
 

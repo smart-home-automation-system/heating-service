@@ -5,11 +5,15 @@ import cloud.cholewa.heating.infrastructure.error.RoomNotFoundException;
 import cloud.cholewa.heating.model.HeaterType;
 import cloud.cholewa.heating.model.RoomMode;
 import cloud.cholewa.heating.model.RoomReply;
+import cloud.cholewa.heating.model.ScheduleType;
 import cloud.cholewa.heating.service.RoomService;
 import cloud.cholewa.home.model.RoomName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webflux.test.autoconfigure.WebFluxTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -24,10 +28,12 @@ import java.util.List;
 
 import static java.time.DayOfWeek.MONDAY;
 import static java.time.DayOfWeek.SUNDAY;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 //The JSON is the contract of the web dashboard, so the whole body is written out: a field renamed
 //or filled with a default where it used to be left out has to fail here
+@ExtendWith(OutputCaptureExtension.class)
 @WebFluxTest(RoomController.class)
 @Import(ExceptionHandlerConfig.class)
 class RoomControllerTest {
@@ -46,7 +52,7 @@ class RoomControllerTest {
                 true,
                 20.5,
                 List.of(new RoomReply.HeaterSchedule(
-                    List.of(MONDAY, SUNDAY), LocalTime.of(7, 0), LocalTime.of(23, 0), 20.5
+                    ScheduleType.HEATING, List.of(MONDAY, SUNDAY), LocalTime.of(7, 0), LocalTime.of(23, 0), 20.5
                 ))
             ),
             new RoomReply.Heater(HeaterType.FLOOR, null, null, false, null, List.of())
@@ -68,7 +74,7 @@ class RoomControllerTest {
               "inSchedule": true,
               "targetTemperature": 20.5,
               "schedules": [
-                {"days": ["MONDAY", "SUNDAY"], "startTime": "07:00:00", "endTime": "23:00:00", "temperature": 20.5}
+                {"type": "HEATING", "days": ["MONDAY", "SUNDAY"], "startTime": "07:00:00", "endTime": "23:00:00", "temperature": 20.5}
               ]
             },
             {"type": "floor", "inSchedule": false, "schedules": []}
@@ -126,7 +132,7 @@ class RoomControllerTest {
 
     //the code is what tells "no such room" from a 404 of the routing, which carries none
     @Test
-    void should_answer_404_with_a_code_for_an_unknown_room() {
+    void should_answer_404_with_a_code_for_an_unknown_room(final CapturedOutput output) {
         when(roomService.queryRoom("attic")).thenReturn(Mono.error(new RoomNotFoundException("attic")));
 
         webTestClient.get()
@@ -138,6 +144,12 @@ class RoomControllerTest {
             .jsonPath("$.errors[0].code").isEqualTo("NOT_FOUND_ROOM")
             .jsonPath("$.errors[0].message").isEqualTo("Room with provided name is not a part of home")
             .jsonPath("$.errors[0].details").isEqualTo("Room name: attic");
+
+        //the level is what the alerts see: a mistyped room polled by a dashboard must not read as
+        //an error of the service, and must not pass without a trace either
+        assertThat(output.getOut().lines().filter(line -> line.contains("Handled [RoomNotFoundException]")))
+            .singleElement()
+            .satisfies(line -> assertThat(line).contains(" WARN ").contains("attic"));
     }
 
     @Test
@@ -147,6 +159,8 @@ class RoomControllerTest {
             .exchange()
             .expectStatus().isNotFound()
             .expectBody()
+            .jsonPath("$.errors.length()").isEqualTo(1)
+            .jsonPath("$.errors[0].message").exists()
             .jsonPath("$.errors[0].code").doesNotExist();
     }
 }
