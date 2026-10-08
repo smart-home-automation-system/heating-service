@@ -4,6 +4,7 @@ import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.Home;
 import cloud.cholewa.heating.model.HomeStatus;
 import cloud.cholewa.heating.model.Room;
+import cloud.cholewa.heating.model.Temperature;
 import cloud.cholewa.home.model.RoomName;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,11 +48,13 @@ public class HomeService {
     }
 
     private void updateRoomTemperature(final Room room, final double temperature) {
-        //the value first, so that a reader of the rooms never sees the timestamp of a first reading next to
-        //the 0.0 the state starts with. The two are still not written as one: a reply may pair a new
-        //value with the time of the reading before
-        room.getTemperature().setValue(temperature);
-        room.getTemperature().setUpdatedAt(LocalDateTime.now(clock));
+        final Temperature current = room.getTemperature();
+        //the value and its time are one reading: written under the lock that RoomMapper reads them
+        //under and RoomTemperatureSeeder checks them under, so neither sees half of it
+        synchronized (current) {
+            current.setValue(temperature);
+            current.setUpdatedAt(LocalDateTime.now(clock));
+        }
     }
 
     private Mono<Room> determineAnyHeaterActive(final Room room) {

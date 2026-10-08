@@ -6,6 +6,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -17,6 +18,7 @@ public class RoomTemperatureConfig {
     private static final Duration STARTUP_TIMEOUT = Duration.ofSeconds(30);
 
     @Bean
+    @Order(2)
     @Profile("!test")
     CommandLineRunner initRoomTemperatures(final RoomTemperatureSeeder seeder) {
         //blocking, so that the pod turns Ready with the rooms already filled - but, unlike the

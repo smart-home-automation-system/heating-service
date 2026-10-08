@@ -48,16 +48,17 @@ public class RoomTemperatureSeeder {
     private void seedRoom(final Room room, final TemperatureEntity entity) {
         final Temperature temperature = room.getTemperature();
 
-        if (temperature == null || entity.temperature() == null || entity.date() == null) {
-            return;
-        }
         //the listener is consuming by now: a reading that arrived in the meantime is newer than the
-        //row read here and must stay
-        if (temperature.getUpdatedAt() != null) {
-            return;
+        //row read here and must stay. Checked and written under the lock HomeService writes a
+        //reading under - otherwise a stored value could land between the two halves of a live one,
+        //and the pass of that reading would decide on it
+        synchronized (temperature) {
+            if (temperature.getUpdatedAt() != null) {
+                return;
+            }
+            temperature.setValue(entity.temperature());
+            temperature.setUpdatedAt(entity.date());
         }
-        temperature.setValue(entity.temperature());
-        temperature.setUpdatedAt(entity.date());
         log.info(
             "Room: {} starts with its last stored temperature: {}°C of {}",
             room.getName(), entity.temperature(), entity.date()

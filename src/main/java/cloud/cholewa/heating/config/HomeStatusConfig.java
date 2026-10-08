@@ -8,6 +8,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import reactor.util.retry.Retry;
 
 import java.time.Duration;
@@ -27,6 +28,9 @@ public class HomeStatusConfig {
     }
 
     @Bean
+    //before the rooms are seeded: until the switch is loaded the listener, consuming already, takes
+    //the heating for off
+    @Order(1)
     @Profile("!test")
     CommandLineRunner initHomeStatus(final HomeStatus homeStatus, final HeatingStatusRepository repository) {
         return args -> {

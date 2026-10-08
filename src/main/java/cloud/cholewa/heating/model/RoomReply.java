@@ -12,7 +12,8 @@ import java.util.List;
  * A room as a client sees it - a copy of the state held in memory, taken when it was asked for.
  * Whatever has not been measured or reported yet is left out, never filled with a default:<br>
  * {@code temperature} - the last reading of the room; after a start of the service the last one
- * stored, with the time it was measured at. Missing only for a room that never reported.<br>
+ * stored. {@code updatedAt} is when this service received the reading - for one restored at a
+ * start, the time stored with it. Missing only for a room that never reported.<br>
  * {@code humidity} - missing until a humidity is reported; nothing reports one today.<br>
  * {@code heatingEnabled} - whether any heater of the room was working at the end of the last pass
  * that got as far as its heaters. A pass that ends early leaves it as it was, and SANCTUM, whose
@@ -35,8 +36,10 @@ public record RoomReply(
      * {@code working} - what the relay last reported, missing until it has answered once.<br>
      * {@code updatedAt} - when it reported that; the relay is asked again with a reading of the
      * room, so a silent sensor or a relay that went away leaves both as they were.<br>
-     * {@code inSchedule} - decided with the last reading of the room, so it is as old as the
-     * {@code temperature} of the room: a schedule covered that moment <b>and</b> the room was colder
+     * {@code inSchedule} - decided with the last reading the service received, so it is as old as
+     * the {@code temperature} of the room - except after a start, when the temperature is restored
+     * and nothing was decided yet: until the next reading it is false, as is
+     * {@code heatingEnabled}. A schedule covered that moment <b>and</b> the room was colder
      * than the schedule asks for. A room that is warm enough is not "in schedule"; a room whose
      * sensor fell silent keeps the last decision, and the switch of the whole heating is not part
      * of it - with the heating off a heater can be "in schedule" and not working.<br>

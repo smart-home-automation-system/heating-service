@@ -28,7 +28,13 @@ public class RoomMapper {
     }
 
     private RoomReply.Reading toReading(final Temperature temperature) {
-        return temperature == null ? null : toReading(temperature.getValue(), temperature.getUpdatedAt());
+        if (temperature == null) {
+            return null;
+        }
+        //a reading is written as one under this lock (HomeService), so it is read as one
+        synchronized (temperature) {
+            return toReading(temperature.getValue(), temperature.getUpdatedAt());
+        }
     }
 
     private RoomReply.Reading toReading(final Humidity humidity) {
