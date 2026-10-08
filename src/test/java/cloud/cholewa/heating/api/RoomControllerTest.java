@@ -55,7 +55,7 @@ class RoomControllerTest {
                     ScheduleType.HEATING, List.of(MONDAY, SUNDAY), LocalTime.of(7, 0), LocalTime.of(23, 0), 20.5
                 ))
             ),
-            new RoomReply.Heater(HeaterType.FLOOR, null, null, false, null, List.of())
+            new RoomReply.Heater(HeaterType.FLOOR, null, null, null, null, List.of())
         )
     );
 
@@ -77,16 +77,16 @@ class RoomControllerTest {
                 {"type": "HEATING", "days": ["MONDAY", "SUNDAY"], "startTime": "07:00:00", "endTime": "23:00:00", "temperature": 20.5}
               ]
             },
-            {"type": "floor", "inSchedule": false, "schedules": []}
+            {"type": "floor", "schedules": []}
           ]
         }
         """;
 
-    //a room that never reported and has no heater: no temperature, no humidity, an empty list
-    private static final RoomReply GARDEN = new RoomReply(RoomName.GARDEN, null, false, null, null, List.of());
+    //a room that never reported and has no heater: nothing measured, nothing decided, an empty list
+    private static final RoomReply GARDEN = new RoomReply(RoomName.GARDEN, null, null, null, null, List.of());
 
     private static final String GARDEN_JSON = """
-        {"name": "garden", "heatingEnabled": false, "heaters": []}
+        {"name": "garden", "heaters": []}
         """;
 
     @Autowired

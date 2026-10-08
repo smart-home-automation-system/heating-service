@@ -20,7 +20,7 @@ public class RoomMapper {
         return new RoomReply(
             room.getName(),
             room.getMode(),
-            room.isRoomHeatingEnabled(),
+            room.isHeatingDecided() ? room.isRoomHeatingEnabled() : null,
             toReading(room.getTemperature()),
             toReading(room.getHumidity()),
             room.getHeaterActors().stream().map(this::toHeater).toList()
@@ -50,13 +50,14 @@ public class RoomMapper {
         //once and the reply is made to agree with itself: a target only with "in schedule", and both or none
         final Double targetTemperature = heaterActor.getTargetTemperature();
         final boolean inSchedule = heaterActor.isInSchedule() && targetTemperature != null;
+        final boolean decided = heaterActor.isScheduleDecided();
 
         return new RoomReply.Heater(
             heaterActor.getType(),
             updatedAt == null ? null : heaterActor.isWorking(),
             updatedAt,
-            inSchedule,
-            inSchedule ? targetTemperature : null,
+            decided ? inSchedule : null,
+            decided && inSchedule ? targetTemperature : null,
             heaterActor.getSchedules().stream().map(this::toSchedule).toList()
         );
     }

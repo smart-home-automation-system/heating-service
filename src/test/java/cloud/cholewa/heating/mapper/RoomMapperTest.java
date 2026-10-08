@@ -49,14 +49,14 @@ class RoomMapperTest {
 
         assertThat(reply.name()).isEqualTo(RoomName.OFFICE);
         assertThat(reply.mode()).isEqualTo(RoomMode.HEATING);
-        assertThat(reply.heatingEnabled()).isFalse();
+        assertThat(reply.heatingEnabled()).isNull();
         assertThat(reply.temperature()).isNull();
         assertThat(reply.humidity()).isNull();
         assertThat(reply.heaters()).singleElement().satisfies(heater -> {
             assertThat(heater.type()).isEqualTo(HeaterType.RADIATOR);
             assertThat(heater.working()).isNull();
             assertThat(heater.updatedAt()).isNull();
-            assertThat(heater.inSchedule()).isFalse();
+            assertThat(heater.inSchedule()).isNull();
             assertThat(heater.targetTemperature()).isNull();
             assertThat(heater.schedules()).isEmpty();
         });
@@ -141,6 +141,39 @@ class RoomMapperTest {
         });
     }
 
+    //a pass that decided "no" is not the same as no pass at all: both are false in the state, and only
+    //the first is told to a reader
+    @Test
+    void should_report_what_a_pass_decided_even_when_it_decided_no() {
+        final HeaterActor radiator = HeaterActor.builder().type(HeaterType.RADIATOR).build();
+        radiator.setInSchedule(false);
+
+        final Room room = Room.builder().name(RoomName.OFFICE).heaterActor(radiator).build();
+        room.setRoomHeatingEnabled(false);
+
+        final RoomReply reply = sut.toReply(room);
+
+        assertThat(reply.heatingEnabled()).isFalse();
+        assertThat(reply.heaters().getFirst().inSchedule()).isFalse();
+    }
+
+    //a temperature restored at a start decides nothing: the room has a reading and still no decision
+    @Test
+    void should_leave_out_the_decisions_of_a_room_that_only_has_a_restored_temperature() {
+        final Room room = Room.builder()
+            .name(RoomName.OFFICE)
+            .temperature(Temperature.builder().build())
+            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR).build())
+            .build();
+        room.getTemperature().updateIfAbsent(18.9, READING_AT);
+
+        final RoomReply reply = sut.toReply(room);
+
+        assertThat(reply.temperature()).isEqualTo(new RoomReply.Reading(18.9, READING_AT));
+        assertThat(reply.heatingEnabled()).isNull();
+        assertThat(reply.heaters().getFirst().inSchedule()).isNull();
+    }
+
     //the two are written one after the other by the listener; a reply caught in between must not
     //claim a schedule without a target, nor a target without a schedule
     @Test
@@ -149,6 +182,7 @@ class RoomMapperTest {
         withoutTarget.setInSchedule(true);
 
         final HeaterActor withoutSchedule = HeaterActor.builder().type(HeaterType.FLOOR).build();
+        withoutSchedule.setInSchedule(false);
         withoutSchedule.setTargetTemperature(21.0);
 
         final Room room = Room.builder()

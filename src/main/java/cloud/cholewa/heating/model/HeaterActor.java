@@ -28,6 +28,14 @@ public class HeaterActor {
     private volatile boolean inSchedule;
 
     private volatile Double targetTemperature;
+    //whether a control pass has decided inSchedule since the service started. Until then the false
+    //above is only the value the state starts with, and a reader is not told it (RoomMapper)
+    private volatile boolean scheduleDecided;
+
+    public void setInSchedule(final boolean inSchedule) {
+        this.inSchedule = inSchedule;
+        this.scheduleDecided = true;
+    }
     
     @Singular
     private List<Schedule> schedules;
