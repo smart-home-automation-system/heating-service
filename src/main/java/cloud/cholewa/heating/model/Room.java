@@ -2,6 +2,7 @@ package cloud.cholewa.heating.model;
 
 import cloud.cholewa.home.model.RoomName;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -21,7 +22,16 @@ public class Room {
 
     private boolean manualMode;
 
-    private boolean isRoomHeatingEnabled;
+    private volatile boolean isRoomHeatingEnabled;
+    //whether a control pass has got as far as the heaters of the room since the service started.
+    //Until then the false above is only the value the state starts with (RoomMapper)
+    @Setter(AccessLevel.NONE)
+    private volatile boolean heatingDecided;
+
+    public void setRoomHeatingEnabled(final boolean roomHeatingEnabled) {
+        this.isRoomHeatingEnabled = roomHeatingEnabled;
+        this.heatingDecided = true;
+    }
 
     private final Temperature temperature;
 

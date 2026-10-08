@@ -47,8 +47,8 @@ public class HomeService {
     }
 
     private void updateRoomTemperature(final Room room, final double temperature) {
-        room.getTemperature().setUpdatedAt(LocalDateTime.now(clock));
-        room.getTemperature().setValue(temperature);
+        //as one: RoomMapper reads the reading and RoomTemperatureSeeder checks for one under the same lock
+        room.getTemperature().update(temperature, LocalDateTime.now(clock));
     }
 
     private Mono<Room> determineAnyHeaterActive(final Room room) {

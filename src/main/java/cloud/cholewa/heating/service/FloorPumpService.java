@@ -2,6 +2,7 @@ package cloud.cholewa.heating.service;
 
 import cloud.cholewa.heating.client.ShellyClient;
 import cloud.cholewa.heating.model.FloorPump;
+import cloud.cholewa.heating.model.FloorPumpReply;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.HeaterType;
 import cloud.cholewa.heating.model.Home;
@@ -29,6 +30,17 @@ public class FloorPumpService {
     private final Clock clock;
     private final Home home;
     private final ShellyClient shellyClient;
+
+    /**
+     * The state of the pump as its relay last reported it; nothing is asked of the device here.
+     * Until the relay has answered once the reply is empty - "not working" would be a guess.
+     */
+    public Mono<FloorPumpReply> queryFloorPump() {
+        return Mono.fromSupplier(() -> {
+            final LocalDateTime updatedAt = floorPump.getUpdatedAt();
+            return new FloorPumpReply(updatedAt == null ? null : floorPump.isWorking(), updatedAt);
+        });
+    }
 
     public Mono<Void> processFloorPump() {
         return Mono.fromSupplier(this::isStale)

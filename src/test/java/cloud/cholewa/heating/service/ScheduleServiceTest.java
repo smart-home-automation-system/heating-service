@@ -136,6 +136,31 @@ class ScheduleServiceTest {
                 new Double[]{20.0, null}
             ),
             Arguments.of(
+                "lower temperature but another day of the week",
+                testedRoom(
+                    List.of(testedHeaterActor(List.of(
+                        testedSchedule(LocalTime.of(8, 0), LocalTime.of(18, 0), Set.of(SUNDAY, THURSDAY), 20.0)))),
+                    Temperature.builder().value(16.6).build()
+                ),
+                LocalDateTime.of(2026, 1, 19, 12, 0),
+                new Boolean[]{false},
+                new Double[]{null}
+            ),
+            Arguments.of(
+                "lower temperature at the very start of one schedule and the very end of another",
+                testedRoom(
+                    List.of(
+                        testedHeaterActor(List.of(
+                            testedSchedule(LocalTime.of(12, 0), LocalTime.of(18, 0), Set.of(MONDAY), 20.0))),
+                        testedHeaterActor(List.of(
+                            testedSchedule(LocalTime.of(8, 0), LocalTime.of(12, 0), Set.of(MONDAY), 20.0)))
+                    ), Temperature.builder().value(16.6).build()
+                ),
+                LocalDateTime.of(2026, 1, 19, 12, 0),
+                new Boolean[]{false, false},
+                new Double[]{null, null}
+            ),
+            Arguments.of(
                 "two heater actors, different schedules, lower temperature but time out of schedules",
                 testedRoom(
                     List.of(

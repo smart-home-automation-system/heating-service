@@ -135,6 +135,40 @@ review.
     device answered.
   `ShellyTimeoutPropertiesTest` pins the values and the bounds, `AppConfigTest` that they
   reach the client and that a silent device ends as a timeout, `HeatingServiceTest` the skip.
+- **The rooms are served from memory, as replies of their own** (HAS-197: `GET /rooms`,
+  `/rooms/{name}`, `/floor-pump`; `RoomReply`, `FloorPumpReply`, mapped by hand in
+  `RoomMapper`). The internal `Room` is mutable and starts with defaults — a temperature of
+  0.0, a heater that is "not working" — so the mapper leaves a value out unless the timestamp
+  next to it says it was measured or reported: **never serialize `Room`, `HeaterActor` or
+  `FloorPump` themselves**, and a new field of the state gets the same question ("how does a
+  reader tell it was never set?"). The JSON is the contract of the web dashboard, pinned whole
+  and strict in `RoomControllerTest`. `scheduledTemperature` is the one
+  field worked out when asked (`RoomMapper`, by the `Clock` bean) instead of copied from the
+  state: the highest of the schedules that are on now, by `Schedule.covers` - the rule the
+  control loop decides by as well, so change it there and nowhere else. Two things a reader of it has to know: `inSchedule` /
+  `targetTemperature` are the control loop's decision at the last reading (a schedule is on
+  **and** the room is colder than it asks), not "a schedule is on"; and the state is read from
+  an HTTP thread while the listener writes it — the fields are `volatile`, so a reader sees what
+  was written, but a reply is not an atomic snapshot. Two pairs are made consistent: a
+  temperature and its time are written, seeded and read as one, through the synchronized
+  `update` / `updateIfAbsent` / `snapshot` of `Temperature` (`HomeService`,
+  `RoomTemperatureSeeder`, `RoomMapper`), and `RoomMapper` makes
+  `inSchedule` and `targetTemperature` agree with each other. At a start `RoomTemperatureSeeder` gives every room its
+  last stored temperature with the time of the measurement (owner, 2026-10-08), so a rollout does
+  not blank the dashboard. It changes what a reader sees and nothing else: no pass is started,
+  and a pass never acts on a seeded value, because it begins by writing the reading that
+  triggered it - keep it that way. It never fails the startup, runs after the heating switch is loaded
+  (`@Order` on the two runners) and does not replace a reading the listener delivered in the
+  meantime. The heaters are not seeded, and
+  `inSchedule` / `heatingEnabled` are left out of a reply until a pass has decided them: the
+  setters `HeaterActor.setInSchedule` and `Room.setRoomHeatingEnabled` are written by hand and
+  mark "decided" - set those fields through them only. The builders write the fields directly
+  and leave "decided" false, which is what the tests of the control loop use them for; a
+  builder is no way to hand a decision to `RoomMapper`.
+  An unknown room is a 404 with the code `NOT_FOUND_ROOM`; the names of `HeatingErrorId` are
+  wire contract, pinned by `HeatingErrorIdTest`, and the WARN of the processor by
+  `RoomControllerTest`. `HeaterType` goes out as `radiator` / `floor` (`@JsonValue`); `mode`,
+  the schedule `type` and `days` as constant names.
 - **The listener acknowledges manually** (`acknowledge-mode: manual`): with the default the
   container acks before the reactive pipeline runs, so the prefetch would throttle nothing.
 - **`.contextCapture()` is the last operator of the listener chain** in
