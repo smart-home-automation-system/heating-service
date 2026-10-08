@@ -120,18 +120,18 @@ they ask neither a device nor the database.
 
 - **A missing field means "not known", never "off" or zero.** `temperature` is missing until
   the first reading of the room, `humidity` until one is reported (nothing reports it today),
-  `working` and `updatedAt` of a heater until its relay has answered, `mode` for a room that
-  has none configured. `heaters` is always there, empty for a room without a heater.
+  `working` and `updatedAt` of a heater until its relay has answered, `inSchedule` and
+  `heatingEnabled` until a control pass has decided them, `mode` for a room that has none
+  configured. `heaters` is always there, empty for a room without a heater.
 - **A room starts with its last stored temperature.** At every start the service reads the
   last reading of each room from the database, with the time it was measured at - so
   `temperature.updatedAt` can be days old for a silent sensor, and only a room that never
   reported has no `temperature`. The heaters are not restored: `working` is missing until the
-  relay is asked, which happens with the next reading of the room; until then `inSchedule`
-  and `heatingEnabled` are `false` because nothing was decided yet, not because the room is
-  warm - a heater without `working` is the sign of that.
+  relay is asked, and `inSchedule` and `heatingEnabled` until a pass has decided them - all
+  of which happens with the next reading of the room.
 - `heatingEnabled` says whether any heater of the room was working at the end of the last
   control pass that reached its heaters. For `sanctum`, whose radiator is switched outside this
-  service, it is always `false`.
+  service, and for a room without a heater, it is never there.
 - `working` is what the relay last reported and `updatedAt` when: a relay is asked again only
   with a reading of its room, so both stay as they were while the sensor is silent.
 - `inSchedule` is the decision made with the last reading: a schedule covered that moment

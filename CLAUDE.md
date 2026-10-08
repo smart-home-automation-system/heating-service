@@ -156,7 +156,10 @@ review.
   and a pass never acts on a seeded value, because it begins by writing the reading that
   triggered it - keep it that way. It never fails the startup, runs after the heating switch is loaded
   (`@Order` on the two runners) and does not replace a reading the listener delivered in the
-  meantime. The heaters are not seeded.
+  meantime. The heaters are not seeded, and
+  `inSchedule` / `heatingEnabled` are left out of a reply until a pass has decided them: the
+  setters `HeaterActor.setInSchedule` and `Room.setRoomHeatingEnabled` are written by hand and
+  mark "decided" - set those fields through them only.
   An unknown room is a 404 with the code `NOT_FOUND_ROOM`; the names of `HeatingErrorId` are
   wire contract, pinned by `HeatingErrorIdTest`, and the WARN of the processor by
   `RoomControllerTest`. `HeaterType` goes out as `radiator` / `floor` (`@JsonValue`); `mode`,
