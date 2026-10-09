@@ -61,6 +61,30 @@ class HistoryRangeTest {
         assertThat(HistoryRange.violation(LocalDateTime.MIN, LocalDateTime.MAX)).isPresent();
     }
 
+    //a day in a year the timestamp of the database cannot hold: short and running forward, so
+    //without this rule it would reach the query and come back as a 500
+    @ParameterizedTest
+    @CsvSource({
+        "+999999999-12-30T00:00:00, +999999999-12-31T00:00:00",
+        "+10000-01-01T00:00:00, +10000-01-02T00:00:00",
+        "1999-12-31T00:00:00, 2000-01-01T00:00:00",
+        "-4800-01-01T00:00:00, -4800-01-02T00:00:00"
+    })
+    void should_refuse_a_range_outside_the_years_the_database_holds(final LocalDateTime from, final LocalDateTime to) {
+        assertThat(HistoryRange.violation(from, to)).hasValueSatisfying(violation -> {
+            assertThat(violation.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(violation.getReason()).isEqualTo("from and to must be within the years 2000 to 9999");
+        });
+    }
+
+    @Test
+    void should_accept_the_first_and_the_last_year() {
+        assertThat(HistoryRange.violation(LocalDateTime.of(2000, 1, 1, 0, 0), LocalDateTime.of(2000, 1, 2, 0, 0)))
+            .isEmpty();
+        assertThat(HistoryRange.violation(LocalDateTime.of(9999, 12, 30, 0, 0), LocalDateTime.of(9999, 12, 31, 0, 0)))
+            .isEmpty();
+    }
+
     @ParameterizedTest
     @CsvSource({
         "PT1S, PT20M",
@@ -78,7 +102,7 @@ class HistoryRangeTest {
     }
 
     //a bucket that divides a day starts on the clock of the house in every day of the range, and
-    //no range answers more points than a chart can draw
+    //no range answers more points than a chart can draw (one more when it starts inside a bucket)
     @ParameterizedTest
     @CsvSource({"P2D, 144", "P8D, 192", "P31D, 248"})
     void should_keep_the_points_few_and_the_buckets_aligned(final Duration length, final long points) {

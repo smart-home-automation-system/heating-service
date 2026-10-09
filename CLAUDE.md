@@ -85,11 +85,21 @@ review.
     `from` before `to`, start included and end not, at most 31 days. A range in the future is
     valid and simply has no points.
   - **The service chooses the width of the bucket** from the length of the range: 20 min up to
-    2 days, 1 h up to 8, 3 h up to 31 - at most 144, 192 and 248 points. Sized by the sensors:
+    2 days, 1 h up to 8, 3 h up to 31 - at most 144, 192 and 248 points, one more when the range
+    starts inside a bucket. Sized by the sensors:
     they report every 42 s to 16 min (production, 2026-10-09), and a bucket narrower than the
     slowest sensor leaves a hole in its line. **Every width divides a day**, which is what makes
     a bucket start on the clock of the house; `HistoryRangeTest` pins that for a width added
     later.
+  - **A bucket is aligned to the clock of the house, not to `from`**: a range that starts
+    inside a bucket gets a first point whose `at` is before `from`, averaged from the readings
+    within the range only - and so is its last one. On that clock the hour repeated when the
+    summer time ends is averaged into the same buckets twice, and the hour skipped when it
+    begins has no bucket: once a year the 20 min and 1 h histories show a gap of an hour that
+    no sensor caused.
+  - **The years are bounded** (2000 to 9999): `LocalDateTime` holds years the timestamp of the
+    database does not, and a short range out there passed every other rule and failed in the
+    query, as a 500 (found in review).
   - **A bucket without a reading has no point** - no nulls, no zeros. The reader breaks the line
     where two points are further apart than `bucketSeconds`, which is why the width is in the
     answer.
@@ -103,7 +113,13 @@ review.
     (`-c ssl=on` with the snakeoil certificate of the image); with no broker on the configured
     port the service starts all the same and drives nothing.
   - It is one statement on one pooled connection, through the index on `(room, date)`; a month
-    of the busiest room is some 60 000 rows read and 248 answered.
+    of the busiest room is some 15 000 rows read and 248 answered, in 170 ms on the production
+    database (2026-10-09). It shares the pool of 2 with the listener: a client that asked for
+    many rooms at once, over and over, would make the readings wait - the dashboard asks for
+    one room at a time. Nothing limits it here.
+  - **The refusals of the range carry no code** (a `ResponseStatusException`, as in
+    `presence-service`): the dashboard never sends a range the rules refuse, so nothing
+    branches on them. A client that has to tell them apart needs a `HeatingErrorId` first.
 - **`database.pool.max-size` is 2, and `prefetch` stays 3 — above the pool, on purpose.** The
   pool was 8 (prefetch 5) until 1.3.2 and 4 up to and including 1.6.0; the managed database
   has 22 connections for everyone (heating 2 / database 4 / water 2 / presence 2 = 10). The

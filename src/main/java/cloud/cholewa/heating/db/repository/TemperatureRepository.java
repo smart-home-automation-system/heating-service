@@ -17,8 +17,12 @@ public interface TemperatureRepository extends R2dbcRepository<TemperatureEntity
     //"bucketSeconds", oldest first; a bucket without a reading has no row. The column holds the
     //wall-clock time of the house without a zone, and the epoch of such a value counts from its
     //own midnight - so a bucket that divides a day starts on the clock of the house (00:00,
-    //00:20, ...). The database does the averaging: a month of one room is tens of thousands of
-    //rows, read through the index on (room, date) and answered as a few hundred.
+    //00:20, ...), whatever "from" is: a range that starts inside a bucket gets a first row whose
+    //"at" is before it, averaged from the readings within the range. On that clock the hour
+    //repeated when the summer time ends falls into the same buckets twice, and the hour skipped
+    //when it begins has none. The database does the averaging: a month of the busiest room is some
+    //15 000 rows, read through the index on (room, date) and answered as 248 (170 ms on the
+    //production database, 2026-10-09).
     //PostgreSQL only (HAS-199: verified against a PostgreSQL in Docker, no test here runs it).
     @Query("""
         SELECT TIMESTAMP 'epoch'

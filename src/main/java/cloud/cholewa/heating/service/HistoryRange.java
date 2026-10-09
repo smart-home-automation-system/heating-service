@@ -13,6 +13,11 @@ final class HistoryRange {
 
     static final long MAX_DAYS = 31;
 
+    //LocalDateTime holds years the timestamp of the database does not (it ends at 294276), and a
+    //short range out there would pass the rules below and fail in the query, as a 500
+    private static final int MIN_YEAR = 2000;
+    private static final int MAX_YEAR = 9999;
+
     //Sized by the sensors (HAS-199, production data of 2026-10-09): they report every 42 s to
     //16 min, so a bucket below 16 min would leave holes in the line of the slow ones. Each width
     //divides a day, which is what makes a bucket start on the clock of the house.
@@ -27,6 +32,12 @@ final class HistoryRange {
 
     //what is wrong with the range, as the 400 to answer - empty for a valid one
     static Optional<ResponseStatusException> violation(final LocalDateTime from, final LocalDateTime to) {
+        if (isOutsideTheCalendar(from) || isOutsideTheCalendar(to)) {
+            return Optional.of(new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "from and to must be within the years " + MIN_YEAR + " to " + MAX_YEAR
+            ));
+        }
         if (!from.isBefore(to)) {
             return Optional.of(new ResponseStatusException(HttpStatus.BAD_REQUEST, "from must be before to"));
         }
@@ -37,7 +48,8 @@ final class HistoryRange {
         return Optional.empty();
     }
 
-    //the width of the buckets of a valid range: at most 144, 192 and 248 points
+    //The width of the buckets of a valid range: 144, 192 and 248 points at most for a range that
+    //starts on a bucket, one more for one that does not - its first bucket starts before "from"
     static Duration bucket(final LocalDateTime from, final LocalDateTime to) {
         final Duration length = Duration.between(from, to);
 
@@ -45,6 +57,10 @@ final class HistoryRange {
             return SHORT_RANGE_BUCKET;
         }
         return length.compareTo(MEDIUM_RANGE) <= 0 ? MEDIUM_RANGE_BUCKET : LONG_RANGE_BUCKET;
+    }
+
+    private static boolean isOutsideTheCalendar(final LocalDateTime bound) {
+        return bound.getYear() < MIN_YEAR || bound.getYear() > MAX_YEAR;
     }
 
     //Counted in calendar days on the local dates, with the time of day deciding a range of exactly

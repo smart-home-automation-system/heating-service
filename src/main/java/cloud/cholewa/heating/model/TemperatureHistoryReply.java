@@ -21,8 +21,10 @@ public record TemperatureHistoryReply(
 ) {
 
     /**
-     * {@code at} - the start of the bucket, aligned to the clock of the house.<br>
-     * {@code value} - the average of the readings in the bucket, rounded to 2 decimals.
+     * {@code at} - the start of the bucket, aligned to the clock of the house, not to the range:
+     * when {@code from} lies inside a bucket, the first point starts before it.<br>
+     * {@code value} - the average of the readings of the bucket that lie within the range, rounded
+     * to 2 decimals.
      */
     public record Point(LocalDateTime at, double value) {
     }
