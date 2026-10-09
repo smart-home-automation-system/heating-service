@@ -80,6 +80,26 @@ class RoomServiceTest {
             .verifyComplete();
     }
 
+    //the readings of a room are stored under this name, whatever the caller wrote
+    @ParameterizedTest
+    @ValueSource(strings = {"living room", "Living Room", "LIVING ROOM"})
+    void should_name_a_room_as_the_configuration_does(final String name) {
+        sut.queryRoomName(name)
+            .as(StepVerifier::create)
+            .expectNext(RoomName.LIVING_ROOM)
+            .verifyComplete();
+    }
+
+    @Test
+    void should_refuse_to_name_an_unknown_room() {
+        sut.queryRoomName("attic")
+            .as(StepVerifier::create)
+            .expectErrorSatisfies(throwable -> assertThat(throwable)
+                .isInstanceOf(RoomNotFoundException.class)
+                .hasMessage("attic"))
+            .verify();
+    }
+
     //"attic" is no room at all, "kitchen" a RoomName the house has no room for, "LIVING_ROOM" the
     //name of the constant - only the name the list gives a room finds it
     @ParameterizedTest
