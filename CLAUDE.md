@@ -27,7 +27,7 @@ review.
 
 ## Build & run
 
-- Build + tests: `mvn verify`
+- Build + tests: `mvn verify` - needs a running Docker (one test starts a PostgreSQL in it)
 - Local run: `home,local` Spring profiles, port `6002` (Actuator `8002`); in-cluster port
   `6200`, Actuator `8200`. Needs PostgreSQL and a RabbitMQ broker; the `local` profile uses
   the `temperature.dev.heating` queue.
@@ -106,12 +106,18 @@ review.
   - **The readings are asked for by the name of the configuration** (`RoomService.queryRoomName`),
     never by the text of the path: they are stored as `living room`, and asked for as
     `Living Room` the query would find nothing and answer an empty history with a 200.
-  - **The query is PostgreSQL's own** (`TemperatureRepository.findHistory`) and **no test runs
-    it**: the repository is a mock in every test here. It was run against a PostgreSQL 16 in
-    Docker - the jar started with `home,local` on that database, rows inserted by hand, the
-    endpoint called - and has to be again when it is touched. The container has to speak SSL
-    (`-c ssl=on` with the snakeoil certificate of the image); with no broker on the configured
-    port the service starts all the same and drives nothing.
+  - **The query is PostgreSQL's own** (`TemperatureRepository.findHistory`), so its test runs
+    it against a PostgreSQL 16 in Docker: `TemperatureRepositoryTest`, the one test here that
+    executes SQL - the repository is a mock in every other (Testcontainers, added at the
+    owner's word, 2026-10-10). **`mvn verify` therefore needs a running Docker**; without one
+    that test fails, on purpose - it is not skipped. It is a `@DataR2dbcTest` slice: the
+    connection comes from `spring.r2dbc.*`, not from the pooled factory of `cholewa-commons`,
+    so the container needs no SSL, and the tables are created by the migrations of the service,
+    run by hand in the test (the `test` profile switches Flyway off). What it does not cover is
+    the way from the request to the query - for that the jar was started with `home,local` on
+    such a database and the endpoint called; there the container has to speak SSL (`-c ssl=on`
+    with the snakeoil certificate of the image), and with no broker on the configured port the
+    service starts all the same and drives nothing.
   - It is one statement on one pooled connection, through the index on `(room, date)`; a month
     of the busiest room is some 15 000 rows read and 248 answered, in 170 ms on the production
     database (2026-10-09). It shares the pool of 2 with the listener: a client that asked for

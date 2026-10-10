@@ -59,6 +59,9 @@ mvn verify
 mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
+`mvn verify` needs a running Docker: the test of the history query starts a PostgreSQL in it
+(Testcontainers).
+
 | | Application | Actuator |
 |---|---|---|
 | `local` profile | 6002 | 8002 |

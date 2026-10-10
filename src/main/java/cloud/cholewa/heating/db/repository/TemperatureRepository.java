@@ -23,7 +23,7 @@ public interface TemperatureRepository extends R2dbcRepository<TemperatureEntity
     //when it begins has none. The database does the averaging: a month of the busiest room is some
     //15 000 rows, read through the index on (room, date) and answered as 248 (170 ms on the
     //production database, 2026-10-09).
-    //PostgreSQL only (HAS-199: verified against a PostgreSQL in Docker, no test here runs it).
+    //PostgreSQL only: TemperatureRepositoryTest runs it against a PostgreSQL in Docker.
     @Query("""
         SELECT TIMESTAMP 'epoch'
                    + floor(extract(epoch FROM date) / :bucketSeconds) * :bucketSeconds * INTERVAL '1 second' AS at,
