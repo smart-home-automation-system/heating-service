@@ -5,6 +5,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
 //The rules of the range a history is asked for - the ones of the reports of presence-service, with
@@ -49,9 +50,11 @@ final class HistoryRange {
     }
 
     //The width of the buckets of a valid range: 144, 192 and 248 points at most for a range that
-    //starts on a bucket, one more for one that does not - its first bucket starts before "from"
+    //starts on a bucket, one more for one that does not - its first bucket starts before "from".
+    //The length is counted on the wall clock, as the buckets are - hence the fixed offset, not the
+    //zone of the house: two days across a clock change are two days here, not 47 or 49 hours
     static Duration bucket(final LocalDateTime from, final LocalDateTime to) {
-        final Duration length = Duration.between(from, to);
+        final Duration length = Duration.between(from.atOffset(ZoneOffset.UTC), to.atOffset(ZoneOffset.UTC));
 
         if (length.compareTo(SHORT_RANGE) <= 0) {
             return SHORT_RANGE_BUCKET;
