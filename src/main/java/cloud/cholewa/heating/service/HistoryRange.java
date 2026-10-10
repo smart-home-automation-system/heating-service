@@ -15,12 +15,15 @@ final class HistoryRange {
     static final long MAX_DAYS = 31;
 
     //LocalDateTime holds years the timestamp of the database does not (it ends at 294276), and a
-    //short range out there would pass the rules below and fail in the query, as a 500
+    //short range out there would pass the rules below and fail in the query, as a 500 - that is
+    //the upper bound. The lower one is no limit of the database, only of sense: the house has no
+    //reading from before 2026
     private static final int MIN_YEAR = 2000;
     private static final int MAX_YEAR = 9999;
 
-    //Sized by the sensors (HAS-199, production data of 2026-10-09): they report every 42 s to
-    //16 min, so a bucket below 16 min would leave holes in the line of the slow ones. Each width
+    //Sized by the sensors (HAS-199, production data of 2026-10-09): the median gap between
+    //two readings of a room is 42 s to 16 min, so a bucket below 16 min would leave holes in the
+    //line of the slow ones. Each width
     //divides a day, which is what makes a bucket start on the clock of the house.
     private static final Duration SHORT_RANGE = Duration.ofDays(2);
     private static final Duration SHORT_RANGE_BUCKET = Duration.ofMinutes(20);

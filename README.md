@@ -188,7 +188,7 @@ moments, as averages - the data of a chart. Unlike the rooms above it asks the d
 - **The service chooses the width of a bucket** from the length of the range and says it in
   `bucketSeconds`: 20 minutes for up to 2 days, 1 hour for up to 8 days, 3 hours beyond - so
   no range answers more than about 250 points. The widths follow from the sensors, which
-  report every 42 seconds to 16 minutes.
+  report - by the median of a room - every 42 seconds to 16 minutes.
 - A point is one bucket: `at` is its start, `value` the average of the readings in it, rounded
   to 2 decimals. **A bucket without a reading has no point** - two points further apart than
   `bucketSeconds` are a gap in the readings. A range without any reading is a `200` with an

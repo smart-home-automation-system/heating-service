@@ -87,8 +87,10 @@ review.
   - **The service chooses the width of the bucket** from the length of the range: 20 min up to
     2 days, 1 h up to 8, 3 h up to 31 - at most 144, 192 and 248 points, one more when the range
     starts inside a bucket. Sized by the sensors:
-    they report every 42 s to 16 min (production, 2026-10-09), and a bucket narrower than the
-    slowest sensor leaves a hole in its line. **Every width divides a day**, which is what makes
+    the median gap between two readings of a room is 42 s to 16 min (production, 2026-10-09 - a
+    median, not a rate: a sensor reports on a change and pauses for long, the busiest room
+    stored 15 254 rows in a month), and a bucket narrower than the slowest sensor leaves a hole
+    in its line. **Every width divides a day**, which is what makes
     a bucket start on the clock of the house; `HistoryRangeTest` pins that for a width added
     later.
   - **A bucket is aligned to the clock of the house, not to `from`**: a range that starts
@@ -99,7 +101,8 @@ review.
     no sensor caused.
   - **The years are bounded** (2000 to 9999): `LocalDateTime` holds years the timestamp of the
     database does not, and a short range out there passed every other rule and failed in the
-    query, as a 500 (found in review).
+    query, as a 500 (found in review). That is the upper bound; the lower one is no limit of the
+    database, only of sense - the house has no reading from before 2026.
   - **A bucket without a reading has no point** - no nulls, no zeros. The reader breaks the line
     where two points are further apart than `bucketSeconds`, which is why the width is in the
     answer.
@@ -113,7 +116,10 @@ review.
     that test fails, on purpose - it is not skipped. It is a `@DataR2dbcTest` slice: the
     connection comes from `spring.r2dbc.*`, not from the pooled factory of `cholewa-commons`,
     so the container needs no SSL, and the tables are created by the migrations of the service,
-    run by hand in the test (the `test` profile switches Flyway off). What it does not cover is
+    run by hand in the test with the defaults of Flyway (the `test` profile switches Flyway
+    off) - a `spring.flyway.*` setting added later has to be repeated there. The JVM of that
+    test is put on the zone of the house, as the image is, so a conversion of a date-time on its
+    way to the database would show on the two nights of the clock change it asks about. What it does not cover is
     the way from the request to the query - for that the jar was started with `home,local` on
     such a database and the endpoint called; there the container has to speak SSL (`-c ssl=on`
     with the snakeoil certificate of the image), and with no broker on the configured port the
