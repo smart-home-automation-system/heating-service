@@ -59,6 +59,9 @@ mvn verify
 mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
+`mvn verify` needs a running Docker: the test of the history query starts a PostgreSQL in it
+(Testcontainers).
+
 | | Application | Actuator |
 |---|---|---|
 | `local` profile | 6002 | 8002 |
@@ -89,6 +92,7 @@ is also the path the Kubernetes ingress routes to this service.
 | `GET` | `/home/heating/temperature/sensors` | Last reading of every temperature sensor: `room`, `lastReadingAt`, `stale` (silent for longer than `heating.sensor-monitor.stale-after`) and `muted` (excluded from the alerts); rooms that never reported are left out |
 | `GET` | `/home/heating/rooms` | Every room of the house with its temperature, heaters and schedules — see below |
 | `GET` | `/home/heating/rooms/{name}` | One room; `404` with the code `NOT_FOUND_ROOM` for an unknown name |
+| `GET` | `/home/heating/rooms/{name}/temperature/history?from=&to=` | The stored temperatures of one room over a range of at most 31 days, averaged into buckets — see below |
 | `GET` | `/home/heating/floor-pump` | What the relay of the floor pump last reported: `working`, `updatedAt` |
 | `GET` | `/home/heating/status/active` | Whether the system is enabled and any heater is currently active — polled by `boiler-service` |
 
@@ -154,6 +158,50 @@ they ask neither a device nor the database.
   is a path that is not served.
 - `/floor-pump` answers `{"working": true, "updatedAt": "…"}`, and `{}` until the relay of
   the pump has answered once.
+
+### Temperature history of a room
+
+`/rooms/{name}/temperature/history` answers what the sensors of one room reported between two
+moments, as averages - the data of a chart. Unlike the rooms above it asks the database.
+
+```json
+{
+  "room": "living room",
+  "from": "2026-10-08T00:00:00",
+  "to": "2026-10-09T00:00:00",
+  "bucketSeconds": 1200,
+  "points": [
+    { "at": "2026-10-08T00:00:00", "value": 21.44 },
+    { "at": "2026-10-08T00:20:00", "value": 21.38 }
+  ]
+}
+```
+
+- `from` and `to` are both required: local date-times without an offset
+  (`2026-10-08T00:00:00`), read by the clock of the house. A value with `Z` or an offset is a
+  `400` rather than read with the offset dropped. `from` has to lie before `to`, the range may
+  span at most 31 days, and both have to be within the years 2000 to 9999; anything else is a
+  `400` that says which rule was broken. A range that reaches into the future is fine - there
+  are simply no points there.
+- The range includes its start and excludes its end, so adjacent ranges never count a reading
+  twice.
+- **The service chooses the width of a bucket** from the length of the range and says it in
+  `bucketSeconds`: 20 minutes for up to 2 days, 1 hour for up to 8 days, 3 hours beyond - so
+  no range answers more than about 250 points. The widths follow from the sensors, which
+  report - by the median of a room - every 42 seconds to 16 minutes.
+- A point is one bucket: `at` is its start, `value` the average of the readings in it, rounded
+  to 2 decimals. **A bucket without a reading has no point** - two points further apart than
+  `bucketSeconds` are a gap in the readings. A range without any reading is a `200` with an
+  empty `points`.
+- Buckets are aligned to the clock of the house (00:00, 00:20, …), not to `from`: when `from`
+  lies inside a bucket, the first point starts before it and averages only the readings from
+  `from` on. Ask from a bucket boundary - a midnight, a full hour - to avoid that.
+- The times are wall-clock times of the house. On the night the summer time ends, the hour
+  that happens twice is averaged into the same buckets; on the night it begins, the hour that
+  does not happen has no points and reads as a gap of an hour.
+- `{name}` is the name the list of rooms gives a room, in any case, as for `/rooms/{name}`; an
+  unknown one is the same `404` with the code `NOT_FOUND_ROOM`. A room of the house that never
+  reported answers `200` with no points.
 
 Actuator endpoints, including the `readiness` and `liveness` health groups used by the
 Kubernetes probes, live on the management port, not on the application one.

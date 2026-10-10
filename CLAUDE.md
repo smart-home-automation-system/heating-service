@@ -27,7 +27,7 @@ review.
 
 ## Build & run
 
-- Build + tests: `mvn verify`
+- Build + tests: `mvn verify` - needs a running Docker (one test starts a PostgreSQL in it)
 - Local run: `home,local` Spring profiles, port `6002` (Actuator `8002`); in-cluster port
   `6200`, Actuator `8200`. Needs PostgreSQL and a RabbitMQ broker; the `local` profile uses
   the `temperature.dev.heating` queue.
@@ -73,9 +73,65 @@ review.
 - **"Now" is read inside the chain** in `SensorMonitorService` and `TemperatureSensorService`:
   Spring calls the reactive `@Scheduled` method once and re-subscribes to the same `Mono`.
   The test subscribes twice with the clock moved on.
-- **The last reading is one indexed query per room** (`room_temperature (room, date DESC)`),
+- **The last reading is one indexed query per room** (`room_temperature (room, date DESC)`, `V3`),
   run one room at a time so a pass holds a single pooled connection. A `GROUP BY` over the
   whole table would read every row.
+- **The temperature history of a room is averaged by the database** (HAS-199:
+  `GET /rooms/{name}/temperature/history?from=&to=`, `TemperatureHistoryReply`). The JSON is
+  the contract of the charts of the web dashboard, pinned whole and strict in
+  `TemperatureHistoryControllerTest`. What to keep:
+  - **The rules of the range are those of the reports of `presence-service`** (`HistoryRange`):
+    local date-times without an offset - an offset is a 400, by the pattern on the controller -
+    `from` before `to`, start included and end not, at most 31 days. A range in the future is
+    valid and simply has no points.
+  - **The service chooses the width of the bucket** from the length of the range: 20 min up to
+    2 days, 1 h up to 8, 3 h up to 31 - at most 144, 192 and 248 points, one more when the range
+    starts inside a bucket. Sized by the sensors:
+    the median gap between two readings of a room is 42 s to 16 min (production, 2026-10-09 - a
+    median, not a rate: a sensor reports on a change and pauses for long, the busiest room
+    stored 15 254 rows in a month), and a bucket narrower than the slowest sensor leaves a hole
+    in its line. **Every width divides a day**, which is what makes
+    a bucket start on the clock of the house; `HistoryRangeTest` pins that for a width added
+    later.
+  - **A bucket is aligned to the clock of the house, not to `from`**: a range that starts
+    inside a bucket gets a first point whose `at` is before `from`, averaged from the readings
+    within the range only - and so is its last one. On that clock the hour repeated when the
+    summer time ends is averaged into the same buckets twice, and the hour skipped when it
+    begins has no bucket: once a year the 20 min and 1 h histories show a gap of an hour that
+    no sensor caused.
+  - **The years are bounded** (2000 to 9999): `LocalDateTime` holds years the timestamp of the
+    database does not, and a short range out there passed every other rule and failed in the
+    query, as a 500 (found in review). That is the upper bound; the lower one is no limit of the
+    database, only of sense - the house has no reading from before 2026.
+  - **A bucket without a reading has no point** - no nulls, no zeros. The reader breaks the line
+    where two points are further apart than `bucketSeconds`, which is why the width is in the
+    answer.
+  - **The readings are asked for by the name of the configuration** (`RoomService.queryRoomName`),
+    never by the text of the path: they are stored as `living room`, and asked for as
+    `Living Room` the query would find nothing and answer an empty history with a 200.
+  - **The query is PostgreSQL's own** (`TemperatureRepository.findHistory`), so its test runs
+    it against a PostgreSQL 16 in Docker: `TemperatureRepositoryTest`, the one test here that
+    executes SQL - the repository is a mock in every other (Testcontainers, added at the
+    owner's word, 2026-10-10). **`mvn verify` therefore needs a running Docker**; without one
+    that test fails, on purpose - it is not skipped. It is a `@DataR2dbcTest` slice: the
+    connection comes from `spring.r2dbc.*`, not from the pooled factory of `cholewa-commons`,
+    so the container needs no SSL, and the tables are created by the migrations of the service,
+    run by hand in the test with the defaults of Flyway (the `test` profile switches Flyway
+    off) - a `spring.flyway.*` setting added later has to be repeated there. The JVM of that
+    test is put on the zone of the house, as the image is, so a conversion of a date-time on its
+    way to the database would show on the two nights of the clock change it asks about. What it does not cover is
+    the way from the request to the query - for that the jar was started with `home,local` on
+    such a database and the endpoint called; there the container has to speak SSL (`-c ssl=on`
+    with the snakeoil certificate of the image), and with no broker on the configured port the
+    service starts all the same and drives nothing.
+  - It is one statement on one pooled connection, through the index on `(room, date)`; a month
+    of the busiest room is some 15 000 rows read and 248 answered, in 170 ms on the production
+    database (2026-10-09). It shares the pool of 2 with the listener: a client that asked for
+    many rooms at once, over and over, would make the readings wait - the dashboard asks for
+    one room at a time. Nothing limits it here.
+  - **The refusals of the range carry no code** (a `ResponseStatusException`, as in
+    `presence-service`): the dashboard never sends a range the rules refuse, so nothing
+    branches on them. A client that has to tell them apart needs a `HeatingErrorId` first.
 - **`database.pool.max-size` is 2, and `prefetch` stays 3 — above the pool, on purpose.** The
   pool was 8 (prefetch 5) until 1.3.2 and 4 up to and including 1.6.0; the managed database
   has 22 connections for everyone (heating 2 / database 4 / water 2 / presence 2 = 10). The
