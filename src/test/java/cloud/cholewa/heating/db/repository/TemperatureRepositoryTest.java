@@ -54,26 +54,23 @@ class TemperatureRepositoryTest {
         registry.add("spring.r2dbc.password", POSTGRES::getPassword);
     }
 
-    //The image runs on the zone of the house and a build server on UTC, where a date-time
-    //converted on its way to the database would come back unharmed. Set before the context
-    //opens its first connection
+    //The zone: the image runs on the zone of the house and a build server on UTC, where a
+    //date-time converted on its way to the database would come back unharmed - set before the
+    //context opens its first connection. The migrations: the test profile switches Flyway off
+    //and the slice would not run it anyway
     @BeforeAll
-    static void liveOnTheClockOfTheHouse() {
+    static void liveOnTheClockOfTheHouseAndMigrate() {
         TimeZone.setDefault(TimeZone.getTimeZone("Europe/Warsaw"));
+
+        Flyway.configure()
+            .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
+            .load()
+            .migrate();
     }
 
     @AfterAll
     static void giveTheZoneBack() {
         TimeZone.setDefault(ZONE_OF_THE_BUILD);
-    }
-
-    //the test profile switches Flyway off and the slice would not run it anyway
-    @BeforeAll
-    static void migrate() {
-        Flyway.configure()
-            .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
-            .load()
-            .migrate();
     }
 
     @BeforeEach
