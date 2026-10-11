@@ -30,7 +30,9 @@ review.
 - Build + tests: `mvn verify` - needs a running Docker (one test starts a PostgreSQL in it)
 - Local run: `home,local` Spring profiles, port `6002` (Actuator `8002`); in-cluster port
   `6200`, Actuator `8200`. Needs PostgreSQL and a RabbitMQ broker; the `local` profile uses
-  the `temperature.dev.heating` queue.
+  the `temperature.dev.heating` queue and a dummy for the two passwords of the broker, so it
+  starts without `rabbitmq-password` and `notification-rabbitmq-password` - under `home` alone
+  the start is refused without them (below).
 - Spring Boot **4.1.1** with logbook 4.2.0 since HAS-151 (2026-10-03); own libraries on the
   latest releases, as the org rule asks of every service task.
 
@@ -45,14 +47,34 @@ review.
   here are that connection and the `NotificationPublisher` it gives, **never what
   `rabbitOperations()` returns**. Observation is switched on by the library, because
   `spring.rabbitmq.template.*` never reaches this template. The connection is opened on the
-  first publish, so a wrong password shows up in the hourly check, not at startup — **and so
-  does a missing one**: `notification.password` has no default outside the `test` document,
-  but that does not fail the startup, as this file and the README claimed until HAS-206.
-  Spring Boot's binder leaves a placeholder it cannot resolve as its literal text, so without
-  `notification-rabbitmq-password` the password binds as the string
-  `${notification-rabbitmq-password}`, passes `@NotBlank`, the pod turns Ready and every
-  publish is refused by the broker (found while writing `ApplicationYamlTest`; open, the
-  owner's call — a check at startup would close it). It is closed with the context (`close()`, found by Spring as the destroy method),
+  first publish, so a wrong password shows up in the hourly check, not at startup. **A missing
+  or empty one fails the start** (HAS-217, `BrokerPasswordCheck`), for both passwords of the
+  broker - `spring.rabbitmq.password` and `notification.password`. Neither has a default in a
+  document a pod runs with, and that alone did not do it: Spring Boot's binder leaves a
+  placeholder it cannot resolve as its literal text, so without
+  `notification-rabbitmq-password` the password bound as the string
+  `${notification-rabbitmq-password}`, passed `@NotBlank`, and the pod would have turned Ready
+  with every publish refused. What to keep about the check:
+  - It asks the `Environment`, which is strict about the same placeholder, as a
+    `BeanFactoryPostProcessor` - **before the first bean**, so a refused start has run no
+    migration and opened no connection. Every password without a value is named in one
+    message, with the variable `application.yaml` reads it from; the names are repeated in
+    `BrokerPasswordCheck.PASSWORDS` and tied to the file by `BrokerPasswordCheckTest`.
+  - **The message never carries the exception of the environment or a value**: both quote what
+    was resolved so far, which for a password holding `${` is the password. Such a password is
+    refused as "has no value" - Spring reads a placeholder into it wherever it is bound, so it
+    would not work anyway. For the same reason it is a plain exception and not Boot's
+    `InvalidConfigurationPropertyValueException`, whose failure analysis prints the configured
+    value.
+  - The `local` document gives both a dummy default and the `test` document a value, so a
+    local run and the context tests start without the variables. A password set as the
+    property itself (`SPRING_RABBITMQ_PASSWORD`, `--notification.password=`) passes too.
+  - What it does not cover: a wrong password, and a secret key that is missing - Kubernetes
+    stops that container itself. It covers a manifest that lost or renamed the `env` entry,
+    and an empty value.
+  - `boiler-service` carries the same class. Two copies stay where they are: code moves into
+    `cholewa-commons` once more than three services use it (the org rule).
+  The connection is closed with the context (`close()`, found by Spring as the destroy method),
   and closed is final: a publish during the shutdown fails instead of opening a connection
   again. `HeatingServiceApplicationTest` and `NotificationRabbitConfigTest` pin all of it — one
   `ConnectionFactory` bean, the listener on it with manual ack, prefetch 3 and observation —
