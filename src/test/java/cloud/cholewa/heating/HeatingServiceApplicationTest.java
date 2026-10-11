@@ -3,6 +3,7 @@ package cloud.cholewa.heating;
 import cloud.cholewa.commons.database.DatabaseProperties;
 import cloud.cholewa.commons.notification.NotificationConnection;
 import cloud.cholewa.commons.notification.NotificationPublisher;
+import cloud.cholewa.heating.config.BrokerPasswordCheck;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
@@ -37,6 +38,12 @@ class HeatingServiceApplicationTest {
 
     @Test
     void contextLoads() {
+    }
+
+    //BrokerPasswordCheckTest shows what the check does; this, that the application has it at all
+    @Test
+    void should_check_the_passwords_of_the_broker_at_the_start() {
+        assertThat(context.getBeansOfType(BrokerPasswordCheck.class)).hasSize(1);
     }
 
     //the pool is this service's share of the 22 connections of the managed database, counted twice
