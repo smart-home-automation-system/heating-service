@@ -40,16 +40,34 @@ review.
   The exchange is on another virtual host, so it takes a second connection — but a
   `ConnectionFactory` or `RabbitOperations` bean makes `RabbitAutoConfiguration` back off, and
   the temperature listener would lose the auto-configured connection with its manual ack,
-  prefetch and observation. The factory and the template are built by hand inside the
-  `NotificationPublisher` bean method; observation is switched on there explicitly, because
+  prefetch and observation. Since HAS-206 the factory and the template are built by
+  `NotificationConnection` of `cholewa-commons` (1.8.0), which keeps both to itself: the beans
+  here are that connection and the `NotificationPublisher` it gives, **never what
+  `rabbitOperations()` returns**. Observation is switched on by the library, because
   `spring.rabbitmq.template.*` never reaches this template. The connection is opened on the
   first publish, so a wrong password shows up in the hourly check, not at startup — a missing
   one does fail the startup, `notification.password` has no default outside the `test`
-  document.
-- **A publish completes only on a broker confirm without a return** (`NotificationPublisher`,
-  correlated confirms + mandatory). A `send` that merely returns proves nothing: an unroutable
-  message is confirmed too, and the alert row would be written for a notification that reached
-  no queue.
+  document. It is closed with the context (`close()`, found by Spring as the destroy method),
+  and closed is final: a publish during the shutdown fails instead of opening a connection
+  again. `HeatingServiceApplicationTest` and `NotificationRabbitConfigTest` pin all of it — one
+  `ConnectionFactory` bean, the listener on it with manual ack, prefetch 3 and observation —
+  and both fail when the template is exposed as a bean (tried).
+- **The publisher and the connection name are the library's; the `notification.*` group is
+  not** (HAS-206). `NotificationConnectionProperties` (virtual host, user, password, exchange,
+  env) stays here, because the library has no properties for a second connection; its own
+  group, `cholewa.notification.*`, **stays unset** — `cholewa.notification.enabled` would
+  create a publisher over the connection of the listener, on `/temperature`, where there is
+  no notification exchange. The deleted copy of the publisher differed from the library's in
+  three things: a refused, returned or unconfirmed message is a `NotificationPublishException`
+  (it was a `HeatingException`, and Reactor's `TimeoutException` for the timeout) — nothing
+  here matches on the type, `SensorMonitorService` resumes on any error of a sensor; what
+  follows a publish, the write of the alert row, runs on `boundedElastic` and no longer on the
+  thread of the broker connection; and the shutdown above. The tests of the confirm, return
+  and timeout paths live in the library now.
+- **A publish completes only on a broker confirm without a return** (the library's
+  `NotificationPublisher`, correlated confirms + mandatory). A `send` that merely returns
+  proves nothing: an unroutable message is confirmed too, and the alert row would be written
+  for a notification that reached no queue.
 - **The `level` header (`error` / `warn` / `info`) is for the reader, not for the broker**: the
   exchange routes by `category` and `env` only, and `notification-service` colors the Discord
   message by `level`. The first alert is an `error`, a reminder a `warn` — both on the `alert`
@@ -235,13 +253,17 @@ review.
   there is no `DbConfig` here and no `@EnableR2dbcRepositories`. Since `cholewa-commons` 1.5
   the pool validates every connection on acquire (`SELECT 1`, 2 s) — before that this
   service kept a broken connection for as long as it was in use.
-- **The RabbitMQ connection is named after the pod** (`RabbitConfig`, HAS-106): the broker shows
+- **The RabbitMQ connection is named after the pod** (HAS-106; since HAS-206 by
+  `RabbitConnectionNameAutoConfiguration` of `cholewa-commons`, bean
+  `cholewaPodConnectionNameStrategy`): the broker shows
   `heating-service-<pod id>`, which tells the old pod from the new one during a rollout.
   `HOSTNAME` is taken only when it starts with `spring.application.name` — outside the cluster
   it is missing, empty, a workstation or a container id, and the name is then
   `heating-service-local`. The same convention holds in every service that talks to the broker.
   The second connection, the one publishing notifications, takes the name from the same
-  strategy and adds `/notification`.
+  strategy and adds `/notification` (`NotificationConnection`). **A `ConnectionNameStrategy`
+  bean declared here switches the library's off** — there is none any more, and
+  `NotificationRabbitConfigTest` pins the names of both connections.
 - **Surefire activates the `test` profile for every class** (`spring.profiles.active` in the
   pom), so a test without `@ActiveProfiles` does not fall through to the shared document and
   switch the log output to JSON for the classes that follow.

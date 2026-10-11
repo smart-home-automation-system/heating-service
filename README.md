@@ -223,7 +223,11 @@ connection only while its reading is saved, which is why the prefetch may exceed
 Notifications about silent sensors go to the `notification` exchange, which lives on another
 virtual host, so the service holds a second connection for it (user `notification`, password
 from `notification-rabbitmq-password` — it has no default, the service does not start without
-it). The exchange is a headers exchange: the routing key is
+it). The publisher and the connection it uses come from `cholewa-commons`
+(`NotificationPublisher` over a `NotificationConnection`, since 1.8.0); the service only says
+where to connect, in its own `notification.*` properties, and leaves
+`cholewa.notification.enabled` of the library unset — that switch is for a service whose only
+connection already leads to the notifications. The exchange is a headers exchange: the routing key is
 ignored and the queue — `notification.<env>.<category>` — is chosen by the `category` and
 `env` headers. A sensor that went silent or is still silent is an `alert`, a sensor that came
 back an `info`. A third header, `level`, is not routed by: `notification-service` picks the
@@ -233,3 +237,7 @@ not returned it as unroutable; until then the sensor state is not updated and th
 tries again. The check is configured under `heating.sensor-monitor` (`cron`, `stale-after`,
 `reminder-interval` — a bare number is hours, the minimum is one hour — and `muted-rooms`,
 a list of room names such as `[sauna, living-room]`).
+
+Both connections are named after the pod, by `cholewa-commons`: the broker shows
+`heating-service-<pod id>` for the listener and the same name with `/notification` for the
+publisher, and `heating-service-local` for a run outside the cluster.
