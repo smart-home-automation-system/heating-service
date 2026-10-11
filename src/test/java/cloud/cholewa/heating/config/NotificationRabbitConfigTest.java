@@ -132,7 +132,7 @@ class NotificationRabbitConfigTest {
 
         contextRunner.run(context -> connectionFactory[0] = notificationFactory(context));
 
-        assertThatThrownBy(() -> connectionFactory[0].createConnection())
+        assertThatThrownBy(connectionFactory[0]::createConnection)
             .isInstanceOf(AmqpApplicationContextClosedException.class);
     }
 
