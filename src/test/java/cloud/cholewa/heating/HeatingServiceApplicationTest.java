@@ -96,6 +96,6 @@ class HeatingServiceApplicationTest {
         assertThat(ReflectionTestUtils.getField(context.getBean(NotificationPublisher.class), "exchange"))
             .isEqualTo("notification");
         assertThat(ReflectionTestUtils.getField(context.getBean(NotificationPublisher.class), "env"))
-            .isEqualTo("prod");
+            .isEqualTo("test");
     }
 }
