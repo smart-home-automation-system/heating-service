@@ -72,7 +72,8 @@ review.
   - What it does not cover: a wrong password, and a secret key that is missing - Kubernetes
     stops that container itself. It covers a manifest that lost or renamed the `env` entry,
     and an empty value.
-  - `boiler-service` carries the same class; two copies are a candidate for `cholewa-commons`.
+  - `boiler-service` carries the same class. Two copies stay where they are: code moves into
+    `cholewa-commons` once more than three services use it (the org rule).
   The connection is closed with the context (`close()`, found by Spring as the destroy method),
   and closed is final: a publish during the shutdown fails instead of opening a connection
   again. `HeatingServiceApplicationTest` and `NotificationRabbitConfigTest` pin all of it — one
