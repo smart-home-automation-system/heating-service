@@ -1,10 +1,10 @@
 package cloud.cholewa.heating.service;
 
+import cloud.cholewa.commons.notification.NotificationPublisher;
 import cloud.cholewa.heating.config.SensorMonitorProperties;
 import cloud.cholewa.heating.db.model.TemperatureSensorAlertEntity;
 import cloud.cholewa.heating.db.repository.TemperatureSensorAlertRepository;
 import cloud.cholewa.heating.model.TemperatureSensorReply;
-import cloud.cholewa.heating.rabbit.NotificationPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

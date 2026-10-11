@@ -89,7 +89,10 @@ rabbitmq:
     name: temperature.prod.heating
 
 # the notification exchange is on the same broker as spring.rabbitmq.*, on its own virtual host;
-# it is a headers exchange and "env" is one of the two headers it routes by
+# it is a headers exchange and "env" is one of the two headers it routes by.
+# This group is the service's own, read by NotificationRabbitConfig for the second connection;
+# cholewa.notification.enabled of cholewa-commons stays unset - the publisher it creates uses the
+# connection of spring.rabbitmq.*, which leads to /temperature
 notification:
   virtual-host: /notification
   username: notification

@@ -1,6 +1,6 @@
 package cloud.cholewa.heating;
 
-import cloud.cholewa.heating.config.NotificationProperties;
+import cloud.cholewa.heating.config.NotificationConnectionProperties;
 import cloud.cholewa.heating.config.RelayConfig;
 import cloud.cholewa.heating.config.SensorMonitorProperties;
 import cloud.cholewa.heating.config.ShellyTimeoutProperties;
@@ -14,7 +14,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableConfigurationProperties({
     RelayConfig.class,
     SensorMonitorProperties.class,
-    NotificationProperties.class,
+    NotificationConnectionProperties.class,
     ShellyTimeoutProperties.class
 })
 public class HeatingServiceApplication {
