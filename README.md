@@ -222,8 +222,8 @@ connection only while its reading is saved, which is why the prefetch may exceed
 
 Notifications about silent sensors go to the `notification` exchange, which lives on another
 virtual host, so the service holds a second connection for it (user `notification`, password
-from `notification-rabbitmq-password` — it has no default, the service does not start without
-it). The publisher and the connection it uses come from `cholewa-commons`
+from `notification-rabbitmq-password` — it has no default; without it the service still
+starts, and every publish is refused by the broker). The publisher and the connection it uses come from `cholewa-commons`
 (`NotificationPublisher` over a `NotificationConnection`, since 1.8.0); the service only says
 where to connect, in its own `notification.*` properties, and leaves
 `cholewa.notification.enabled` of the library unset — that switch is for a service whose only

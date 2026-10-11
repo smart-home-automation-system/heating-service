@@ -45,9 +45,14 @@ review.
   here are that connection and the `NotificationPublisher` it gives, **never what
   `rabbitOperations()` returns**. Observation is switched on by the library, because
   `spring.rabbitmq.template.*` never reaches this template. The connection is opened on the
-  first publish, so a wrong password shows up in the hourly check, not at startup — a missing
-  one does fail the startup, `notification.password` has no default outside the `test`
-  document. It is closed with the context (`close()`, found by Spring as the destroy method),
+  first publish, so a wrong password shows up in the hourly check, not at startup — **and so
+  does a missing one**: `notification.password` has no default outside the `test` document,
+  but that does not fail the startup, as this file and the README claimed until HAS-206.
+  Spring Boot's binder leaves a placeholder it cannot resolve as its literal text, so without
+  `notification-rabbitmq-password` the password binds as the string
+  `${notification-rabbitmq-password}`, passes `@NotBlank`, the pod turns Ready and every
+  publish is refused by the broker (found while writing `ApplicationYamlTest`; open, the
+  owner's call — a check at startup would close it). It is closed with the context (`close()`, found by Spring as the destroy method),
   and closed is final: a publish during the shutdown fails instead of opening a connection
   again. `HeatingServiceApplicationTest` and `NotificationRabbitConfigTest` pin all of it — one
   `ConnectionFactory` bean, the listener on it with manual ack, prefetch 3 and observation —
@@ -267,6 +272,19 @@ review.
 - **Surefire activates the `test` profile for every class** (`spring.profiles.active` in the
   pom), so a test without `@ActiveProfiles` does not fall through to the shared document and
   switch the log output to JSON for the classes that follow.
+- **The `test` document points everything that leads out of the JVM at a dead address**
+  (HAS-206, the convention of `boiler-service` since HAS-181): the broker and the database at
+  `localhost:1`, the four Shelly hosts at `localhost` with port 1, the queue
+  `temperature.test.heating` and `notification.env: test`, which no binding of the exchange
+  matches. A `@SpringBootTest` context starts the listener and the two runners that read the
+  database; until then it ran with the broker host, the queue and the `env` of production and
+  was harmless only because `rabbitmq-headless` does not resolve outside the cluster.
+  `database.host` is a literal there, so a `database-host` in the environment of the machine
+  does not reach a test. `ApplicationYamlTest` reads the file per profile without starting
+  anything and pins what the test document now hides from the context test: the values of
+  production (`home`) and of `local`. **A new outward address gets a line in the `test`
+  document and in that test.** Not switched off: `@EnableScheduling` — the hourly sensor pass
+  runs in a test context that is alive across a full hour, against those dead addresses.
 - **Tests still use the legacy `com.squareup.okhttp3:mockwebserver`**, which brings JUnit 4
   onto the classpath — a JUnit 4 test compiles and never runs. `mockwebserver3` is the
   replacement (see `presence-service`); not migrated yet.
