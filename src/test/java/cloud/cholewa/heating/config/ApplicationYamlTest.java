@@ -7,6 +7,9 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 
+import java.util.List;
+import java.util.stream.Stream;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 //application.yaml as the profiles read it, and nothing else: no auto-configuration and no bean but
@@ -54,8 +57,7 @@ class ApplicationYamlTest {
 
                 //the relays of the house, not the dead address of the test document
                 assertThat(environment.getProperty("shelly.actor.port")).isEqualTo("80");
-                assertThat(SHELLY_HOSTS).allSatisfy(host ->
-                    assertThat(environment.getProperty(host)).isNotBlank().isNotEqualTo("localhost"));
+                assertThat(shellyHosts(environment)).hasSize(4).doesNotContain("localhost", "", null);
                 assertThat(environment.getProperty("database.port")).isEqualTo("5432");
             });
     }
@@ -88,10 +90,13 @@ class ApplicationYamlTest {
                 assertThat(environment.getProperty("database.host")).isEqualTo("localhost");
                 assertThat(environment.getProperty("database.port")).isEqualTo("1");
                 assertThat(environment.getProperty("shelly.actor.port")).isEqualTo("1");
-                assertThat(SHELLY_HOSTS).allSatisfy(host ->
-                    assertThat(environment.getProperty(host)).isEqualTo("localhost"));
+                assertThat(shellyHosts(environment)).hasSize(4).containsOnly("localhost");
                 assertThat(environment.getProperty("spring.flyway.enabled")).isEqualTo("false");
             });
+    }
+
+    private static List<String> shellyHosts(final Environment environment) {
+        return Stream.of(SHELLY_HOSTS).map(environment::getProperty).toList();
     }
 
     @Configuration
