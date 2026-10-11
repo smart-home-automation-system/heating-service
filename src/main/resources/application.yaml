@@ -89,7 +89,10 @@ rabbitmq:
     name: temperature.prod.heating
 
 # the notification exchange is on the same broker as spring.rabbitmq.*, on its own virtual host;
-# it is a headers exchange and "env" is one of the two headers it routes by
+# it is a headers exchange and "env" is one of the two headers it routes by.
+# This group is the service's own, read by NotificationRabbitConfig for the second connection;
+# cholewa.notification.enabled of cholewa-commons stays unset - the publisher it creates uses the
+# connection of spring.rabbitmq.*, which leads to /temperature
 notification:
   virtual-host: /notification
   username: notification
@@ -175,11 +178,40 @@ spring:
   config:
     activate:
       on-profile: test
+  # a context test starts the listener and the two runners that read the database: everything
+  # that leads out of the JVM points at an address nothing listens on, so that a test cannot
+  # reach the broker, the database or a relay even where their names resolve
+  rabbitmq:
+    host: localhost
+    port: 1
   flyway:
     enabled: false
 
+database:
+  host: localhost
+  port: 1
+
+rabbitmq:
+  queue:
+    name: temperature.test.heating
+
+# "test" matches no binding of the exchange: such a message would come back as unroutable
 notification:
   password: dummyPassword
+  env: test
+
+shelly:
+  actor:
+    port: 1
+    pro4:
+      down_left:
+        host: localhost
+      down_right:
+        host: localhost
+      up_left:
+        host: localhost
+      up_right:
+        host: localhost
 
 logbook:
   format:
