@@ -4,8 +4,6 @@ import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.HeaterType;
 import cloud.cholewa.heating.model.Home;
 import cloud.cholewa.heating.model.Humidity;
-import cloud.cholewa.heating.model.OpeningSensor;
-import cloud.cholewa.heating.model.OpeningType;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.model.RoomMode;
 import cloud.cholewa.heating.model.Schedule;
@@ -74,8 +72,6 @@ public class HomeConfig {
                     .endTime(LocalTime.of(23, 0))
                     .build())
                 .build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.DOOR).build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.WINDOW).build())
             .build();
     }
 
@@ -112,8 +108,6 @@ public class HomeConfig {
                     .endTime(LocalTime.of(22, 0))
                     .build())
                 .build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.DOOR).build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.WINDOW).build())
             .build();
     }
 
@@ -150,8 +144,6 @@ public class HomeConfig {
                     .endTime(LocalTime.of(22, 0))
                     .build())
                 .build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.ROOF).build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.WINDOW).build())
             .build();
     }
 
@@ -176,9 +168,6 @@ public class HomeConfig {
                     .endTime(LocalTime.of(21, 0))
                     .build())
                 .build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.WINDOW).build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.DOOR).build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.WINDOW2).build())
             .build();
     }
 
@@ -197,8 +186,6 @@ public class HomeConfig {
                     .endTime(LocalTime.of(20, 0))
                     .build())
                 .build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.ROOF_LEFT).build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.ROOF_RIGHT).build())
             .build();
     }
 
@@ -231,7 +218,6 @@ public class HomeConfig {
                     .endTime(LocalTime.of(20, 0))
                     .build())
                 .build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.ROOF).build())
             .build();
     }
 
@@ -290,8 +276,6 @@ public class HomeConfig {
                     .endTime(LocalTime.of(22, 0))
                     .build())
                 .build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.DOOR).build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.ENTRANCE_DOOR).build())
             .build();
     }
 
@@ -328,8 +312,6 @@ public class HomeConfig {
                     .endTime(LocalTime.of(22, 0))
                     .build())
                 .build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.WINDOW).build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.WINDOW2).build())
             .build();
     }
 
@@ -381,7 +363,6 @@ public class HomeConfig {
                     .endTime(LocalTime.of(21, 0))
                     .build())
                 .build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.ENTRANCE_DOOR).build())
             .build();
     }
 
@@ -400,8 +381,6 @@ public class HomeConfig {
                     .endTime(LocalTime.of(20, 0))
                     .build())
                 .build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.GATE_KATE).build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.GATE_KRIS).build())
             .build();
     }
 
@@ -413,7 +392,6 @@ public class HomeConfig {
             .temperature(Temperature.builder().build())
             .humidity(new Humidity())
             .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR).build())
-            .openingSensor(OpeningSensor.builder().name(OpeningType.DOOR).build())
             .build();
     }
 

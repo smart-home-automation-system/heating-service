@@ -3,7 +3,7 @@ package cloud.cholewa.heating;
 import cloud.cholewa.commons.database.DatabaseProperties;
 import cloud.cholewa.commons.notification.NotificationConnection;
 import cloud.cholewa.commons.notification.NotificationPublisher;
-import cloud.cholewa.heating.config.BrokerPasswordCheck;
+import cloud.cholewa.heating.config.DeviceConnection;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
@@ -40,10 +40,11 @@ class HeatingServiceApplicationTest {
     void contextLoads() {
     }
 
-    //BrokerPasswordCheckTest shows what the check does; this, that the application has it at all
+    //RequiredPropertiesTest shows what the check does; this, that the application is given the list
     @Test
     void should_check_the_passwords_of_the_broker_at_the_start() {
-        assertThat(context.getBeansOfType(BrokerPasswordCheck.class)).hasSize(1);
+        assertThat(context.getEnvironment().getProperty("cholewa.required-properties[2].property"))
+            .isEqualTo("device.password");
     }
 
     //the pool is this service's share of the 22 connections of the managed database, counted twice
@@ -67,11 +68,14 @@ class HeatingServiceApplicationTest {
         assertThat(context.getBean(RabbitOperations.class).getConnectionFactory()).isSameAs(connectionFactory);
 
         final Collection<MessageListenerContainer> containers = listenerRegistry.getListenerContainers();
-        assertThat(containers).hasSize(1);
+        assertThat(containers).hasSize(2);
 
-        final AbstractMessageListenerContainer container =
-            (AbstractMessageListenerContainer) containers.iterator().next();
-        assertThat(container.getConnectionFactory()).isSameAs(connectionFactory);
+        final AbstractMessageListenerContainer container = containers.stream()
+            .map(AbstractMessageListenerContainer.class::cast)
+            .filter(candidate -> candidate.getConnectionFactory() == connectionFactory)
+            .findFirst()
+            .orElseThrow();
+        assertThat(container.getQueueNames()).containsExactly("temperature.test.heating");
         //what spring.rabbitmq.listener.simple.* sets, and only on the auto-configured factory
         assertThat(container.getAcknowledgeMode()).isEqualTo(AcknowledgeMode.MANUAL);
         assertThat(ReflectionTestUtils.getField(container, "prefetchCount")).isEqualTo(3);
@@ -104,5 +108,26 @@ class HeatingServiceApplicationTest {
             .isEqualTo("notification");
         assertThat(ReflectionTestUtils.getField(context.getBean(NotificationPublisher.class), "env"))
             .isEqualTo("test");
+    }
+
+    //the events of the devices (HAS-232) on a third connection, to /device, which is no bean either;
+    //the container set up as the temperature one is, by DeviceRabbitConfig
+    @Test
+    void should_consume_the_events_of_the_devices_over_a_third_connection() {
+        final ConnectionFactory deviceFactory =
+            (ConnectionFactory) ReflectionTestUtils.invokeMethod(context.getBean(DeviceConnection.class), "connectionFactory");
+        assertThat(deviceFactory).isNotSameAs(context.getBean(ConnectionFactory.class));
+        assertThat(deviceFactory.getVirtualHost()).isEqualTo("/device");
+        assertThat(deviceFactory.getUsername()).isEqualTo("device");
+
+        final AbstractMessageListenerContainer container = listenerRegistry.getListenerContainers().stream()
+            .map(AbstractMessageListenerContainer.class::cast)
+            .filter(candidate -> candidate.getConnectionFactory() == deviceFactory)
+            .findFirst()
+            .orElseThrow();
+        assertThat(container.getQueueNames()).containsExactly("device.test.heating");
+        assertThat(container.getAcknowledgeMode()).isEqualTo(AcknowledgeMode.MANUAL);
+        assertThat(ReflectionTestUtils.getField(container, "prefetchCount")).isEqualTo(10);
+        assertThat(ReflectionTestUtils.getField(container, "observationEnabled")).isEqualTo(true);
     }
 }

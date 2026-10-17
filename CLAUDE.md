@@ -14,13 +14,17 @@ review.
 ## Role in the system
 
 - Consumes: `temperature.prod.heating` on the `/temperature` virtual host
-  (`TemperatureMessage` from `smart-home-sdk`), published by `amx-service`.
-- Publishes: plain-text notifications about silent temperature sensors to the headers exchange
+  (`TemperatureMessage` from `smart-home-sdk`), published by `amx-service`; and since HAS-232
+  `device.prod.heating` on `/device` - the events of every device, of which only the window
+  sensors are read.
+- Publishes: plain-text notifications about silent temperature and window sensors to the headers exchange
   `notification` on the `/notification` virtual host (HAS-94), consumed by
   `notification-service` and posted on Discord.
 - Is called by: `boiler-service` (`GET /home/heating/status/active`) and, through
   `api-gateway-service`, by whoever switches the heating on and off (`/home/heating`).
-- Calls: the Shelly relays on the LAN over HTTP, and PostgreSQL.
+- Calls: the Shelly relays on the LAN over HTTP, PostgreSQL, `database-service` (the device
+  registry: opening sensors and BTHome gateways) and the BTHome gateways (`Shelly.GetComponents`
+  through `ShellyRpcClient` of `shelly-client`).
 - Owns its own database, `home-automation-heating` — it got one in HAS-123 because the
   legacy database carried a `V1` migration that no longer matched; never `flyway repair`.
 - Uses libraries: `cholewa-commons`, `smart-home-sdk`, `shelly-client`.
@@ -30,9 +34,10 @@ review.
 - Build + tests: `mvn verify` - needs a running Docker (one test starts a PostgreSQL in it)
 - Local run: `home,local` Spring profiles, port `6002` (Actuator `8002`); in-cluster port
   `6200`, Actuator `8200`. Needs PostgreSQL and a RabbitMQ broker; the `local` profile uses
-  the `temperature.dev.heating` queue and a dummy for the two passwords of the broker, so it
-  starts without `rabbitmq-password` and `notification-rabbitmq-password` - under `home` alone
-  the start is refused without them (below).
+  the `temperature.dev.heating` and `device.dev.heating` queues, `database-service` on
+  `localhost:6005` and a dummy for the three passwords of the broker, so it starts without
+  `rabbitmq-password`, `notification-rabbitmq-password` and `device-rabbitmq-password` - under
+  `home` alone the start is refused without them (below).
 - Spring Boot **4.1.1** with logbook 4.2.0 since HAS-151 (2026-10-03); own libraries on the
   latest releases, as the org rule asks of every service task.
 
@@ -48,32 +53,14 @@ review.
   `rabbitOperations()` returns**. Observation is switched on by the library, because
   `spring.rabbitmq.template.*` never reaches this template. The connection is opened on the
   first publish, so a wrong password shows up in the hourly check, not at startup. **A missing
-  or empty one fails the start** (HAS-217, `BrokerPasswordCheck`), for both passwords of the
-  broker - `spring.rabbitmq.password` and `notification.password`. Neither has a default in a
-  document a pod runs with, and that alone did not do it: Spring Boot's binder leaves a
-  placeholder it cannot resolve as its literal text, so without
-  `notification-rabbitmq-password` the password bound as the string
-  `${notification-rabbitmq-password}`, passed `@NotBlank`, and the pod would have turned Ready
-  with every publish refused. What to keep about the check:
-  - It asks the `Environment`, which is strict about the same placeholder, as a
-    `BeanFactoryPostProcessor` - **before the first bean**, so a refused start has run no
-    migration and opened no connection. Every password without a value is named in one
-    message, with the variable `application.yaml` reads it from; the names are repeated in
-    `BrokerPasswordCheck.PASSWORDS` and tied to the file by `BrokerPasswordCheckTest`.
-  - **The message never carries the exception of the environment or a value**: both quote what
-    was resolved so far, which for a password holding `${` is the password. Such a password is
-    refused as "has no value" - Spring reads a placeholder into it wherever it is bound, so it
-    would not work anyway. For the same reason it is a plain exception and not Boot's
-    `InvalidConfigurationPropertyValueException`, whose failure analysis prints the configured
-    value.
-  - The `local` document gives both a dummy default and the `test` document a value, so a
-    local run and the context tests start without the variables. A password set as the
-    property itself (`SPRING_RABBITMQ_PASSWORD`, `--notification.password=`) passes too.
-  - What it does not cover: a wrong password, and a secret key that is missing - Kubernetes
-    stops that container itself. It covers a manifest that lost or renamed the `env` entry,
-    and an empty value.
-  - `boiler-service` carries the same class. Two copies stay where they are: code moves into
-    `cholewa-commons` once more than three services use it (the org rule).
+  or empty one fails the start**, for the three passwords of the broker -
+  `spring.rabbitmq.password`, `notification.password` and `device.password`: since HAS-232 by
+  `cholewa.required-properties` of `cholewa-commons` 1.9.0, before the first bean (the own
+  `BrokerPasswordCheck` of HAS-217 is gone). None has a default in a document a pod runs with,
+  and that alone did not do it: the binder leaves a placeholder it cannot resolve as its literal
+  text, so the password would bind as the string `${...}` and the pod turn Ready with every
+  publish refused. `RequiredPropertiesTest` ties the list to the placeholders; the `local`
+  document gives all three a dummy and the `test` document a value.
   The connection is closed with the context (`close()`, found by Spring as the destroy method),
   and closed is final: a publish during the shutdown fails instead of opening a connection
   again. `HeatingServiceApplicationTest` and `NotificationRabbitConfigTest` pin all of it — one
@@ -291,6 +278,47 @@ review.
   strategy and adds `/notification` (`NotificationConnection`). **A `ConnectionNameStrategy`
   bean declared here switches the library's off** — there is none any more, and
   `NotificationRabbitConfigTest` pins the names of both connections.
+- **Open windows hold the heating of a room** (HAS-232, package `window`). What to keep:
+  - **`WindowSensors` is a copy of the one of `blinds-service` (HAS-290)**, judged per room
+    instead of per blind - two copies stay (the commons rule). It reads every `opening sensor`
+    and the switched-on `bthome gateway` devices of the registry (`DeviceRegistryClient`, a copy
+    too) and each gateway with `ShellyRpcClient.dynamicComponents` at the start and every five
+    minutes (`WindowSensorsRefresh`); between reads the `bthomesensor` status topics of
+    `device.prod.heating`, picked by the routing key before a body is read
+    (`WindowEventRouter`). A BLU sensor has no heartbeat: a state stands while its gateway
+    confirms it within `heating.window.gateway-silent-after` (PT30M).
+  - **Per room**: every opening sensor whose registry `room` is the room, doors included; a
+    switched-off one is left out; a room without one heats as before. `open` beats `unknown`
+    beats `closed`. **An unknown sensor never holds** - a dead battery must not leave a room
+    cold (owner, 2026-10-16).
+  - **The hold**: open for `heating.window.hold-after` (**PT3M**, owner 2026-10-17; 1 min - 1 h,
+    pinned by `WindowPropertiesTest`), counted from `last_updated_ts` of the gateway (never
+    later than now), by the window open longest. `HeatingService` judges it once per pass and
+    treats a held room as out of schedule - off, never on; `inSchedule` / `targetTemperature`
+    stay the decisions of the reading. A room is read only on a change of its temperature, so
+    `WindowHoldScheduler` gives every held room with a heater still working a pass every minute
+    (`HomeService.stopHeldRooms`) - it only switches off; the room heats again with its next
+    reading after the window closes.
+  - **The silent sensors** (`OpeningSensorMonitor`, after every refresh): a switched-on sensor
+    of a room of `Home` without a known state for gateway-silent-after - since the registry first
+    listed it switched on, or since a gateway last stood for a state - is an alert, a reminder
+    every `heating.sensor-monitor.reminder-interval`, an `info` when a gateway stands for it
+    again; `opening_sensor_alert` (V4) holds the rows, the message first and the row second (the
+    writes deferred). Unknown but not yet silent - the half hour after a restart - leaves a row
+    as it is: closing it there announced a false recovery after every rollout (found in review).
+    A row of a sensor removed, switched off or moved to an unheated room goes without a message.
+    During a rollout both pods run the pass - a duplicate alert is possible, as for the
+    temperature sensors.
+  - **The third connection** (`DeviceRabbitConfig`): `DeviceConnection` builds the factory to
+    `/device` (user `device`, `device-rabbitmq-password`) by hand and keeps it - a copy of the
+    setup of `NotificationConnection` without confirms - and the listener has its own container
+    factory `deviceListenerContainerFactory` (manual ack, prefetch 10, observation), because
+    `spring.rabbitmq.listener.simple.*` reaches only the auto-configured one.
+    `HeatingServiceApplicationTest` pins both listeners on their connections.
+  - `GET /rooms` answers `window` (`state` / `openSince` / `hold`), worked out when asked;
+    the values of `state` are those of `blinds-service` - the dashboard copies them.
+  - The Gen1 Door/Window 2 of the sauna entrance is out (owner, 2026-10-17, as in HAS-290): no
+    `/events/gen1` here. The static `OpeningSensor` / `OpeningType` of `HomeConfig` are gone.
 - **Surefire activates the `test` profile for every class** (`spring.profiles.active` in the
   pom), so a test without `@ActiveProfiles` does not fall through to the shared document and
   switch the log output to JSON for the classes that follow.
@@ -305,8 +333,9 @@ review.
   does not reach a test. `ApplicationYamlTest` reads the file per profile without starting
   anything and pins what the test document now hides from the context test: the values of
   production (`home`) and of `local`. **A new outward address gets a line in the `test`
-  document and in that test.** Not switched off: `@EnableScheduling` — the hourly sensor pass
-  runs in a test context that is alive across a full hour, against those dead addresses.
+  document and in that test** - `database-service` and the device queue have theirs since
+  HAS-232. Scheduling is off under `test` since then (`SchedulingConfig`, `@Profile("!test")`):
+  the read of the window sensors starts at once.
 - **Tests still use the legacy `com.squareup.okhttp3:mockwebserver`**, which brings JUnit 4
   onto the classpath — a JUnit 4 test compiles and never runs. `mockwebserver3` is the
   replacement (see `presence-service`); not migrated yet.

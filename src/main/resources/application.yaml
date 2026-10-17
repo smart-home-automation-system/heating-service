@@ -16,7 +16,8 @@ spring:
     username: temperature
     # no default on purpose, like the password of the notifications below: with one the pod would
     # start, turn Ready and consume nothing. Without the variable the service does not start -
-    # BrokerPasswordCheck sees to that, the binder alone would take the placeholder for the password
+    # cholewa.required-properties sees to that, the binder alone would take the placeholder for the
+    # password
     password: ${rabbitmq-password}
     virtual-host: /temperature
     connection-timeout: 10s
@@ -100,10 +101,31 @@ notification:
   virtual-host: /notification
   username: notification
   # no default on purpose: with one the pod would start, turn Ready and fail every publish.
-  # Without the variable the service does not start (BrokerPasswordCheck)
+  # Without the variable the service does not start (cholewa.required-properties)
   password: ${notification-rabbitmq-password}
   exchange: notification
   env: prod
+
+# the events of the devices (HAS-232): every MQTT client of the house publishes to amq.topic of
+# /device, and the queue of this service there is bound with "#". The same broker as
+# spring.rabbitmq.*, a third connection - DeviceRabbitConfig
+device:
+  virtual-host: /device
+  username: device
+  # no default on purpose: with one the pod would start, turn Ready and hear no window. Without the
+  # variable the service does not start (cholewa.required-properties)
+  password: ${device-rabbitmq-password}
+  queue: device.prod.heating
+
+# the services this one calls inside the cluster, over k8s DNS. A bare number of a timeout is
+# seconds
+internal:
+  service:
+    # the device registry: the opening sensors of the rooms and the BTHome gateways that hear them
+    database:
+      url: http://database-service:6200
+      connect-timeout: 3s
+      response-timeout: 5s
 
 heating:
   sensor-monitor:
@@ -113,6 +135,13 @@ heating:
     reminder-interval: 24h
     # rooms whose sensor is not reported, e.g. one taken out of service: [sauna, garden]
     muted-rooms: []
+  # the window and door sensors of the rooms (HAS-232); a bare number is minutes
+  window:
+    # a window or a door open this long holds the heating of its room (owner, 2026-10-17); 1 min to 1 h
+    hold-after: PT3M
+    # how long the state of a sensor stands without its gateway confirming it; the gateways are read
+    # every 5 min, so 10 min to 24 h
+    gateway-silent-after: PT30M
 
 shelly:
   actor:
@@ -145,6 +174,17 @@ shelly:
         living_room: 0
         bathroom_down: 2
 
+# what has no default in this document: a pod without one of them does not start (cholewa-commons,
+# checked before the first bean is created)
+cholewa:
+  required-properties:
+    - property: spring.rabbitmq.password
+      variable: rabbitmq-password
+    - property: notification.password
+      variable: notification-rabbitmq-password
+    - property: device.password
+      variable: device-rabbitmq-password
+
 ---
 
 spring:
@@ -153,8 +193,8 @@ spring:
       on-profile: local
   rabbitmq:
     host: localhost
-    # a run on a workstation starts without the two variables of the broker; it takes the real
-    # passwords only to consume readings or to publish a notification
+    # a run on a workstation starts without the three variables of the broker; it takes the real
+    # passwords only to consume readings or device events, or to publish a notification
     password: ${rabbitmq-password:dummyPassword}
 
 server:
@@ -179,6 +219,15 @@ rabbitmq:
 notification:
   password: ${notification-rabbitmq-password:dummyPassword}
   env: dev
+
+device:
+  password: ${device-rabbitmq-password:dummyPassword}
+  queue: device.dev.heating
+
+internal:
+  service:
+    database:
+      url: http://localhost:6005
 
 ---
 
@@ -208,6 +257,15 @@ rabbitmq:
 notification:
   password: dummyPassword
   env: test
+
+device:
+  password: dummyPassword
+  queue: device.test.heating
+
+internal:
+  service:
+    database:
+      url: http://localhost:1
 
 shelly:
   actor:

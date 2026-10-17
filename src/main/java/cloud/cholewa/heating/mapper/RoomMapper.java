@@ -6,6 +6,8 @@ import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.model.RoomReply;
 import cloud.cholewa.heating.model.Schedule;
 import cloud.cholewa.heating.model.Temperature;
+import cloud.cholewa.heating.window.RoomWindow;
+import cloud.cholewa.heating.window.WindowSensors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +22,7 @@ import java.time.LocalDateTime;
 public class RoomMapper {
 
     private final Clock clock;
+    private final WindowSensors windowSensors;
 
     public RoomReply toReply(final Room room) {
         return new RoomReply(
@@ -28,8 +31,13 @@ public class RoomMapper {
             room.isHeatingDecided() ? room.isRoomHeatingEnabled() : null,
             toReading(room.getTemperature()),
             toReading(room.getHumidity()),
+            toWindow(windowSensors.windowOf(room.getName(), LocalDateTime.now(clock))),
             room.getHeaterActors().stream().map(this::toHeater).toList()
         );
+    }
+
+    private RoomReply.Window toWindow(final RoomWindow window) {
+        return new RoomReply.Window(window.state(), window.openSince(), window.hold());
     }
 
     private RoomReply.Reading toReading(final Temperature temperature) {

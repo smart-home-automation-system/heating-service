@@ -8,6 +8,7 @@ import cloud.cholewa.heating.model.Home;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.model.Temperature;
 import cloud.cholewa.heating.model.TemperatureHistoryReply;
+import cloud.cholewa.heating.window.WindowSensorsFixture;
 import cloud.cholewa.home.model.RoomName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,7 +43,7 @@ class TemperatureHistoryServiceTest {
             .build();
 
         return new TemperatureHistoryService(
-            new RoomService(new Home(List.of(livingRoom)), new RoomMapper(Clock.systemDefaultZone())),
+            new RoomService(new Home(List.of(livingRoom)), new RoomMapper(Clock.systemDefaultZone(), WindowSensorsFixture.none())),
             temperatureRepository
         );
     }

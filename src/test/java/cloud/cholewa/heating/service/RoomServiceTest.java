@@ -6,6 +6,7 @@ import cloud.cholewa.heating.model.Home;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.model.RoomReply;
 import cloud.cholewa.heating.model.Temperature;
+import cloud.cholewa.heating.window.WindowSensorsFixture;
 import cloud.cholewa.home.model.RoomName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -31,7 +32,7 @@ class RoomServiceTest {
         .temperature(Temperature.builder().build())
         .build();
 
-    private final RoomService sut = new RoomService(new Home(List.of(office, livingRoom)), new RoomMapper(Clock.systemDefaultZone()));
+    private final RoomService sut = new RoomService(new Home(List.of(office, livingRoom)), new RoomMapper(Clock.systemDefaultZone(), WindowSensorsFixture.none()));
 
     @Test
     void should_list_the_rooms_in_the_order_of_the_configuration() {

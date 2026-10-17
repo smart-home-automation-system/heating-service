@@ -5,6 +5,8 @@ import cloud.cholewa.heating.infrastructure.error.BoilerException;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.HomeStatus;
 import cloud.cholewa.heating.model.Room;
+import cloud.cholewa.heating.window.RoomWindow;
+import cloud.cholewa.heating.window.WindowSensors;
 import cloud.cholewa.home.model.RoomName;
 import cloud.cholewa.home.model.SystemActiveReply;
 import cloud.cholewa.shelly.model.ShellyPro4StatusResponse;
@@ -26,6 +28,7 @@ public class HeatingService {
     private final Clock clock;
     private final HomeStatus homeStatus;
     private final ShellyClient shellyClient;
+    private final WindowSensors windowSensors;
 
     public Mono<SystemActiveReply> queryHeatingSystemEnabledAndActive() {
         return Mono.just(SystemActiveReply.builder()
@@ -33,9 +36,14 @@ public class HeatingService {
             .build());
     }
 
+    //The windows of the room are judged once for the pass, so that every heater of it follows the same
+    //decision (HAS-232): a window or a door open for heating.window.hold-after holds them all, the
+    //floor included. Only at a reading of the room - the hold starts and ends with the next one
     public Mono<Room> processHeatingRequest(final Room room) {
-        return Flux.fromIterable(room.getHeaterActors())
-            .flatMap(heaterActor -> handleHeaterActor(room.getName(), heaterActor))
+        return Mono.fromSupplier(() -> windowSensors.windowOf(room.getName()))
+            .doOnNext(window -> logHold(room.getName(), window))
+            .flatMapMany(window -> Flux.fromIterable(room.getHeaterActors())
+                .flatMap(heaterActor -> handleHeaterActor(room.getName(), heaterActor, window.hold())))
             .mapNotNull(HeaterActor::isWorking)
             .reduce(Boolean::logicalOr)
             .map(heatingEnabled -> {
@@ -51,12 +59,18 @@ public class HeatingService {
      * 4. taking a response update status and timestamp
      * 5. return room
      * */
-    private Mono<HeaterActor> handleHeaterActor(final RoomName roomName, final HeaterActor heaterActor) {
+    private void logHold(final RoomName roomName, final RoomWindow window) {
+        if (window.hold()) {
+            log.info("Heating of room: {} is held, a window or a door is open since {}", roomName.getValue(), window.openSince());
+        }
+    }
+
+    private Mono<HeaterActor> handleHeaterActor(final RoomName roomName, final HeaterActor heaterActor, final boolean held) {
         return Mono.fromSupplier(() -> isStatusStale(heaterActor))
             .filter(Boolean::booleanValue)
             .flatMap(refreshNeeded -> shellyClient.getHeaterActorStatus(heaterActor.getType(), roomName))
             .doOnNext(statusResponse -> updateHeaterStatus(roomName, statusResponse, heaterActor))
-            .then(controlHeaterActor(heaterActor, roomName))
+            .then(controlHeaterActor(heaterActor, roomName, held))
             .thenReturn(heaterActor)
             //a device that fails - since the calls have a timeout, also one that is merely slow -
             //must not cancel the other actors of the room nor end the pass before the furnace and
@@ -99,10 +113,14 @@ public class HeatingService {
         heaterActor.setLastStatusUpdate(LocalDateTime.now(clock));
     }
 
-    private Mono<ShellyProRelayResponse> controlHeaterActor(final HeaterActor heaterActor, final RoomName roomName) {
+    private Mono<ShellyProRelayResponse> controlHeaterActor(
+        final HeaterActor heaterActor,
+        final RoomName roomName,
+        final boolean held
+    ) {
         return Mono.defer(() -> {
 
-            if (!homeStatus.isEnabledHomeHeatingSystem() || !heaterActor.isInSchedule()) {
+            if (!homeStatus.isEnabledHomeHeatingSystem() || !heaterActor.isInSchedule() || held) {
                 if (heaterActor.isWorking()) {
                     return setHeaterActor(heaterActor, roomName, false);
                 }
