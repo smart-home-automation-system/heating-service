@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.model;
 
+import cloud.cholewa.heating.window.WindowState;
 import cloud.cholewa.home.model.RoomName;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
@@ -18,7 +19,8 @@ import java.util.List;
  * {@code heatingEnabled} - whether any heater of the room was working at the end of the last pass
  * that got as far as its heaters; a pass that ends early leaves it as it was. Missing until such
  * a pass has run since the service started - for good in a room without a heater, and in
- * SANCTUM, whose radiator is switched outside this service.
+ * SANCTUM, whose radiator is switched outside this service.<br>
+ * {@code window} - the windows and doors of the room at the moment of the question (HAS-232).
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record RoomReply(
@@ -27,10 +29,27 @@ public record RoomReply(
     Boolean heatingEnabled,
     Reading temperature,
     Reading humidity,
+    Window window,
     List<Heater> heaters
 ) {
 
     public record Reading(double value, LocalDateTime updatedAt) {
+    }
+
+    /**
+     * Worked out when asked, from the opening sensors the registry places in the room - every
+     * window and door of it.<br>
+     * {@code state} - {@code open}: one is open; {@code closed}: every one is closed; {@code no
+     * sensor}: the room has none and heats as it always did; {@code unknown}: a sensor has not been
+     * heard of for too long (or since the start) and none is open - the room heats as without it.<br>
+     * {@code openSince} - since when the window that has stood open longest is open; only while
+     * {@code state} is open.<br>
+     * {@code hold} - whether the heating of the room is held now: one has stood open for
+     * {@code heating.window.hold-after} (three minutes). The heaters follow at the next reading of
+     * the room: {@code working} of a heater says what the relay last did.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record Window(WindowState state, LocalDateTime openSince, boolean hold) {
     }
 
     /**

@@ -31,9 +31,9 @@
 		<mockwebserver.version>5.4.0</mockwebserver.version>
 
 		<!--  internal dependencies versions-->
-		<cholewa-commons.version>1.8.0</cholewa-commons.version>
-		<shelly-client.version>1.0.0</shelly-client.version>
-		<smart-home-sdk.version>1.6.0</smart-home-sdk.version>
+		<cholewa-commons.version>1.9.0</cholewa-commons.version>
+		<shelly-client.version>2.1.0</shelly-client.version>
+		<smart-home-sdk.version>1.11.0</smart-home-sdk.version>
 
 		<!--  plugins versions-->
 		<maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
@@ -188,6 +188,13 @@
 		<dependency>
 			<groupId>com.squareup.okhttp3</groupId>
 			<artifactId>mockwebserver</artifactId>
+			<version>${mockwebserver.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<!-- the replacement of the legacy mockwebserver above, for new tests (HAS-232); the old ones are not migrated yet -->
+		<dependency>
+			<groupId>com.squareup.okhttp3</groupId>
+			<artifactId>mockwebserver3</artifactId>
 			<version>${mockwebserver.version}</version>
 			<scope>test</scope>
 		</dependency>

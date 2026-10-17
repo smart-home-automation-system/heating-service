@@ -6,9 +6,13 @@ import cloud.cholewa.heating.infrastructure.error.HeatingException;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.HomeStatus;
 import cloud.cholewa.heating.model.Room;
+import cloud.cholewa.heating.window.RoomWindow;
+import cloud.cholewa.heating.window.WindowSensors;
+import cloud.cholewa.heating.window.WindowState;
 import cloud.cholewa.home.model.RoomName;
 import cloud.cholewa.shelly.model.ShellyPro4StatusResponse;
 import cloud.cholewa.shelly.model.ShellyProRelayResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
@@ -31,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -46,9 +51,17 @@ class HeatingServiceTest {
     private ShellyClient shellyClient;
     @Spy
     private HomeStatus homeStatus;
+    @Mock
+    private WindowSensors windowSensors;
 
     @InjectMocks
     HeatingService sut;
+
+    //a room without a window sensor heats as it always did; the tests of the hold say otherwise
+    @BeforeEach
+    void noWindowSensors() {
+        lenient().when(windowSensors.windowOf(any())).thenReturn(RoomWindow.NO_SENSOR);
+    }
 
     @Test
     void should_return_system_active_state() {
@@ -509,6 +522,87 @@ class HeatingServiceTest {
         sut.processHeatingRequest(room)
             .as(StepVerifier::create)
             .verifyError(HeatingException.class);
+    }
+
+    //HAS-232: a window or a door open for hold-after keeps every heater of the room from switching on
+    @Test
+    void should_not_switch_a_heater_on_while_a_window_of_the_room_is_held_open() {
+        homeStatus.setEnabledHomeHeatingSystem(true);
+        when(windowSensors.windowOf(RoomName.BEDROOM))
+            .thenReturn(new RoomWindow(WindowState.OPEN, LocalDateTime.of(2026, 1, 19, 11, 50), true));
+
+        final Room room = Room.builder()
+            .name(RoomName.BEDROOM)
+            .heaterActor(HeaterActor.builder().type(RADIATOR).working(false)
+                .lastStatusUpdate(LocalDateTime.of(2026, 1, 19, 11, 56)).inSchedule(true).build())
+            .heaterActor(HeaterActor.builder().type(FLOOR).working(false)
+                .lastStatusUpdate(LocalDateTime.of(2026, 1, 19, 11, 56)).inSchedule(true).build())
+            .build();
+
+        mockClock();
+
+        sut.processHeatingRequest(room)
+            .as(StepVerifier::create)
+            .assertNext(result -> assertThat(result.isRoomHeatingEnabled()).isFalse())
+            .verifyComplete();
+
+        verifyNoMoreInteractions(shellyClient);
+    }
+
+    //a room already heating stops once the window has stood open for hold-after
+    @Test
+    void should_switch_a_working_heater_off_once_a_window_of_the_room_is_held_open() {
+        homeStatus.setEnabledHomeHeatingSystem(true);
+        when(windowSensors.windowOf(RoomName.BEDROOM))
+            .thenReturn(new RoomWindow(WindowState.OPEN, LocalDateTime.of(2026, 1, 19, 11, 50), true));
+        when(shellyClient.controlHeaterActor(RADIATOR, RoomName.BEDROOM, false))
+            .thenReturn(Mono.just(ShellyProRelayResponse.builder().ison(false).build()));
+
+        final Room room = Room.builder()
+            .name(RoomName.BEDROOM)
+            .heaterActor(HeaterActor.builder().type(RADIATOR).working(true)
+                .lastStatusUpdate(LocalDateTime.of(2026, 1, 19, 11, 56)).inSchedule(true).build())
+            .build();
+
+        mockClock();
+
+        sut.processHeatingRequest(room)
+            .as(StepVerifier::create)
+            .assertNext(result -> assertThat(result.isRoomHeatingEnabled()).isFalse())
+            .verifyComplete();
+
+        verify(shellyClient).controlHeaterActor(RADIATOR, RoomName.BEDROOM, false);
+        verifyNoMoreInteractions(shellyClient);
+    }
+
+    //open, but not yet for hold-after - a short trip through a door - and a sensor not heard of: both heat
+    @Test
+    void should_heat_while_a_window_is_open_too_briefly_or_its_sensor_is_unknown() {
+        homeStatus.setEnabledHomeHeatingSystem(true);
+        when(windowSensors.windowOf(RoomName.BEDROOM))
+            .thenReturn(new RoomWindow(WindowState.OPEN, LocalDateTime.of(2026, 1, 19, 11, 59), false));
+        when(windowSensors.windowOf(RoomName.OFFICE)).thenReturn(new RoomWindow(WindowState.UNKNOWN, null, false));
+        when(shellyClient.controlHeaterActor(any(), any(), eq(true)))
+            .thenReturn(Mono.just(ShellyProRelayResponse.builder().ison(true).build()));
+
+        mockClock();
+
+        for (final RoomName name : new RoomName[]{RoomName.BEDROOM, RoomName.OFFICE}) {
+            final Room room = Room.builder()
+                .name(name)
+                .heaterActor(HeaterActor.builder().type(RADIATOR).working(false)
+                    .lastStatusUpdate(LocalDateTime.of(2026, 1, 19, 11, 56)).inSchedule(true).build())
+                .build();
+
+            sut.processHeatingRequest(room)
+                .as(StepVerifier::create)
+                .assertNext(result -> assertThat(result.isRoomHeatingEnabled()).isTrue())
+                .verifyComplete();
+        }
+
+        verify(shellyClient).controlHeaterActor(RADIATOR, RoomName.BEDROOM, true);
+        verify(shellyClient).controlHeaterActor(RADIATOR, RoomName.OFFICE, true);
+        verifyNoMoreInteractions(shellyClient);
     }
 
     private void mockClock() {

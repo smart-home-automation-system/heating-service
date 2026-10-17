@@ -9,6 +9,10 @@ import cloud.cholewa.heating.model.RoomReply;
 import cloud.cholewa.heating.model.Schedule;
 import cloud.cholewa.heating.model.ScheduleType;
 import cloud.cholewa.heating.model.Temperature;
+import cloud.cholewa.heating.window.RoomWindow;
+import cloud.cholewa.heating.window.WindowSensors;
+import cloud.cholewa.heating.window.WindowSensorsFixture;
+import cloud.cholewa.heating.window.WindowState;
 import cloud.cholewa.home.model.RoomName;
 import org.junit.jupiter.api.Test;
 
@@ -28,6 +32,8 @@ import static java.time.DayOfWeek.THURSDAY;
 import static java.time.DayOfWeek.TUESDAY;
 import static java.time.DayOfWeek.WEDNESDAY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class RoomMapperTest {
 
@@ -41,7 +47,7 @@ class RoomMapperTest {
 
     private static RoomMapper mapperAt(final LocalDateTime now) {
         final ZoneId zone = ZoneId.systemDefault();
-        return new RoomMapper(Clock.fixed(now.atZone(zone).toInstant(), zone));
+        return new RoomMapper(Clock.fixed(now.atZone(zone).toInstant(), zone), WindowSensorsFixture.none());
     }
 
     private static Room roomWith(final Schedule... schedules) {
@@ -290,5 +296,26 @@ class RoomMapperTest {
 
         assertThat(sut.toReply(room).heaters().getFirst().schedules().getFirst().days())
             .containsExactly(DayOfWeek.values());
+    }
+
+    //the windows of the room as they are at the moment of the question (HAS-232), asked by the
+    //clock of the mapper
+    @Test
+    void should_tell_the_windows_of_the_room_at_the_moment_of_the_question() {
+        final ZoneId zone = ZoneId.systemDefault();
+        final WindowSensors windowSensors = mock(WindowSensors.class);
+        final LocalDateTime openSince = NOW.minusMinutes(4);
+        when(windowSensors.windowOf(RoomName.OFFICE, NOW))
+            .thenReturn(new RoomWindow(WindowState.OPEN, openSince, true));
+        final RoomMapper mapper = new RoomMapper(Clock.fixed(NOW.atZone(zone).toInstant(), zone), windowSensors);
+
+        assertThat(mapper.toReply(roomWith()).window())
+            .isEqualTo(new RoomReply.Window(WindowState.OPEN, openSince, true));
+    }
+
+    @Test
+    void should_say_so_when_the_room_has_no_sensor() {
+        assertThat(sut.toReply(roomWith()).window())
+            .isEqualTo(new RoomReply.Window(WindowState.NO_SENSOR, null, false));
     }
 }

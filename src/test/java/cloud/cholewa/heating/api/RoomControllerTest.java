@@ -7,6 +7,7 @@ import cloud.cholewa.heating.model.RoomMode;
 import cloud.cholewa.heating.model.RoomReply;
 import cloud.cholewa.heating.model.ScheduleType;
 import cloud.cholewa.heating.service.RoomService;
+import cloud.cholewa.heating.window.WindowState;
 import cloud.cholewa.home.model.RoomName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +45,7 @@ class RoomControllerTest {
         true,
         new RoomReply.Reading(19.4, LocalDateTime.of(2026, 10, 8, 18, 30)),
         new RoomReply.Reading(48, LocalDateTime.of(2026, 10, 8, 18, 29)),
+        new RoomReply.Window(WindowState.OPEN, LocalDateTime.of(2026, 10, 8, 18, 25), true),
         List.of(
             new RoomReply.Heater(
                 HeaterType.RADIATOR,
@@ -67,6 +69,7 @@ class RoomControllerTest {
           "heatingEnabled": true,
           "temperature": {"value": 19.4, "updatedAt": "2026-10-08T18:30:00"},
           "humidity": {"value": 48.0, "updatedAt": "2026-10-08T18:29:00"},
+          "window": {"state": "open", "openSince": "2026-10-08T18:25:00", "hold": true},
           "heaters": [
             {
               "type": "radiator",
@@ -85,10 +88,11 @@ class RoomControllerTest {
         """;
 
     //a room that never reported and has no heater: nothing measured, nothing decided, an empty list
-    private static final RoomReply GARDEN = new RoomReply(RoomName.GARDEN, null, null, null, null, List.of());
+    private static final RoomReply GARDEN = new RoomReply(RoomName.GARDEN, null, null, null, null,
+        new RoomReply.Window(WindowState.NO_SENSOR, null, false), List.of());
 
     private static final String GARDEN_JSON = """
-        {"name": "garden", "heaters": []}
+        {"name": "garden", "window": {"state": "no sensor", "hold": false}, "heaters": []}
         """;
 
     @Autowired

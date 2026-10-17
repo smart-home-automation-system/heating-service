@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -25,14 +26,15 @@ class ApplicationYamlTest {
         "shelly.actor.pro4.up_right.host"
     };
 
-    //the two passwords are what the deployment sets, under these names. The active profiles are
+    //the three passwords are what the deployment sets, under these names. The active profiles are
     //given here, above the system property surefire sets for every test class
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
         .withInitializer(new ConfigDataApplicationContextInitializer())
         .withUserConfiguration(Properties.class)
         .withPropertyValues(
             "rabbitmq-password=listenerSecret",
-            "notification-rabbitmq-password=publisherSecret"
+            "notification-rabbitmq-password=publisherSecret",
+            "device-rabbitmq-password=deviceSecret"
         );
 
     @Test
@@ -55,6 +57,14 @@ class ApplicationYamlTest {
                     new NotificationConnectionProperties(
                         "/notification", "notification", "publisherSecret", "notification", "prod"));
 
+                //the events of the devices and the registry of the window sensors (HAS-232)
+                assertThat(context.getBean(DeviceConnectionProperties.class)).isEqualTo(
+                    new DeviceConnectionProperties("/device", "device", "deviceSecret", "device.prod.heating"));
+                assertThat(context.getBean(InternalServiceProperties.class).database()).isEqualTo(
+                    new InternalServiceProperties.Endpoint("http://database-service:6200", Duration.ofSeconds(3), Duration.ofSeconds(5)));
+                assertThat(context.getBean(WindowProperties.class))
+                    .isEqualTo(new WindowProperties(Duration.ofMinutes(3), Duration.ofMinutes(30)));
+
                 //the relays of the house, not the dead address of the test document
                 assertThat(environment.getProperty("shelly.actor.port")).isEqualTo("80");
                 assertThat(shellyHosts(environment)).hasSize(4).doesNotContain("localhost", "", null);
@@ -72,6 +82,9 @@ class ApplicationYamlTest {
                 assertThat(environment.getProperty("spring.rabbitmq.host")).isEqualTo("localhost");
                 assertThat(environment.getProperty("rabbitmq.queue.name")).isEqualTo("temperature.dev.heating");
                 assertThat(context.getBean(NotificationConnectionProperties.class).env()).isEqualTo("dev");
+                assertThat(context.getBean(DeviceConnectionProperties.class).queue()).isEqualTo("device.dev.heating");
+                assertThat(context.getBean(InternalServiceProperties.class).database().url())
+                    .isEqualTo("http://localhost:6005");
             });
     }
 
@@ -86,6 +99,9 @@ class ApplicationYamlTest {
                 assertThat(environment.getProperty("spring.rabbitmq.port")).isEqualTo("1");
                 assertThat(environment.getProperty("rabbitmq.queue.name")).isEqualTo("temperature.test.heating");
                 assertThat(context.getBean(NotificationConnectionProperties.class).env()).isEqualTo("test");
+                assertThat(context.getBean(DeviceConnectionProperties.class).queue()).isEqualTo("device.test.heating");
+                assertThat(context.getBean(InternalServiceProperties.class).database().url())
+                    .isEqualTo("http://localhost:1");
                 //whatever the environment of the machine says
                 assertThat(environment.getProperty("database.host")).isEqualTo("localhost");
                 assertThat(environment.getProperty("database.port")).isEqualTo("1");
@@ -100,7 +116,12 @@ class ApplicationYamlTest {
     }
 
     @Configuration
-    @EnableConfigurationProperties(NotificationConnectionProperties.class)
+    @EnableConfigurationProperties({
+        NotificationConnectionProperties.class,
+        DeviceConnectionProperties.class,
+        InternalServiceProperties.class,
+        WindowProperties.class
+    })
     static class Properties {
     }
 }

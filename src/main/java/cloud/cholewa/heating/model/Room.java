@@ -39,7 +39,4 @@ public class Room {
 
     @Singular
     private List<HeaterActor> heaterActors;
-
-    @Singular
-    private final List<OpeningSensor> openingSensors;
 }
