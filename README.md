@@ -52,6 +52,19 @@ an alert nor loses the "back again" message. A room that has never stored a read
 watched — the service cannot tell a broken sensor from a room without one. A sensor taken
 out of service is silenced by listing its room in `heating.sensor-monitor.muted-rooms`.
 
+**Open windows and doors** (HAS-232). The window and door sensors of the house (Shelly BLU
+Door/Window, adopted by BTHome gateways) are read from the device registry of
+`database-service` - every `opening sensor` with its room - and from the gateways that hear
+them, at the start and every five minutes; in between, the gateways publish every change on
+`/device`. A window or a door of a room that has stood open for `heating.window.hold-after`
+(**3 minutes**) holds the heating of the whole room: no heater of it switches on, and one that
+is working is switched off within a minute. When it closes, the room heats again with its next
+reading. A room without a sensor heats as it always did. A sensor that is not heard of - never
+since it was listed, or its gateway silent for `heating.window.gateway-silent-after` (30
+minutes; a BLU sensor sends only on a change, so its own silence proves nothing) - never holds
+its room: the room heats as without it, and the sensor is reported on Discord the way a silent
+temperature sensor is (once, every 24 hours, and once more when it is back).
+
 ## Run locally
 
 ```bash
@@ -67,11 +80,13 @@ mvn spring-boot:run -Dspring-boot.run.profiles=local
 | `local` profile | 6002 | 8002 |
 | in the cluster (`home` profile) | 6200 | 8200 |
 
-Needs a PostgreSQL database (R2DBC at runtime, Flyway for migrations) and a RabbitMQ broker
-with the `/temperature` and `/notification` virtual hosts. Connection details come from the `database.*`
+Needs a PostgreSQL database (R2DBC at runtime, Flyway for migrations), a RabbitMQ broker
+with the `/temperature`, `/notification` and `/device` virtual hosts, and `database-service`
+for the device registry (`internal.service.database.url`, `http://localhost:6005` in the
+`local` profile). Connection details come from the `database.*`
 properties and `spring.rabbitmq.*`; in the cluster they are injected from Kubernetes
 secrets. The `local` profile points RabbitMQ at `localhost` and uses the
-`temperature.dev.heating` queue, and publishes its notifications with `env=dev`.
+`temperature.dev.heating` and `device.dev.heating` queues, and publishes its notifications with `env=dev`.
 
 The `ConnectionFactory` itself is built by `cholewa-commons`, not by this service. Only the
 pool size is pinned here — `database.pool.max-size: 2` — because the managed database allows
@@ -107,6 +122,7 @@ they ask neither a device nor the database.
   "mode": "HEATING",
   "heatingEnabled": true,
   "temperature": {"value": 19.4, "updatedAt": "2026-10-08T18:30:00"},
+  "window": {"state": "open", "openSince": "2026-10-08T18:25:00", "hold": true},
   "heaters": [
     {
       "type": "radiator",
@@ -123,6 +139,12 @@ they ask neither a device nor the database.
 }
 ```
 
+- **`window`** is worked out when asked, from every window and door sensor of the room (HAS-232):
+  `state` is `open` (one is open), `closed` (every one is closed), `no sensor` (the room has
+  none) or `unknown` (one has not been heard of for too long and none is open); `openSince` -
+  since when the one open longest is open, only while `open`; `hold` - the heating of the room
+  is held now (open for `heating.window.hold-after`). The values of `state` are those of the
+  window of a blind in `blinds-service`.
 - **A missing field means "not known", never "off" or zero.** `temperature` is missing until
   the first reading of the room, `humidity` until one is reported (nothing reports it today),
   `working` and `updatedAt` of a heater until its relay has answered, `inSchedule` and
@@ -211,6 +233,7 @@ Kubernetes probes, live on the management port, not on the application one.
 | Direction | Queue / exchange | Virtual host | Payload |
 |---|---|---|---|
 | consumes | queue `temperature.prod.heating` (`temperature.dev.heating` in the `local` profile) | `/temperature` | `cloud.cholewa.home.model.TemperatureMessage` (`smart-home-sdk`) |
+| consumes | queue `device.prod.heating` (`device.dev.heating` in the `local` profile), bound with `#` to `amq.topic` | `/device` | the events of every device; only `<gateway>.status.bthomesensor:<id>` of a known window sensor is read (`{id, value, last_updated_ts}`) |
 | publishes | exchange `notification` (headers), `category=alert\|info`, `env=prod` (`dev` in the `local` profile), `level=error\|warn\|info` | `/notification` | plain text (`text/plain`, UTF-8) |
 
 Messages are produced by `amx-service`; both sides use `JacksonJsonMessageConverter`. The
@@ -223,9 +246,10 @@ connection only while its reading is saved, which is why the prefetch may exceed
 Notifications about silent sensors go to the `notification` exchange, which lives on another
 virtual host, so the service holds a second connection for it (user `notification`, password
 from `notification-rabbitmq-password`). Neither that password nor the one of the listener
-(`rabbitmq-password`) has a default in the cluster: **without either, or with an empty one, the
-service does not start** and says which is missing (`BrokerPasswordCheck`, before anything is
-connected or migrated). The `local` profile falls back to a dummy for both, so a run on a
+(`rabbitmq-password`), nor the one of the device events (`device-rabbitmq-password`, user
+`device`) has a default in the cluster: **without one of them, or with an empty one, the
+service does not start** and says which is missing (`cholewa.required-properties` of
+`cholewa-commons`, before anything is connected or migrated). The `local` profile falls back to a dummy for all three, so a run on a
 workstation needs them only to really consume or publish. The publisher and the connection it uses come from `cholewa-commons`
 (`NotificationPublisher` over a `NotificationConnection`, since 1.8.0); the service only says
 where to connect, in its own `notification.*` properties, and leaves
@@ -241,6 +265,7 @@ tries again. The check is configured under `heating.sensor-monitor` (`cron`, `st
 `reminder-interval` — a bare number is hours, the minimum is one hour — and `muted-rooms`,
 a list of room names such as `[sauna, living-room]`).
 
-Both connections are named after the pod, by `cholewa-commons`: the broker shows
-`heating-service-<pod id>` for the listener and the same name with `/notification` for the
-publisher, and `heating-service-local` for a run outside the cluster.
+The events of the devices are consumed over a third connection, to `/device`, with a listener
+container of its own (manual acknowledgement, prefetch 10). All connections are named after the
+pod, by `cholewa-commons`: the broker shows `heating-service-<pod id>` for the listener and the
+same name with `/notification` for the publisher and `/device` for the device events, and `heating-service-local` for a run outside the cluster.
