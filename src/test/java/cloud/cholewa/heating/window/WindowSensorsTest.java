@@ -273,6 +273,22 @@ class WindowSensorsTest {
                 new WindowSensors.SilentSensor(68, "Terrace door", RoomName.LIVING_ROOM, null));
     }
 
+    //a sensor switched on in the registry later has its half hour from then, not from its registration
+    @Test
+    void should_give_a_sensor_switched_on_later_its_time() {
+        sensors.set(1, sensor(68, "Terrace door", RoomName.LIVING_ROOM, DOOR, false));
+        gateway("10.0.0.36", window(202, WINDOW, false, START_TS), window(56, BEDROOM_WINDOW, false, START_TS));
+        refresh();
+
+        now.set(START.plusHours(2));
+        sensors.set(1, sensor(68, "Terrace door", RoomName.LIVING_ROOM, DOOR, true));
+        refresh();
+
+        assertThat(sut.silent(HEATED, START.plusHours(2).plusMinutes(30))).isEmpty();
+        assertThat(sut.silent(HEATED, START.plusHours(2).plusMinutes(31)))
+            .extracting(WindowSensors.SilentSensor::id).contains(68L);
+    }
+
     //a value that is no truth is no window, but the gateway stood for the sensor
     @Test
     void should_ignore_a_value_that_is_no_truth() {

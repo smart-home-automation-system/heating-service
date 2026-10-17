@@ -1,6 +1,5 @@
 package cloud.cholewa.heating.service;
 
-import cloud.cholewa.heating.window.WindowSensorsFixture;
 import cloud.cholewa.heating.db.model.TemperatureBucket;
 import cloud.cholewa.heating.db.repository.TemperatureRepository;
 import cloud.cholewa.heating.infrastructure.error.RoomNotFoundException;
@@ -9,6 +8,7 @@ import cloud.cholewa.heating.model.Home;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.model.Temperature;
 import cloud.cholewa.heating.model.TemperatureHistoryReply;
+import cloud.cholewa.heating.window.WindowSensorsFixture;
 import cloud.cholewa.home.model.RoomName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

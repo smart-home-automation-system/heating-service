@@ -139,6 +139,7 @@ class OpeningSensorMonitorTest {
             new OpeningSensorAlertEntity(7L, 68L, NOW.minusHours(2), NOW.minusHours(2))));
         when(windowSensors.describe(68L)).thenReturn(Optional.of(
             new WindowSensors.Sensor(68, "Terrace door", RoomName.LIVING_ROOM, "38:39:8f:9c:ea:c3", true)));
+        when(windowSensors.isKnown(68L, NOW)).thenReturn(true);
         when(notificationPublisher.publishInfo("Window sensor Terrace door in room living room is reporting again"))
             .thenReturn(Mono.empty());
         when(alertRepository.delete(any(OpeningSensorAlertEntity.class))).thenReturn(Mono.empty());
@@ -146,6 +147,23 @@ class OpeningSensorMonitorTest {
         sut.check().as(StepVerifier::create).verifyComplete();
 
         verify(alertRepository).delete(new OpeningSensorAlertEntity(7L, 68L, NOW.minusHours(2), NOW.minusHours(2)));
+    }
+
+    //not silent yet, not known either: the grace after a restart, or a gateway that has only just
+    //stopped answering - no recovery, the row stays
+    @Test
+    void should_keep_the_row_of_a_sensor_not_known_again() {
+        when(windowSensors.silent(HEATED, NOW)).thenReturn(List.of());
+        when(alertRepository.findAll()).thenReturn(Flux.just(
+            new OpeningSensorAlertEntity(7L, 68L, NOW.minusHours(2), NOW.minusHours(2))));
+        when(windowSensors.describe(68L)).thenReturn(Optional.of(
+            new WindowSensors.Sensor(68, "Terrace door", RoomName.LIVING_ROOM, "38:39:8f:9c:ea:c3", true)));
+        when(windowSensors.isKnown(68L, NOW)).thenReturn(false);
+
+        sut.check().as(StepVerifier::create).verifyComplete();
+
+        verify(notificationPublisher, never()).publishInfo(anyString());
+        verify(alertRepository, never()).delete(any(OpeningSensorAlertEntity.class));
     }
 
     //switched off, removed, or moved to a room without heating: no recovery to announce

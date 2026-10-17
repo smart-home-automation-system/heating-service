@@ -63,7 +63,7 @@ public class OpeningSensorMonitor {
                                 : remind(sensor, alerts.get(sensor.id()), now))),
                         Flux.fromIterable(alerts.values())
                             .filter(alert -> !silent.containsKey(alert.sensorId()))
-                            .concatMap(alert -> guarded(alert.sensorId(), close(alert, rooms))))
+                            .concatMap(alert -> guarded(alert.sensorId(), close(alert, rooms, now))))
                     .then());
         });
     }
@@ -98,14 +98,19 @@ public class OpeningSensorMonitor {
             .then();
     }
 
-    //back - or gone from the registry, switched off, or in a room this service does not heat, which
-    //is no recovery to announce
-    private Mono<Void> close(final OpeningSensorAlertEntity alert, final Set<RoomName> rooms) {
+    //Back only when a gateway stands for a state of it again. Not silent and not known is the grace a
+    //sensor has after a restart of the service, or while its gateway has only just stopped answering:
+    //the row stays, or every rollout would announce a recovery and raise the alert again half an hour
+    //later. Gone from the registry, switched off, or in a room this service does not heat is no
+    //recovery to announce
+    private Mono<Void> close(final OpeningSensorAlertEntity alert, final Set<RoomName> rooms, final LocalDateTime now) {
         return windowSensors.describe(alert.sensorId())
             .filter(sensor -> rooms.contains(sensor.room()))
-            .map(sensor -> notificationPublisher.publishInfo("Window sensor %s in room %s is reporting again"
-                    .formatted(sensor.name(), sensor.room().getValue()))
-                .then(Mono.defer(() -> alertRepository.delete(alert))))
+            .map(sensor -> windowSensors.isKnown(sensor.id(), now)
+                ? notificationPublisher.publishInfo("Window sensor %s in room %s is reporting again"
+                        .formatted(sensor.name(), sensor.room().getValue()))
+                    .then(Mono.defer(() -> alertRepository.delete(alert)))
+                : Mono.<Void>empty())
             .orElseGet(() -> alertRepository.delete(alert));
     }
 

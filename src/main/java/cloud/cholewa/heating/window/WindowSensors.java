@@ -70,7 +70,7 @@ public class WindowSensors {
     //which component of which gateway is the window of which sensor
     private final Map<SensorComponent, Long> components = new ConcurrentHashMap<>();
     private final Map<Long, Reading> readings = new ConcurrentHashMap<>();
-    //when the registry first listed a sensor: one that never reports is silent from then on
+    //when the registry first listed a sensor switched on: one that never reports is silent from then on
     private final Map<Long, LocalDateTime> firstListed = new ConcurrentHashMap<>();
     //the gateways the last read failed on: a WARN when one starts failing, an INFO when it is back
     private final Set<String> failing = ConcurrentHashMap.newKeySet();
@@ -127,8 +127,13 @@ public class WindowSensors {
                 final Map<Long, Sensor> listedSensors = toSensors(read.getT1());
                 sensors.set(listedSensors);
                 final LocalDateTime now = now();
-                listedSensors.keySet().forEach(id -> firstListed.putIfAbsent(id, now));
-                firstListed.keySet().retainAll(listedSensors.keySet());
+                //a sensor switched on later is given its time from then, not from when it was registered
+                final Set<Long> enabled = listedSensors.values().stream()
+                    .filter(Sensor::enabled)
+                    .map(Sensor::id)
+                    .collect(Collectors.toSet());
+                enabled.forEach(id -> firstListed.putIfAbsent(id, now));
+                firstListed.keySet().retainAll(enabled);
                 readings.keySet().retainAll(listedSensors.keySet());
 
                 final List<Gateway> listedNow = toGateways(read.getT2());
@@ -294,6 +299,11 @@ public class WindowSensors {
     //a switched-on sensor of the registry, as last read
     Optional<Sensor> describe(final long sensor) {
         return Optional.ofNullable(sensors.get().get(sensor)).filter(Sensor::enabled);
+    }
+
+    //whether a gateway stands for a state of the sensor now
+    boolean isKnown(final long sensor, final LocalDateTime now) {
+        return isKnown(readings.get(sensor), now);
     }
 
     private boolean isKnown(final Reading reading, final LocalDateTime now) {

@@ -5,6 +5,9 @@ import cloud.cholewa.heating.model.Home;
 import cloud.cholewa.heating.model.HomeStatus;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.model.Temperature;
+import cloud.cholewa.heating.window.RoomWindow;
+import cloud.cholewa.heating.window.WindowSensors;
+import cloud.cholewa.heating.window.WindowState;
 import cloud.cholewa.home.model.RoomName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +47,8 @@ class HomeServiceTest {
     private HeatingService heatingService;
     @Mock(answer = Answers.RETURNS_SMART_NULLS)
     private FloorPumpService floorPumpService;
+    @Mock
+    private WindowSensors windowSensors;
 
     @InjectMocks
     private HomeService sut;
@@ -169,6 +174,48 @@ class HomeServiceTest {
         verify(scheduleService).processSchedule(any(Room.class));
         verify(heatingService).processHeatingRequest(any(Room.class));
         verifyNoMoreInteractions(home, scheduleService, heatingService, floorPumpService);
+    }
+
+    //HAS-232: a held room with a heater still working gets its pass without waiting for a reading;
+    //a held room with nothing working, and a working room that is not held, are left alone
+    @Test
+    void should_stop_the_heating_of_a_held_room_without_a_reading() {
+        final Room held = Room.builder().name(RoomName.LIVING_ROOM)
+            .heaterActor(HeaterActor.builder().working(true).build()).build();
+        final Room heldIdle = Room.builder().name(RoomName.BEDROOM)
+            .heaterActor(HeaterActor.builder().working(false).build()).build();
+        final Room open = Room.builder().name(RoomName.OFFICE)
+            .heaterActor(HeaterActor.builder().working(true).build()).build();
+
+        when(home.rooms()).thenReturn(List.of(held, heldIdle, open));
+        when(windowSensors.windowOf(RoomName.LIVING_ROOM))
+            .thenReturn(new RoomWindow(WindowState.OPEN, LocalDateTime.of(2026, 1, 19, 11, 50), true));
+        when(windowSensors.windowOf(RoomName.OFFICE))
+            .thenReturn(new RoomWindow(WindowState.OPEN, LocalDateTime.of(2026, 1, 19, 11, 59), false));
+        when(heatingService.processHeatingRequest(held)).thenAnswer(call -> {
+            held.getHeaterActors().getFirst().setWorking(false);
+            return Mono.just(held);
+        });
+        when(floorPumpService.processFloorPump()).thenReturn(Mono.empty());
+
+        sut.stopHeldRooms().as(StepVerifier::create).verifyComplete();
+
+        verify(heatingService).processHeatingRequest(held);
+        verify(homeStatus).setAnyHeaterActive(true);
+        verify(floorPumpService).processFloorPump();
+        verifyNoMoreInteractions(heatingService, floorPumpService);
+    }
+
+    @Test
+    void should_do_nothing_when_no_room_is_held() {
+        final Room room = Room.builder().name(RoomName.OFFICE)
+            .heaterActor(HeaterActor.builder().working(true).build()).build();
+        when(home.rooms()).thenReturn(List.of(room));
+        when(windowSensors.windowOf(RoomName.OFFICE)).thenReturn(RoomWindow.NO_SENSOR);
+
+        sut.stopHeldRooms().as(StepVerifier::create).verifyComplete();
+
+        verifyNoMoreInteractions(heatingService, floorPumpService, homeStatus);
     }
 
     private void mockClock() {
