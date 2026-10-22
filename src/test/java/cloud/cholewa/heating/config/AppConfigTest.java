@@ -48,7 +48,11 @@ class AppConfigTest {
         );
 
         assertThat(httpClient.configuration().responseTimeout()).isEqualTo(Duration.ofSeconds(5));
-        assertThat(httpClient.configuration().options()).containsEntry(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10_000);
+        //extractingByKey, not get(...).isEqualTo (Sonar): the map is Map<ChannelOption<?>, ?>, which
+        //containsEntry cannot take an int for
+        assertThat(httpClient.configuration().options())
+            .extractingByKey(ChannelOption.CONNECT_TIMEOUT_MILLIS)
+            .isEqualTo(10_000);
     }
 
     //a relay that accepts the request and never answers must not hold its message for good
