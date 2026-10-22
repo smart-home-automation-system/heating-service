@@ -130,4 +130,13 @@ class HeatingServiceApplicationTest {
         assertThat(ReflectionTestUtils.getField(container, "prefetchCount")).isEqualTo(10);
         assertThat(ReflectionTestUtils.getField(container, "observationEnabled")).isEqualTo(true);
     }
+
+    //three scheduled tasks: with one thread a hung pass stops all of them - the window hold and the
+    //silent sensors included (blinds-service, 2026-10-22); the pool comes from cholewa-commons >= 1.11.0
+    //(HAS-300, HAS-303)
+    @Test
+    void should_give_the_scheduled_tasks_a_pool() {
+        assertThat(context.getEnvironment().getProperty("spring.task.scheduling.pool.size", Integer.class))
+            .isEqualTo(10);
+    }
 }
