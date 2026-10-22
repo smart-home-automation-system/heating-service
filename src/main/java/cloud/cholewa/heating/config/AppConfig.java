@@ -5,8 +5,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.zalando.logbook.Logbook;
-import org.zalando.logbook.netty.LogbookClientHandler;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.resources.ConnectionProvider;
 
@@ -18,10 +16,13 @@ public class AppConfig {
         return ConnectionProvider.create("shellyConnectionProvider");
     }
 
+    //No Logbook handler on the client any more (HAS-298): the request log comes from the
+    //LogbookExchangeFilterFunction that cholewa-commons 1.10.0 puts on the injected builder, which
+    //runs inside the reactive chain and so carries the traceId; the handler here logged every call a
+    //second time, without it
     @Bean
     HttpClient httpClient(
         final ConnectionProvider connectionProvider,
-        final Logbook logbook,
         final ShellyTimeoutProperties timeouts
     ) {
         //without them a relay that accepts the connection and never answers holds the message that
@@ -29,8 +30,7 @@ public class AppConfig {
         //netty's: the longest silence while the response is read, not a limit on the whole call
         return HttpClient.create(connectionProvider)
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, Math.toIntExact(timeouts.connectTimeout().toMillis()))
-            .responseTimeout(timeouts.responseTimeout())
-            .doOnConnected(connection -> connection.addHandlerLast(new LogbookClientHandler(logbook)));
+            .responseTimeout(timeouts.responseTimeout());
     }
 
     @Bean

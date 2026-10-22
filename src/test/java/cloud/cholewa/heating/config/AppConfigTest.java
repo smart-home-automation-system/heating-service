@@ -15,7 +15,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
-import org.zalando.logbook.Logbook;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.resources.ConnectionProvider;
 import reactor.test.StepVerifier;
@@ -45,7 +44,6 @@ class AppConfigTest {
     void should_build_the_shelly_client_with_the_configured_timeouts() {
         HttpClient httpClient = sut.httpClient(
             connectionProvider,
-            Logbook.create(),
             new ShellyTimeoutProperties(Duration.ofSeconds(10), Duration.ofSeconds(5))
         );
 
@@ -67,7 +65,6 @@ class AppConfigTest {
 
             HttpClient httpClient = sut.httpClient(
                 connectionProvider,
-                Logbook.create(),
                 new ShellyTimeoutProperties(Duration.ofSeconds(10), Duration.ofMillis(300))
             );
             ShellyClient shellyClient = new ShellyClient(
