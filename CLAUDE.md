@@ -52,6 +52,10 @@ review.
   `RegistryWebClientConfig`, the former `shellyCallsInTheLog` bean): a handler logs outside the
   chain, without the trace, and next to the filter it logged every call twice. A `WebClient`
   built with `WebClient.create()` would not be logged - every one here comes from the builder.
+  Since 1.10.1 the library also keeps the actuator out of the server side of the log
+  (`logbook.server.predicate.exclude` defaulted to `/actuator/**`): the probes of the kubelet
+  and the scrape of Prometheus leave no line. Do not add a `logbook.server.predicate.exclude`
+  of our own without `/actuator/**` in it - a list of ours replaces the default whole.
 - **The notification connection is deliberately not a bean** (`NotificationRabbitConfig`).
   The exchange is on another virtual host, so it takes a second connection — but a
   `ConnectionFactory` or `RabbitOperations` bean makes `RabbitAutoConfiguration` back off, and
