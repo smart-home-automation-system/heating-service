@@ -10,6 +10,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.time.Duration;
+
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,5 +36,17 @@ class SensorMonitorSchedulerTest {
         when(sensorMonitorService.checkSensors()).thenReturn(Mono.error(new IllegalStateException("database down")));
 
         sut.checkSensors().as(StepVerifier::create).verifyComplete();
+    }
+
+    //HAS-303: a pass that hangs ends at its bound, well before the next hour
+    @Test
+    void should_end_a_pass_that_never_completes_at_its_bound() {
+        when(sensorMonitorService.checkSensors()).thenReturn(Mono.never());
+
+        StepVerifier.withVirtualTime(sut::checkSensors)
+            .expectSubscription()
+            .expectNoEvent(SensorMonitorScheduler.LIMIT.minusSeconds(1))
+            .thenAwait(Duration.ofSeconds(1))
+            .verifyComplete();
     }
 }
