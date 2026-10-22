@@ -43,6 +43,15 @@ review.
 
 ## Specifics
 
+- **Logbook logs from the reactive chain, through `cholewa-commons` 1.10.0** (HAS-298): the
+  server through `LogbookWebFilter` (the library defaults `logbook.reactive.server-mode` to
+  `web-filter`), every `WebClient` of the injected builder - the relays, `database-service`, the
+  BTHome gateways of `shelly-client` - through `LogbookExchangeFilterFunction`. That is why the
+  request and response lines carry `traceId` and `spanId` since then, and why **no
+  `LogbookClientHandler` is added to an `HttpClient` here any more** (`AppConfig`,
+  `RegistryWebClientConfig`, the former `shellyCallsInTheLog` bean): a handler logs outside the
+  chain, without the trace, and next to the filter it logged every call twice. A `WebClient`
+  built with `WebClient.create()` would not be logged - every one here comes from the builder.
 - **The notification connection is deliberately not a bean** (`NotificationRabbitConfig`).
   The exchange is on another virtual host, so it takes a second connection — but a
   `ConnectionFactory` or `RabbitOperations` bean makes `RabbitAutoConfiguration` back off, and

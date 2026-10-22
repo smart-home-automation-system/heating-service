@@ -15,7 +15,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
-import org.zalando.logbook.Logbook;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.resources.ConnectionProvider;
 import reactor.test.StepVerifier;
@@ -45,12 +44,14 @@ class AppConfigTest {
     void should_build_the_shelly_client_with_the_configured_timeouts() {
         HttpClient httpClient = sut.httpClient(
             connectionProvider,
-            Logbook.create(),
             new ShellyTimeoutProperties(Duration.ofSeconds(10), Duration.ofSeconds(5))
         );
 
         assertThat(httpClient.configuration().responseTimeout()).isEqualTo(Duration.ofSeconds(5));
-        assertThat(httpClient.configuration().options().get(ChannelOption.CONNECT_TIMEOUT_MILLIS))
+        //extractingByKey, not get(...).isEqualTo (Sonar): the map is Map<ChannelOption<?>, ?>, which
+        //containsEntry cannot take an int for
+        assertThat(httpClient.configuration().options())
+            .extractingByKey(ChannelOption.CONNECT_TIMEOUT_MILLIS)
             .isEqualTo(10_000);
     }
 
@@ -67,7 +68,6 @@ class AppConfigTest {
 
             HttpClient httpClient = sut.httpClient(
                 connectionProvider,
-                Logbook.create(),
                 new ShellyTimeoutProperties(Duration.ofSeconds(10), Duration.ofMillis(300))
             );
             ShellyClient shellyClient = new ShellyClient(

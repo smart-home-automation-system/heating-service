@@ -31,9 +31,9 @@
 		<mockwebserver.version>5.4.0</mockwebserver.version>
 
 		<!--  internal dependencies versions-->
-		<cholewa-commons.version>1.9.0</cholewa-commons.version>
+		<cholewa-commons.version>1.10.0</cholewa-commons.version>
 		<shelly-client.version>2.1.0</shelly-client.version>
-		<smart-home-sdk.version>1.11.0</smart-home-sdk.version>
+		<smart-home-sdk.version>1.12.0</smart-home-sdk.version>
 
 		<!--  plugins versions-->
 		<maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
