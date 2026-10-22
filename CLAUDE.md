@@ -38,10 +38,26 @@ review.
   `localhost:6005` and a dummy for the three passwords of the broker, so it starts without
   `rabbitmq-password`, `notification-rabbitmq-password` and `device-rabbitmq-password` - under
   `home` alone the start is refused without them (below).
-- Spring Boot **4.1.1** with logbook 4.2.0 since HAS-151 (2026-10-03); own libraries on the
+- Spring Boot **4.1.2** (HAS-303; 4.1.1 since HAS-151, 2026-10-03) with logbook 4.2.0; own libraries on the
   latest releases, as the org rule asks of every service task.
 
 ## Specifics
+
+- **Every scheduled task is bounded and runs on a pool** (HAS-303, `cholewa-commons` 1.11.0). Spring
+  runs a reactive `@Scheduled(fixedDelay)` method by blocking a scheduler thread until its `Mono`
+  completes; with Boot's one thread a hung pass stopped every task of blinds-service on 2026-10-22.
+  The library defaults `spring.task.scheduling.pool.size` to 10 (`HeatingServiceApplicationTest`
+  pins it), and each of the three tasks wraps its pass in `ScheduledPass.bounded` - the pass built
+  anew for every run, cancelled at its `LIMIT` with a WARN, always completing:
+  `SensorMonitorScheduler` (hourly cron, 15 min), `WindowHoldScheduler` (every minute, 50 s) and
+  `WindowSensorsRefresh` (every five minutes, 4 min). Their own `onErrorResume` with the ERROR stays
+  inside the bound. A cut window hold leaves a heater the next minute switches off; a cut refresh
+  leaves the last sensors and checks the silent ones with the next read. What became concurrent
+  was checked: the state the tasks share - `WindowSensors` (`AtomicReference`,
+  `ConcurrentHashMap`), the volatile fields of `Room` / `HeaterActor` - was already read and written
+  by the two listeners at the same time, and the database passes (hourly check, the alerts of the
+  window sensors) take one connection per statement, so with the listener they still fit the pool
+  of 2 (a third waits `max-acquire-time`, as before).
 
 - **Logbook logs from the reactive chain, through `cholewa-commons` 1.10.0** (HAS-298): the
   server through `LogbookWebFilter` (the library defaults `logbook.reactive.server-mode` to

@@ -13,7 +13,7 @@
 
 ![GitHub top language](https://img.shields.io/github/languages/top/smart-home-automation-system/heating-service?style=plastic)
 ![Java](https://img.shields.io/badge/java-21-yellow?style=plastic)
-![SpringBoot](https://img.shields.io/badge/SpringBoot-4.1.1-blue?style=plastic)
+![SpringBoot](https://img.shields.io/badge/SpringBoot-4.1.2-blue?style=plastic)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=smart-home-automation-system_heating-service&metric=coverage)](https://sonarcloud.io/summary/new_code?id=smart-home-automation-system_heating-service)
 [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=smart-home-automation-system_heating-service&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=smart-home-automation-system_heating-service)
 
@@ -64,6 +64,11 @@ since it was listed, or its gateway silent for `heating.window.gateway-silent-af
 minutes; a BLU sensor sends only on a change, so its own silence proves nothing) - never holds
 its room: the room heats as without it, and the sensor is reported on Discord the way a silent
 temperature sensor is (once, every 24 hours, and once more when it is back).
+
+The three scheduled tasks - the hourly sensor check, the window hold every minute and the read
+of the window sensors every five minutes - run on a pool of threads, and every pass ends at a
+bound of its own (15 min, 50 s and 4 min) with a WARN: one that hangs no longer stops the
+others (HAS-303).
 
 ## Run locally
 
