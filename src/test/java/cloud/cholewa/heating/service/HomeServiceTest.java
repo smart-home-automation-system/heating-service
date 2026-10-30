@@ -5,9 +5,6 @@ import cloud.cholewa.heating.model.Home;
 import cloud.cholewa.heating.model.HomeStatus;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.model.Temperature;
-import cloud.cholewa.heating.window.RoomWindow;
-import cloud.cholewa.heating.window.WindowSensors;
-import cloud.cholewa.heating.window.WindowState;
 import cloud.cholewa.home.model.RoomName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,8 +44,6 @@ class HomeServiceTest {
     private HeatingService heatingService;
     @Mock(answer = Answers.RETURNS_SMART_NULLS)
     private FloorPumpService floorPumpService;
-    @Mock
-    private WindowSensors windowSensors;
 
     @InjectMocks
     private HomeService sut;
@@ -176,46 +171,29 @@ class HomeServiceTest {
         verifyNoMoreInteractions(home, scheduleService, heatingService, floorPumpService);
     }
 
-    //HAS-232: a held room with a heater still working gets its pass without waiting for a reading;
-    //a held room with nothing working, and a working room that is not held, are left alone
+    //HAS-352: the decisions of every room - with the real services - are pinned in HomeDecisionTest; here the
+    //order of the steps: every room with a temperature, then "any heater active" and the floor pump once
     @Test
-    void should_stop_the_heating_of_a_held_room_without_a_reading() {
-        final Room held = Room.builder().name(RoomName.LIVING_ROOM)
+    void should_decide_every_room_with_a_temperature_then_the_pump_once() {
+        final Room read = Room.builder().name(RoomName.OFFICE)
+            .temperature(new Temperature(20.0, LocalDateTime.of(2026, 1, 19, 11, 58)))
             .heaterActor(HeaterActor.builder().working(true).build()).build();
-        final Room heldIdle = Room.builder().name(RoomName.BEDROOM)
+        final Room unread = Room.builder().name(RoomName.BEDROOM)
+            .temperature(Temperature.builder().build())
             .heaterActor(HeaterActor.builder().working(false).build()).build();
-        final Room open = Room.builder().name(RoomName.OFFICE)
-            .heaterActor(HeaterActor.builder().working(true).build()).build();
 
-        when(home.rooms()).thenReturn(List.of(held, heldIdle, open));
-        when(windowSensors.windowOf(RoomName.LIVING_ROOM))
-            .thenReturn(new RoomWindow(WindowState.OPEN, LocalDateTime.of(2026, 1, 19, 11, 50), true));
-        when(windowSensors.windowOf(RoomName.OFFICE))
-            .thenReturn(new RoomWindow(WindowState.OPEN, LocalDateTime.of(2026, 1, 19, 11, 59), false));
-        when(heatingService.processHeatingRequest(held)).thenAnswer(call -> {
-            held.getHeaterActors().getFirst().setWorking(false);
-            return Mono.just(held);
-        });
+        when(home.rooms()).thenReturn(List.of(read, unread));
+        when(scheduleService.processSchedule(read)).thenReturn(Mono.just(read));
+        when(heatingService.processHeatingRequest(read)).thenReturn(Mono.just(read));
         when(floorPumpService.processFloorPump()).thenReturn(Mono.empty());
 
-        sut.stopHeldRooms().as(StepVerifier::create).verifyComplete();
+        sut.decideRooms().as(StepVerifier::create).verifyComplete();
 
-        verify(heatingService).processHeatingRequest(held);
+        verify(scheduleService).processSchedule(read);
+        verify(heatingService).processHeatingRequest(read);
         verify(homeStatus).setAnyHeaterActive(true);
         verify(floorPumpService).processFloorPump();
-        verifyNoMoreInteractions(heatingService, floorPumpService);
-    }
-
-    @Test
-    void should_do_nothing_when_no_room_is_held() {
-        final Room room = Room.builder().name(RoomName.OFFICE)
-            .heaterActor(HeaterActor.builder().working(true).build()).build();
-        when(home.rooms()).thenReturn(List.of(room));
-        when(windowSensors.windowOf(RoomName.OFFICE)).thenReturn(RoomWindow.NO_SENSOR);
-
-        sut.stopHeldRooms().as(StepVerifier::create).verifyComplete();
-
-        verifyNoMoreInteractions(heatingService, floorPumpService, homeStatus);
+        verifyNoMoreInteractions(scheduleService, heatingService, floorPumpService);
     }
 
     private void mockClock() {

@@ -38,7 +38,7 @@ public class HeatingService {
 
     //The windows of the room are judged once for the pass, so that every heater of it follows the same
     //decision (HAS-232): a window or a door open for heating.window.hold-after holds them all, the
-    //floor included. Only at a reading of the room - the hold starts and ends with the next one
+    //floor included. At every pass of the room - a reading, the decision of every minute or the switch (HAS-352)
     public Mono<Room> processHeatingRequest(final Room room) {
         return Mono.fromSupplier(() -> windowSensors.windowOf(room.getName()))
             .doOnNext(window -> logHold(room.getName(), window))

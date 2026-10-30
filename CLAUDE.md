@@ -2,14 +2,15 @@
 
 Controls the house heating. Temperature readings arrive over RabbitMQ from `amx-service`;
 for every reading the service stores the measurement, decides per room whether the heater
-should run and drives the matching Shelly relay over HTTP. The aggregate state ("is heating
+should run and drives the matching Shelly relay over HTTP - and since HAS-352 it decides every room
+again every minute and right after the switch of the house, without waiting for a reading. The aggregate state ("is heating
 required right now") is polled by `boiler-service`, which fires the furnace from it.
 
 Part of the smart-home-automation-system organization — org-wide conventions, the
 repository map and working rules come from the workspace-level context
 (`organization-repository/claude/organization.md`). The user writes the code in this
 repository themselves; Claude's default role here is analysis, code review and security
-review.
+review - the owner had Claude implement the window hold (HAS-232) and the decision of every room (HAS-352).
 
 ## Role in the system
 
@@ -38,7 +39,8 @@ review.
   `localhost:6005` and a dummy for the three passwords of the broker, so it starts without
   `rabbitmq-password`, `notification-rabbitmq-password` and `device-rabbitmq-password` - under
   `home` alone the start is refused without them (below).
-- Spring Boot **4.1.2** (HAS-303; 4.1.1 since HAS-151, 2026-10-03) with logbook 4.2.0; own libraries on the
+- Spring Boot **4.1.2** (HAS-303; 4.1.1 since HAS-151, 2026-10-03) with logbook 4.2.0; `cholewa-commons` 1.12.0,
+  `smart-home-sdk` 1.15.0, `shelly-client` 2.3.0 since HAS-352; own libraries on the
   latest releases, as the org rule asks of every service task.
 
 ## Specifics
@@ -49,7 +51,8 @@ review.
   The library defaults `spring.task.scheduling.pool.size` to 10 (`HeatingServiceApplicationTest`
   pins it), and each of the three tasks wraps its pass in `ScheduledPass.bounded` - the pass built
   anew for every run, cancelled at its `LIMIT` with a WARN, always completing:
-  `SensorMonitorScheduler` (hourly cron, 15 min), `WindowHoldScheduler` (every minute, 50 s) and
+  `SensorMonitorScheduler` (hourly cron, 15 min), `DecisionScheduler` (every minute, 50 s - the
+  `WindowHoldScheduler` until HAS-352) and
   `WindowSensorsRefresh` (every five minutes, 4 min). Their own `onErrorResume` with the ERROR stays
   inside the bound. A cut window hold leaves a heater the next minute switches off; a cut refresh
   leaves the last sensors and checks the silent ones with the next read. What became concurrent
@@ -242,12 +245,12 @@ review.
     while "on" keeps the furnace requested for as long as it is away. That was so before
     the skip too (every other room's pass recomputed the flag from the same state); nothing
     here ages the state out.
-  - After a failed **status read** the timestamp stays stale and the next reading of the
-    room asks again. After a failed **switch command** the status was just refreshed, so the
+  - After a failed **status read** the timestamp stays stale and the next pass of the
+    room asks again - within the minute since HAS-352. After a failed **switch command** the status was just refreshed, so the
     relay is not re-read for five minutes — if it did switch and only answered too late, the
     service is wrong about it for that long.
   - The floor pump is still fail-fast: a failed pump status read ends the message before
-    `setFloorPump`, so the pump waits for the next reading of any room.
+    `setFloorPump`, so the pump waits for the next pass - the decision of every minute since HAS-352.
   - A new step in that chain gets its own error handling; do not write state before the
     device answered.
   `ShellyTimeoutPropertiesTest` pins the values and the bounds, `AppConfigTest` that they
@@ -272,9 +275,10 @@ review.
   `RoomTemperatureSeeder`, `RoomMapper`), and `RoomMapper` makes
   `inSchedule` and `targetTemperature` agree with each other. At a start `RoomTemperatureSeeder` gives every room its
   last stored temperature with the time of the measurement (owner, 2026-10-08), so a rollout does
-  not blank the dashboard. It changes what a reader sees and nothing else: no pass is started,
-  and a pass never acts on a seeded value, because it begins by writing the reading that
-  triggered it - keep it that way. It never fails the startup, runs after the heating switch is loaded
+  not blank the dashboard. No pass is started by it - **but since HAS-352 the decision of every
+  minute acts on a seeded value**: the task asks for every room with a known temperature, and the
+  seeded one is the last stored reading (a sensor silent for days is the alert of the sensor monitor,
+  and the room keeps deciding by its last reading, as it always kept its last state). It never fails the startup, runs after the heating switch is loaded
   (`@Order` on the two runners) and does not replace a reading the listener delivered in the
   meantime. The heaters are not seeded, and
   `inSchedule` / `heatingEnabled` are left out of a reply until a pass has decided them: the
@@ -324,10 +328,9 @@ review.
     pinned by `WindowPropertiesTest`), counted from `last_updated_ts` of the gateway (never
     later than now), by the window open longest. `HeatingService` judges it once per pass and
     treats a held room as out of schedule - off, never on; `inSchedule` / `targetTemperature`
-    stay the decisions of the reading. A room is read only on a change of its temperature, so
-    `WindowHoldScheduler` gives every held room with a heater still working a pass every minute
-    (`HomeService.stopHeldRooms`) - it only switches off; the room heats again with its next
-    reading after the window closes.
+    stay the decisions of the schedule. The decision of every minute (HAS-352,
+    `HomeService.decideRooms`) applies the hold within the minute and lets the room heat again within
+    the minute after the window closes - the pass of the held rooms alone (`stopHeldRooms`) is gone.
   - **The silent sensors** (`OpeningSensorMonitor`, after every refresh): a switched-on sensor
     of a room of `Home` without a known state for gateway-silent-after - since the registry first
     listed it switched on, or since a gateway last stood for a state - is an alert, a reminder
@@ -348,6 +351,27 @@ review.
     the values of `state` are those of `blinds-service` - the dashboard copies them.
   - The Gen1 Door/Window 2 of the sauna entrance is out (owner, 2026-10-17, as in HAS-290): no
     `/events/gen1` here. The static `OpeningSensor` / `OpeningType` of `HomeConfig` are gone.
+- **Every room is decided every minute and on the switch** (HAS-352, `HomeService.decideRooms`). A room
+  was decided only when its reading came (about every 10 minutes): on 2026-10-30 two rooms started nine
+  minutes after the switch, a switched-off house kept its relays on, and a schedule boundary waited for the
+  next reading. What to keep:
+  - **The path of a reading without its temperature**: `ScheduleService.processSchedule`, then
+    `HeatingService.processHeatingRequest`, for every room whose temperature has a time (a seeded one
+    too), one after the other; then "any heater active" and the floor pump once. A room without a
+    temperature is skipped, a room that fails is logged and the others go on. `HomeDecisionTest` pins it
+    on the real services with only the relays faked (the switch on and off, the 05:00 example, a skipped
+    and a failing room, the pass subscribed again with the clock moved on).
+  - **Every minute** by `DecisionScheduler` (`ScheduledPass.bounded`, 50 s), and **after the switch** by
+    `HeatingStatusService`, detached from the reply (bounded 50 s, a failure logged): a caller waits for
+    the switch only - the dashboard times a call out after 10 s, and a pass with slow relays takes longer.
+  - **No extra device traffic**: a relay is commanded only when its state differs, its status read only
+    when older than five minutes - so every relay is now re-read every five minutes, not with its reading.
+  - **The logs stay quiet**: `ScheduleService` logs a schedule decision only when it changes, `HomeService`
+    "any heater active" only on a change; a relay change keeps its INFO.
+  - **Concurrency**: the minute pass, a pass after the switch and the temperature listener may decide one
+    room at once - as the held-room pass did with the listener. The fields of `Room` / `HeaterActor` are
+    volatile; two passes deciding one relay can both command it (an idempotent switch) and the later
+    response wins - nothing is written before a device answered.
 - **Surefire activates the `test` profile for every class** (`spring.profiles.active` in the
   pom), so a test without `@ActiveProfiles` does not fall through to the shared document and
   switch the log output to JSON for the classes that follow.
