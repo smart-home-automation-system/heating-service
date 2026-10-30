@@ -4,7 +4,6 @@ import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.Home;
 import cloud.cholewa.heating.model.HomeStatus;
 import cloud.cholewa.heating.model.Room;
-import cloud.cholewa.heating.window.WindowSensors;
 import cloud.cholewa.home.model.RoomName;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +26,6 @@ public class HomeService {
     private final ScheduleService scheduleService;
     private final HeatingService heatingService;
     private final FloorPumpService floorPumpService;
-    private final WindowSensors windowSensors;
 
     public Mono<Void> processRoomTemperature(final RoomName roomName, final double temperature) {
         return Flux.fromIterable(home.rooms())
@@ -43,29 +41,31 @@ public class HomeService {
                 log.error("Error processing heating request for room: {}: {}", roomName, throwable.toString());
                 return Mono.empty();
             })
-            .flatMap(this::determineAnyHeaterActive)
+            .flatMap(room -> determineAnyHeaterActive().thenReturn(room))
             .flatMap(room -> floorPumpService.processFloorPump())
             .then();
     }
 
-    //A room is read only when its temperature changes - in the slowest room every quarter of an hour -
-    //so a window that has stood open for hold-after would wait that long for the pass that stops its
-    //heaters (HAS-232). Every minute the rooms that are held and still have a heater working get that
-    //pass without a reading: the decisions of the last reading stand, only the hold is new. Nothing is
-    //switched on here - a held room switches off, and resumes with its next reading after it closes
-    public Mono<Void> stopHeldRooms() {
+    //HAS-352: every room decided without a reading - the path of a reading without its temperature. A room
+    //is read only when its temperature changes (in the slowest room every quarter of an hour), so the switch
+    //of the house, a boundary of a schedule and an open window waited for the next reading of each room: on
+    //2026-10-30 two rooms started nine minutes after the switch. Run every minute (DecisionScheduler) and
+    //right after the switch (HeatingStatusService). The schedule and the decision of every room with a known
+    //temperature - a seeded one too, the last stored reading - then "any heater active" and the floor pump
+    //once. A room without a temperature yet is skipped; a room that fails is logged and the others go on. A
+    //relay is commanded only when its state differs and a status read only when older than five minutes
+    //(HeatingService), so a quiet minute calls no device. The rooms one after the other, as readings come
+    public Mono<Void> decideRooms() {
         return Flux.defer(() -> Flux.fromIterable(home.rooms()))
-            .filter(room -> room.getHeaterActors().stream().anyMatch(HeaterActor::isWorking))
-            .filter(room -> windowSensors.windowOf(room.getName()).hold())
-            .concatMap(room -> heatingService.processHeatingRequest(room)
+            .filter(room -> room.getTemperature() != null && room.getTemperature().snapshot().getUpdatedAt() != null)
+            .concatMap(room -> scheduleService.processSchedule(room)
+                .flatMap(heatingService::processHeatingRequest)
                 .onErrorResume(throwable -> {
-                    log.error("Error stopping the heating of room: {} held by an open window: {}", room.getName(), throwable.toString());
+                    log.error("Error deciding the heating of room: {}: {}", room.getName(), throwable.toString());
                     return Mono.empty();
                 }))
-            .takeLast(1)
-            .flatMap(this::determineAnyHeaterActive)
-            .flatMap(room -> floorPumpService.processFloorPump())
-            .then();
+            .then(Mono.defer(this::determineAnyHeaterActive))
+            .then(Mono.defer(floorPumpService::processFloorPump));
     }
 
     private void updateRoomTemperature(final Room room, final double temperature) {
@@ -73,28 +73,24 @@ public class HomeService {
         room.getTemperature().update(temperature, LocalDateTime.now(clock));
     }
 
-    private Mono<Room> determineAnyHeaterActive(final Room room) {
-        return Mono.defer(() -> {
-            home.rooms().stream()
-                .map(Room::getHeaterActors)
-                .flatMap(List::stream)
-                .map(HeaterActor::isWorking)
-                .reduce(Boolean::logicalOr)
-                .ifPresentOrElse(
-                    anyActive -> {
-                        homeStatus.setAnyHeaterActive(anyActive);
-                        if (anyActive) {
-                            log.info("Heater actors are active");
-                        } else {
-                            log.info("No heater actors are active");
-                        }
-                    },
-                    () -> {
-                        log.error("No heater actors found");
-                        homeStatus.setAnyHeaterActive(false);
+    //logged on a change only: the decision of every minute (HAS-352) would otherwise log a line a minute
+    private Mono<Void> determineAnyHeaterActive() {
+        return Mono.fromRunnable(() -> home.rooms().stream()
+            .map(Room::getHeaterActors)
+            .flatMap(List::stream)
+            .map(HeaterActor::isWorking)
+            .reduce(Boolean::logicalOr)
+            .ifPresentOrElse(
+                anyActive -> {
+                    if (anyActive != homeStatus.isAnyHeaterActive()) {
+                        log.info(Boolean.TRUE.equals(anyActive) ? "Heater actors are active" : "No heater actors are active");
                     }
-                );
-            return Mono.just(room);
-        });
+                    homeStatus.setAnyHeaterActive(anyActive);
+                },
+                () -> {
+                    log.error("No heater actors found");
+                    homeStatus.setAnyHeaterActive(false);
+                }
+            ));
     }
 }

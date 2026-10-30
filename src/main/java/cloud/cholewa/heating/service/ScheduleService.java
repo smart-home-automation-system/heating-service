@@ -11,6 +11,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -25,7 +26,11 @@ public class ScheduleService {
             .then(Mono.just(room));
     }
 
+    //logged when the decision changes: every room is decided every minute since HAS-352, and a line per
+    //heater a minute would bury the switching of the relays
     private void processHeaterActor(final HeaterActor heaterActor, final Room room) {
+        final boolean wasInSchedule = heaterActor.isInSchedule();
+        final Double wasTarget = heaterActor.getTargetTemperature();
         heaterActor.getSchedules().stream()
             .filter(schedule -> isActiveSchedule(schedule, room.getTemperature().getValue()))
             .findFirst()
@@ -38,6 +43,9 @@ public class ScheduleService {
                 heaterActor.setTargetTemperature(null);
             });
 
+        if (wasInSchedule == heaterActor.isInSchedule() && Objects.equals(wasTarget, heaterActor.getTargetTemperature())) {
+            return;
+        }
         log.info(
             "Schedule for room: {}, heater actor: {} status is: {}, target temperature: {}",
             room.getName().getValue(),

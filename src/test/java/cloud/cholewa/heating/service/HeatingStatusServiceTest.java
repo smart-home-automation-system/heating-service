@@ -31,6 +31,8 @@ class HeatingStatusServiceTest {
     private HeatingStatusMapper heatingStatusMapper;
     @Spy
     private HomeStatus homeStatus = new HomeStatus();
+    @Mock
+    private HomeService homeService;
 
     @InjectMocks
     private HeatingStatusService sut;
@@ -60,6 +62,7 @@ class HeatingStatusServiceTest {
         when(heatingStatusMapper.toEntity(true)).thenReturn(entity);
         when(heatingStatusRepository.save(any())).thenReturn(Mono.just(entity));
         when(heatingStatusMapper.toReply(entity)).thenReturn(reply);
+        when(homeService.decideRooms()).thenReturn(Mono.empty());
 
         sut.updateHeatingStatusEnabled(turn)
             .as(StepVerifier::create)
@@ -72,6 +75,35 @@ class HeatingStatusServiceTest {
         verify(homeStatus).setEnabledHomeHeatingSystem(true);
         verify(homeStatus).setHomeHeatingSystemUpdatedAt(now);
         verify(heatingStatusRepository).save(entity);
+        //HAS-352: every room decided at once, not with its next reading
+        verify(homeService).decideRooms();
+    }
+
+    //the pass after the switch never reaches the reply: neither its failure nor its length
+    @Test
+    void should_answer_the_switch_whatever_the_pass_after_it_does() {
+        LocalDateTime now = LocalDateTime.now();
+        HeatingStatusEntity entity = new HeatingStatusEntity(1L, now, false);
+        when(heatingStatusMapper.toEntity(false)).thenReturn(entity);
+        when(heatingStatusRepository.save(any())).thenReturn(Mono.just(entity));
+        when(heatingStatusMapper.toReply(entity)).thenReturn(new HeatingStatusReply(false, now));
+
+        when(homeService.decideRooms()).thenReturn(Mono.error(new IllegalStateException("relay down")));
+        sut.updateHeatingStatusEnabled("off").as(StepVerifier::create).expectNextCount(1).verifyComplete();
+
+        when(homeService.decideRooms()).thenReturn(Mono.never());
+        sut.updateHeatingStatusEnabled("off").as(StepVerifier::create).expectNextCount(1).verifyComplete();
+    }
+
+    //nothing was switched: nothing is decided
+    @Test
+    void should_decide_nothing_when_the_switch_was_not_stored() {
+        when(heatingStatusMapper.toEntity(false)).thenReturn(new HeatingStatusEntity(null, null, false));
+        when(heatingStatusRepository.save(any())).thenReturn(Mono.error(new RuntimeException("DB Error")));
+
+        sut.updateHeatingStatusEnabled("off").as(StepVerifier::create).expectError(HeatingException.class).verify();
+
+        org.mockito.Mockito.verifyNoInteractions(homeService);
     }
 
     @Test

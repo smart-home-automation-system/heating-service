@@ -162,7 +162,12 @@ they ask neither a device nor the database.
   `temperature.updatedAt` can be days old for a silent sensor, and only a room that never
   reported has no `temperature`. The heaters are not restored: `working` is missing until the
   relay is asked, and `inSchedule` and `heatingEnabled` until a pass has decided them - all
-  of which happens with the next reading of the room.
+  of which happens within a minute of the start (HAS-352).
+- **Every room is decided every minute and right after the switch** (HAS-352), not only when its
+  reading comes: switching the heating on starts every room below its target at once, switching it off
+  stops every relay, and a schedule starts and ends within the minute of its boundary. A relay is
+  commanded only when it has to change and its state read every five minutes, so a quiet minute calls
+  no device.
 - `heatingEnabled` says whether any heater of the room was working at the end of the last
   control pass that reached its heaters. For `sanctum`, whose radiator is switched outside this
   service, and for a room without a heater, it is never there.

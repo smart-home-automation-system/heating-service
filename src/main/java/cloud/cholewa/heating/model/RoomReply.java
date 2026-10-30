@@ -45,8 +45,8 @@ public record RoomReply(
      * {@code openSince} - since when the window that has stood open longest is open; only while
      * {@code state} is open.<br>
      * {@code hold} - whether the heating of the room is held now: one has stood open for
-     * {@code heating.window.hold-after} (three minutes). The heaters follow at the next reading of
-     * the room: {@code working} of a heater says what the relay last did.
+     * {@code heating.window.hold-after} (three minutes). The heaters follow within the minute (HAS-352):
+     * {@code working} of a heater says what the relay last did.
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record Window(WindowState state, LocalDateTime openSince, boolean hold) {
