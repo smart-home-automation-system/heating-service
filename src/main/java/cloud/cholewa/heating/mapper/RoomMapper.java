@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.mapper;
 
+import cloud.cholewa.heating.calendar.HouseCalendar;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.Humidity;
 import cloud.cholewa.heating.model.Room;
@@ -12,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -24,6 +26,7 @@ public class RoomMapper {
 
     private final Clock clock;
     private final WindowSensors windowSensors;
+    private final HouseCalendar houseCalendar;
 
     public RoomReply toReply(final Room room) {
         return new RoomReply(
@@ -87,9 +90,10 @@ public class RoomMapper {
     //that is what the loop heats to - it takes the first one the room is still colder than
     private Double toScheduledTemperature(final List<Schedule> schedules) {
         final LocalDateTime now = LocalDateTime.now(clock);
+        final DayOfWeek day = houseCalendar.scheduleDay(now.toLocalDate());
 
         return schedules.stream()
-            .filter(schedule -> schedule.covers(now))
+            .filter(schedule -> schedule.covers(now.toLocalTime(), day))
             .map(Schedule::getTemperature)
             .max(Double::compare)
             .orElse(null);

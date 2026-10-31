@@ -47,6 +47,14 @@ were in the code too, and the migration `V5` inserted those 30 verbatim. Since H
 written through the API (below): a write is checked, stored and loaded into the heaters before it
 answers, so the next pass of the room - within a minute - heats by it.
 
+**A day off on Monday to Friday runs the Sunday schedules** (HAS-358): a Polish holiday or a day off
+of the household, by the calendar of the house in `database-service` (`GET /home/calendar/days`),
+heats as the weekend - every schedule of the house lists Saturday and Sunday together. A workday stays
+its weekday, a Saturday or a Sunday stays itself. The type of today is asked once a day (at the start and
+in the first pass of the minute decision after midnight) and kept in memory; a calendar that cannot be
+read leaves the day to its weekday, with a WARN, and is asked again after 10 minutes. `GET /rooms`
+(`scheduledTemperature`, `inSchedule`) follows the same day.
+
 The aggregate state ("is heating required right now") is exposed over REST and polled by
 `boiler-service`, which uses it to decide whether to fire the furnace. The heating system
 can also be switched on and off through the API; that switch is persisted in Postgres and

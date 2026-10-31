@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.service;
 
+import cloud.cholewa.heating.calendar.HouseCalendarFixture;
 import cloud.cholewa.heating.infrastructure.error.RoomNotFoundException;
 import cloud.cholewa.heating.mapper.RoomMapper;
 import cloud.cholewa.heating.model.Home;
@@ -32,7 +33,7 @@ class RoomServiceTest {
         .temperature(Temperature.builder().build())
         .build();
 
-    private final RoomService sut = new RoomService(new Home(List.of(office, livingRoom)), new RoomMapper(Clock.systemDefaultZone(), WindowSensorsFixture.none()));
+    private final RoomService sut = new RoomService(new Home(List.of(office, livingRoom)), new RoomMapper(Clock.systemDefaultZone(), WindowSensorsFixture.none(), HouseCalendarFixture.weekdays()));
 
     @Test
     void should_list_the_rooms_in_the_order_of_the_configuration() {

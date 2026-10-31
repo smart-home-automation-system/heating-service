@@ -1,6 +1,7 @@
 package cloud.cholewa.heating.scheduler;
 
 import cloud.cholewa.commons.scheduling.ScheduledPass;
+import cloud.cholewa.heating.calendar.HouseCalendar;
 import cloud.cholewa.heating.service.HomeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,10 +25,13 @@ public class DecisionScheduler {
     static final Duration LIMIT = Duration.ofSeconds(50);
 
     private final HomeService homeService;
+    private final HouseCalendar houseCalendar;
 
+    //the calendar first (HAS-358): the first pass after midnight asks about the new day; it never fails
     @Scheduled(initialDelayString = "PT1M", fixedDelayString = "PT1M")
     Mono<Void> decideRooms() {
-        return ScheduledPass.bounded("heating decisions", LIMIT, () -> homeService.decideRooms()
+        return ScheduledPass.bounded("heating decisions", LIMIT, () -> houseCalendar.refresh()
+            .then(homeService.decideRooms())
             .onErrorResume(throwable -> {
                 log.error("Error while deciding the heating of the rooms", throwable);
                 return Mono.empty();

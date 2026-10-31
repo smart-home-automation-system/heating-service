@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.service;
 
+import cloud.cholewa.heating.calendar.HouseCalendar;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.model.Schedule;
@@ -19,6 +20,7 @@ import java.util.Objects;
 public class ScheduleService {
 
     private final Clock clock;
+    private final HouseCalendar houseCalendar;
 
     public Mono<Room> processSchedule(final Room room) {
         return Flux.fromIterable(room.getHeaterActors())
@@ -56,6 +58,8 @@ public class ScheduleService {
     }
 
     private boolean isActiveSchedule(final Schedule schedule, final double temperature) {
-        return schedule.covers(LocalDateTime.now(clock)) && temperature < schedule.getTemperature();
+        final LocalDateTime now = LocalDateTime.now(clock);
+        return schedule.covers(now.toLocalTime(), houseCalendar.scheduleDay(now.toLocalDate()))
+            && temperature < schedule.getTemperature();
     }
 }

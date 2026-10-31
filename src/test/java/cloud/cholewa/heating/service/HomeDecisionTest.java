@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.service;
 
+import cloud.cholewa.heating.calendar.HouseCalendarFixture;
 import cloud.cholewa.heating.client.ShellyClient;
 import cloud.cholewa.heating.infrastructure.error.BoilerException;
 import cloud.cholewa.heating.model.HeaterActor;
@@ -80,7 +81,7 @@ class HomeDecisionTest {
 
     private void build(final List<Room> rooms) {
         final Home home = new Home(rooms);
-        sut = new HomeService(clock, home, homeStatus, new ScheduleService(clock),
+        sut = new HomeService(clock, home, homeStatus, new ScheduleService(clock, HouseCalendarFixture.weekdays()),
             new HeatingService(clock, homeStatus, shellyClient, windowSensors),
             new FloorPumpService(clock, home, shellyClient));
     }

@@ -1,5 +1,8 @@
 package cloud.cholewa.heating.mapper;
 
+import cloud.cholewa.heating.calendar.CalendarClient;
+import cloud.cholewa.heating.calendar.HouseCalendar;
+import cloud.cholewa.heating.calendar.HouseCalendarFixture;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.HeaterType;
 import cloud.cholewa.heating.model.Humidity;
@@ -13,8 +16,11 @@ import cloud.cholewa.heating.window.RoomWindow;
 import cloud.cholewa.heating.window.WindowSensors;
 import cloud.cholewa.heating.window.WindowSensorsFixture;
 import cloud.cholewa.heating.window.WindowState;
+import cloud.cholewa.home.model.DayType;
 import cloud.cholewa.home.model.RoomName;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import java.time.Clock;
 import java.time.DayOfWeek;
@@ -47,7 +53,7 @@ class RoomMapperTest {
 
     private static RoomMapper mapperAt(final LocalDateTime now) {
         final ZoneId zone = ZoneId.systemDefault();
-        return new RoomMapper(Clock.fixed(now.atZone(zone).toInstant(), zone), WindowSensorsFixture.none());
+        return new RoomMapper(Clock.fixed(now.atZone(zone).toInstant(), zone), WindowSensorsFixture.none(), HouseCalendarFixture.weekdays());
     }
 
     private static Room roomWith(final Schedule... schedules) {
@@ -239,6 +245,25 @@ class RoomMapperTest {
         assertThat(scheduledTemperature(mapperAt(LocalDateTime.of(2026, 10, 10, 18, 32)), room)).isNull();
     }
 
+    //HAS-358: a holiday on Thursday asks for what Sunday asks for - the same day as the control loop judges
+    @Test
+    void should_ask_on_a_holiday_on_a_weekday_for_the_sunday_schedule() {
+        final LocalDateTime holiday = LocalDateTime.of(2026, 10, 8, 18, 32);
+        final ZoneId zone = ZoneId.systemDefault();
+        final Clock clock = Clock.fixed(holiday.atZone(zone).toInstant(), zone);
+        final CalendarClient calendarClient = mock(CalendarClient.class);
+        when(calendarClient.typeOf(holiday.toLocalDate())).thenReturn(Mono.just(DayType.DAY_OFF));
+        final HouseCalendar calendar = new HouseCalendar(calendarClient, clock);
+        calendar.refresh().as(StepVerifier::create).verifyComplete();
+        final RoomMapper mapper = new RoomMapper(clock, WindowSensorsFixture.none(), calendar);
+        final Room room = roomWith(
+            weekdays(7, 23, 20.5),
+            Schedule.builder().days(Set.of(SATURDAY, SUNDAY)).startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(22, 0)).temperature(21).build()
+        );
+
+        assertThat(scheduledTemperature(mapper, room)).isEqualTo(21.0);
+    }
+
     //both ends are exclusive, as in the control loop: the two use Schedule.covers
     @Test
     void should_not_count_the_moment_a_schedule_starts_or_ends_at() {
@@ -323,7 +348,7 @@ class RoomMapperTest {
         final LocalDateTime openSince = NOW.minusMinutes(4);
         when(windowSensors.windowOf(RoomName.OFFICE, NOW))
             .thenReturn(new RoomWindow(WindowState.OPEN, openSince, true));
-        final RoomMapper mapper = new RoomMapper(Clock.fixed(NOW.atZone(zone).toInstant(), zone), windowSensors);
+        final RoomMapper mapper = new RoomMapper(Clock.fixed(NOW.atZone(zone).toInstant(), zone), windowSensors, HouseCalendarFixture.weekdays());
 
         assertThat(mapper.toReply(roomWith()).window())
             .isEqualTo(new RoomReply.Window(WindowState.OPEN, openSince, true));
