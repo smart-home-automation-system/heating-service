@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 
 //Written by hand, not by MapStruct: the point of the reply is what it leaves out. The state in
 //memory starts with defaults - a temperature of 0.0, a heater that is "not working" - and only
@@ -66,6 +67,9 @@ public class RoomMapper {
         final boolean decided = heaterActor.isScheduleDecided();
         final Double targetTemperature = heaterActor.getTargetTemperature();
         final boolean inSchedule = heaterActor.isInSchedule() && targetTemperature != null;
+        //read once: the list is replaced whole when the schedules are loaded again (HAS-355), and the
+        //target and the list of one reply must come from the same one
+        final List<Schedule> schedules = heaterActor.getSchedules();
 
         return new RoomReply.Heater(
             heaterActor.getType(),
@@ -73,18 +77,18 @@ public class RoomMapper {
             updatedAt,
             decided ? inSchedule : null,
             decided && inSchedule ? targetTemperature : null,
-            toScheduledTemperature(heaterActor),
-            heaterActor.getSchedules().stream().map(this::toSchedule).toList()
+            toScheduledTemperature(schedules),
+            schedules.stream().map(this::toSchedule).toList()
         );
     }
 
     //Unlike the two above, not a decision of the control loop: worked out when asked, by the clock
     //of the house, from the schedules alone. The highest of the schedules that are on, because
     //that is what the loop heats to - it takes the first one the room is still colder than
-    private Double toScheduledTemperature(final HeaterActor heaterActor) {
+    private Double toScheduledTemperature(final List<Schedule> schedules) {
         final LocalDateTime now = LocalDateTime.now(clock);
 
-        return heaterActor.getSchedules().stream()
+        return schedules.stream()
             .filter(schedule -> schedule.covers(now))
             .map(Schedule::getTemperature)
             .max(Double::compare)
@@ -93,12 +97,14 @@ public class RoomMapper {
 
     private RoomReply.HeaterSchedule toSchedule(final Schedule schedule) {
         return new RoomReply.HeaterSchedule(
+            schedule.getId(),
             schedule.getType(),
             //the days are a set, and the order of a Set.of differs from one start of the JVM to the next
             schedule.getDays().stream().sorted().toList(),
             schedule.getStartTime(),
             schedule.getEndTime(),
-            schedule.getTemperature()
+            schedule.getTemperature(),
+            schedule.isEnabled()
         );
     }
 }

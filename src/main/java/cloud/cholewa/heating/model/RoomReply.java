@@ -83,17 +83,23 @@ public record RoomReply(
     }
 
     /**
-     * {@code type} - what the temperature is a limit of: HEATING warms the room up to it.<br>
+     * {@code id} - the stored schedule (HAS-355), the one to name when it is changed.<br>
+     * {@code type} - what the temperature is a limit of: HEATING warms the room up to it, and is the only
+     * one.<br>
      * {@code days} - from Monday to Sunday.<br>
-     * {@code startTime}, {@code endTime} - local time of the house; both ends are exclusive.
+     * {@code startTime}, {@code endTime} - local time of the house; both ends are exclusive.<br>
+     * {@code enabled} - a disabled schedule is listed and never covers a moment: it is no part of
+     * {@code scheduledTemperature} and the control loop never heats to it.
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record HeaterSchedule(
+        Long id,
         ScheduleType type,
         List<DayOfWeek> days,
         LocalTime startTime,
         LocalTime endTime,
-        double temperature
+        double temperature,
+        boolean enabled
     ) {
     }
 }

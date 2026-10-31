@@ -38,6 +38,13 @@ cached and re-read from the device only when it is older than five minutes, so a
 readings does not turn into a burst of device calls. Radiator and floor heaters are handled
 separately — when any floor heater is on, the floor pump is switched on as well.
 
+**The heating schedules are stored in Postgres** (table `heating_schedule`, HAS-355): per heater
+the days, the hours and the temperature, and whether the schedule is enabled. They are read into
+memory at the start, before the service consumes a reading, and the control loop decides from
+memory; a start without them fails, so a rollout stops at the new pod and the old one keeps
+heating. The rooms and their heaters stay in the code (`HomeConfig`). Until 1.12.0 the schedules
+were in the code too, and the migration `V5` inserted those 30 verbatim.
+
 The aggregate state ("is heating required right now") is exposed over REST and polled by
 `boiler-service`, which uses it to decide whether to fire the furnace. The heating system
 can also be switched on and off through the API; that switch is persisted in Postgres and
@@ -77,7 +84,7 @@ mvn verify
 mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-`mvn verify` needs a running Docker: the test of the history query starts a PostgreSQL in it
+`mvn verify` needs a running Docker: the tests of the history query and of the stored schedules start a PostgreSQL in it
 (Testcontainers).
 
 | | Application | Actuator |
@@ -137,7 +144,7 @@ they ask neither a device nor the database.
       "targetTemperature": 20.5,
       "scheduledTemperature": 20.5,
       "schedules": [
-        {"type": "HEATING", "days": ["MONDAY", "TUESDAY"], "startTime": "07:00:00", "endTime": "23:00:00", "temperature": 20.5}
+        {"id": 1, "type": "HEATING", "days": ["MONDAY", "TUESDAY"], "startTime": "07:00:00", "endTime": "23:00:00", "temperature": 20.5, "enabled": true}
       ]
     }
   ]
@@ -185,6 +192,9 @@ they ask neither a device nor the database.
   clock of the house, so it needs no reading and is there right after a start; the control loop
   does not use it.
 - `days` run from Monday to Sunday; `startTime` and `endTime` are local times of the house.
+- A schedule has the `id` of its stored row and `enabled` (HAS-355): a disabled schedule is listed
+  and never on - it is no part of `scheduledTemperature` and the control loop never heats to it.
+  `type` is always `HEATING`.
 - `{name}` is the name the list gives a room (`living room`, percent-encoded in the path), in
   any case. An unknown one is a `404` with the code `NOT_FOUND_ROOM`; a `404` without a code
   is a path that is not served.

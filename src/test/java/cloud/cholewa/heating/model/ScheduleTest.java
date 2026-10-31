@@ -39,6 +39,20 @@ class ScheduleTest {
         assertThat(sut.covers(LocalDateTime.of(2026, 10, 8, 23, 30))).isFalse();
     }
 
+    //HAS-355: listed, never on - so the loop never heats to it and a reader never takes it for the target
+    @Test
+    void should_never_cover_a_moment_while_disabled() {
+        final Schedule disabled = Schedule.builder()
+            .days(Set.of(THURSDAY, FRIDAY))
+            .startTime(LocalTime.of(7, 0))
+            .endTime(LocalTime.of(23, 0))
+            .enabled(false)
+            .build();
+
+        assertThat(sut.isEnabled()).isTrue();
+        assertThat(disabled.covers(LocalDateTime.of(2026, 10, 8, 18, 32))).isFalse();
+    }
+
     @Test
     void should_not_cover_another_day_of_the_week() {
         //a Saturday, at an hour of the schedule
