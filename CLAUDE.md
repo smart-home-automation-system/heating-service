@@ -32,7 +32,7 @@ review - the owner had Claude implement the window hold (HAS-232) and the decisi
 
 ## Build & run
 
-- Build + tests: `mvn verify` - needs a running Docker (one test starts a PostgreSQL in it)
+- Build + tests: `mvn verify` - needs a running Docker (two tests start a PostgreSQL in it)
 - Local run: `home,local` Spring profiles, port `6002` (Actuator `8002`); in-cluster port
   `6200`, Actuator `8200`. Needs PostgreSQL and a RabbitMQ broker; the `local` profile uses
   the `temperature.dev.heating` and `device.dev.heating` queues, `database-service` on
@@ -372,6 +372,28 @@ review - the owner had Claude implement the window hold (HAS-232) and the decisi
     room at once - as the held-room pass did with the listener. The fields of `Room` / `HeaterActor` are
     volatile; two passes deciding one relay can both command it (an idempotent switch) and the later
     response wins - nothing is written before a device answered.
+- **The heating schedules are stored in `heating_schedule`** (HAS-355, V5; the `Schedule.builder()`
+  calls of `HomeConfig` are gone - the rooms and heaters stay there). What to keep:
+  - **Loaded into memory, never read at a reading**: `HeatingScheduleService.load` reads every row (by
+    id - the order of a heater's schedules is the order the loop tries them in) and replaces the list of
+    every heater of `Home` whole (`HeaterActor.replaceSchedules`, a volatile immutable list: the loop and
+    the readers iterate it while it is replaced). The write API (HAS-356) calls the same load after a write.
+  - **Loaded before anything decides a room**: `HeatingScheduleLoader` is a `SmartLifecycle` of phase 0,
+    so it runs before the two listener containers, the web server and the scheduled tasks; a
+    `CommandLineRunner` would run after them, and a reading in between would switch off every heater as
+    out of schedule. **Fatal when it fails** (three tries, 30 s), as the heating switch is: a pod without
+    its schedules would hold every room cold, so the rollout stops at it.
+  - **A row this version cannot place is skipped with a WARN**, the others load: a room or heater the
+    house does not have, one this service does not drive (`RelayConfig.drives` - the radiator of `SANCTUM`, switched
+    outside: a schedule there would make the loop drive a relay it has no entry for), a name or a day it
+    does not know. A heater without a row is never in a schedule.
+  - **`enabled`**: a disabled schedule is listed in `GET /rooms` and `Schedule.covers` is false for it -
+    still the one rule. `ScheduleType` is `HEATING` alone (`COOLING` was never used); the table has no type.
+  - The table refuses what no schedule can be: no day, a day that does not exist, an end not after its
+    start (`covers` never crosses midnight). Temperatures are `NUMERIC(3,1)`; `created_at` /
+    `updated_at` default to the clock of the house for the seeded rows.
+  - `HeatingScheduleRepositoryTest` (PostgreSQL in Docker) loads the seeded rows into the heaters of the
+    real `HomeConfig` and compares them one by one with the 30 schedules of 1.12.0.
 - **Surefire activates the `test` profile for every class** (`spring.profiles.active` in the
   pom), so a test without `@ActiveProfiles` does not fall through to the shared document and
   switch the log output to JSON for the classes that follow.

@@ -123,7 +123,7 @@ class RoomMapperTest {
 
         final HeaterActor radiator = HeaterActor.builder()
             .type(HeaterType.RADIATOR)
-            .schedule(Schedule.builder().type(ScheduleType.HEATING)
+            .schedule(Schedule.builder().id(7L).type(ScheduleType.HEATING)
                 .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
                 .temperature(20.5)
                 .startTime(LocalTime.of(7, 0))
@@ -157,11 +157,13 @@ class RoomMapperTest {
             20.5,
             20.5,
             List.of(new RoomReply.HeaterSchedule(
+                7L,
                 ScheduleType.HEATING,
                 List.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY),
                 LocalTime.of(7, 0),
                 LocalTime.of(23, 0),
-                20.5
+                20.5,
+                true
             ))
         ));
     }
@@ -246,6 +248,20 @@ class RoomMapperTest {
         assertThat(scheduledTemperature(mapperAt(LocalDateTime.of(2026, 10, 8, 7, 0, 1)), room)).isEqualTo(20.5);
         assertThat(scheduledTemperature(mapperAt(LocalDateTime.of(2026, 10, 8, 22, 59, 59)), room)).isEqualTo(20.5);
         assertThat(scheduledTemperature(mapperAt(LocalDateTime.of(2026, 10, 8, 23, 0)), room)).isNull();
+    }
+
+    //a disabled schedule is listed, and asks for nothing (HAS-355)
+    @Test
+    void should_list_a_disabled_schedule_and_never_take_it_for_the_scheduled_temperature() {
+        final Schedule disabled = weekdays(7, 23, 22.0);
+        disabled.setEnabled(false);
+        final Room room = roomWith(weekdays(7, 23, 18.0), disabled);
+
+        assertThat(scheduledTemperature(sut, room)).isEqualTo(18.0);
+        assertThat(sut.toReply(room).heaters().getFirst().schedules())
+            .extracting(RoomReply.HeaterSchedule::enabled)
+            .containsExactly(true, false);
+        assertThat(scheduledTemperature(sut, roomWith(disabled))).isNull();
     }
 
     //the loop takes the first schedule the room is still colder than, so with two on at once it

@@ -17,7 +17,11 @@ import java.util.Set;
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class Schedule {
 
-    private ScheduleType type;
+    //the row of heating_schedule it was read from (HAS-355); missing only for a schedule a test builds
+    private Long id;
+
+    @Builder.Default
+    private ScheduleType type = ScheduleType.HEATING;
 
     @Singular
     private Set<DayOfWeek> days;
@@ -28,11 +32,16 @@ public class Schedule {
 
     private double temperature;
 
+    //a disabled schedule is listed and never covers a moment (HAS-355)
+    @Builder.Default
+    private boolean enabled = true;
+
     //whether the schedule is on at that moment, whatever the temperature of the room. Both ends
     //are exclusive. The one place for this rule: the control loop decides by it (ScheduleService)
     //and a reader is told by it (RoomMapper)
     public boolean covers(final LocalDateTime moment) {
-        return startTime.isBefore(moment.toLocalTime())
+        return enabled
+            && startTime.isBefore(moment.toLocalTime())
             && endTime.isAfter(moment.toLocalTime())
             && days.contains(moment.getDayOfWeek());
     }

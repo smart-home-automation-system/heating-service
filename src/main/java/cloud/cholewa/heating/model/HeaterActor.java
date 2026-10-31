@@ -39,6 +39,13 @@ public class HeaterActor {
         this.scheduleDecided = true;
     }
     
+    //read from the database at the start (HAS-355, HeatingScheduleService) and replaced whole, never
+    //changed in place: the control loop and the readers iterate it while it is replaced
     @Singular
-    private List<Schedule> schedules;
+    @Setter(AccessLevel.NONE)
+    private volatile List<Schedule> schedules;
+
+    public void replaceSchedules(final List<Schedule> schedules) {
+        this.schedules = List.copyOf(schedules);
+    }
 }

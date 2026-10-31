@@ -6,25 +6,15 @@ import cloud.cholewa.heating.model.Home;
 import cloud.cholewa.heating.model.Humidity;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.model.RoomMode;
-import cloud.cholewa.heating.model.Schedule;
-import cloud.cholewa.heating.model.ScheduleType;
 import cloud.cholewa.heating.model.Temperature;
 import cloud.cholewa.home.model.RoomName;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.time.LocalTime;
 import java.util.List;
-import java.util.Set;
 
-import static java.time.DayOfWeek.FRIDAY;
-import static java.time.DayOfWeek.MONDAY;
-import static java.time.DayOfWeek.SATURDAY;
-import static java.time.DayOfWeek.SUNDAY;
-import static java.time.DayOfWeek.THURSDAY;
-import static java.time.DayOfWeek.TUESDAY;
-import static java.time.DayOfWeek.WEDNESDAY;
-
+//The rooms and their heaters. The schedules of the heaters are stored in heating_schedule since HAS-355
+//(HeatingScheduleService) - a change of an hour is no longer a release
 @Configuration
 public class HomeConfig {
 
@@ -64,14 +54,7 @@ public class HomeConfig {
             .mode(RoomMode.HEATING)
             .temperature(Temperature.builder().build())
             .humidity(new Humidity())
-            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR)
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
-                    .temperature(20.5)
-                    .startTime(LocalTime.of(7, 0))
-                    .endTime(LocalTime.of(23, 0))
-                    .build())
-                .build())
+            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR).build())
             .build();
     }
 
@@ -82,32 +65,7 @@ public class HomeConfig {
             .mode(RoomMode.HEATING)
             .temperature(Temperature.builder().build())
             .humidity(new Humidity())
-            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR)
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
-                    .temperature(20.5)
-                    .startTime(LocalTime.of(5, 0))
-                    .endTime(LocalTime.of(8, 0))
-                    .build())
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
-                    .temperature(19.5)
-                    .startTime(LocalTime.of(8, 0))
-                    .endTime(LocalTime.of(17, 0))
-                    .build())
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
-                    .temperature(21)
-                    .startTime(LocalTime.of(17, 0))
-                    .endTime(LocalTime.of(22, 0))
-                    .build())
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(SATURDAY, SUNDAY))
-                    .temperature(21)
-                    .startTime(LocalTime.of(9, 0))
-                    .endTime(LocalTime.of(22, 0))
-                    .build())
-                .build())
+            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR).build())
             .build();
     }
 
@@ -118,32 +76,7 @@ public class HomeConfig {
             .mode(RoomMode.HEATING)
             .temperature(Temperature.builder().build())
             .humidity(new Humidity())
-            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR)
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
-                    .temperature(21)
-                    .startTime(LocalTime.of(5, 0))
-                    .endTime(LocalTime.of(8, 0))
-                    .build())
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
-                    .temperature(20)
-                    .startTime(LocalTime.of(8, 0))
-                    .endTime(LocalTime.of(17, 0))
-                    .build())
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
-                    .temperature(21)
-                    .startTime(LocalTime.of(17, 0))
-                    .endTime(LocalTime.of(22, 0))
-                    .build())
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(SATURDAY, SUNDAY))
-                    .temperature(21)
-                    .startTime(LocalTime.of(9, 0))
-                    .endTime(LocalTime.of(22, 0))
-                    .build())
-                .build())
+            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR).build())
             .build();
     }
 
@@ -154,20 +87,7 @@ public class HomeConfig {
             .mode(RoomMode.HEATING)
             .temperature(Temperature.builder().build())
             .humidity(new Humidity())
-            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR)
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
-                    .temperature(16)
-                    .startTime(LocalTime.of(7, 0))
-                    .endTime(LocalTime.of(8, 0))
-                    .build())
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
-                    .temperature(16)
-                    .startTime(LocalTime.of(8, 0))
-                    .endTime(LocalTime.of(21, 0))
-                    .build())
-                .build())
+            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR).build())
             .build();
     }
 
@@ -178,14 +98,7 @@ public class HomeConfig {
             .mode(RoomMode.HEATING)
             .temperature(Temperature.builder().build())
             .humidity(new Humidity())
-            .heaterActor(HeaterActor.builder().type(HeaterType.FLOOR)
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
-                    .temperature(19.5)
-                    .startTime(LocalTime.of(5, 0))
-                    .endTime(LocalTime.of(20, 0))
-                    .build())
-                .build())
+            .heaterActor(HeaterActor.builder().type(HeaterType.FLOOR).build())
             .build();
     }
 
@@ -196,28 +109,8 @@ public class HomeConfig {
             .mode(RoomMode.HEATING)
             .temperature(Temperature.builder().build())
             .humidity(new Humidity())
-            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR)
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
-                    .temperature(22)
-                    .startTime(LocalTime.of(17, 0))
-                    .endTime(LocalTime.of(18, 0))
-                    .build())
-                .build())
-            .heaterActor(HeaterActor.builder().type(HeaterType.FLOOR)
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
-                    .temperature(22.5)
-                    .startTime(LocalTime.of(5, 0))
-                    .endTime(LocalTime.of(9, 0))
-                    .build())
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
-                    .temperature(22.5)
-                    .startTime(LocalTime.of(17, 0))
-                    .endTime(LocalTime.of(20, 0))
-                    .build())
-                .build())
+            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR).build())
+            .heaterActor(HeaterActor.builder().type(HeaterType.FLOOR).build())
             .build();
     }
 
@@ -236,46 +129,8 @@ public class HomeConfig {
             .mode(RoomMode.HEATING)
             .temperature(Temperature.builder().build())
             .humidity(new Humidity())
-            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR)
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
-                    .temperature(21)
-                    .startTime(LocalTime.of(6, 0))
-                    .endTime(LocalTime.of(8, 0))
-                    .build())
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
-                    .temperature(21)
-                    .startTime(LocalTime.of(15, 0))
-                    .endTime(LocalTime.of(22, 0))
-                    .build())
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(SATURDAY, SUNDAY))
-                    .temperature(21)
-                    .startTime(LocalTime.of(8, 0))
-                    .endTime(LocalTime.of(22, 0))
-                    .build())
-                .build())
-            .heaterActor(HeaterActor.builder().type(HeaterType.FLOOR)
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
-                    .temperature(21)
-                    .startTime(LocalTime.of(6, 0))
-                    .endTime(LocalTime.of(8, 0))
-                    .build())
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
-                    .temperature(21)
-                    .startTime(LocalTime.of(15, 0))
-                    .endTime(LocalTime.of(22, 0))
-                    .build())
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(SATURDAY, SUNDAY))
-                    .temperature(21)
-                    .startTime(LocalTime.of(6, 0))
-                    .endTime(LocalTime.of(22, 0))
-                    .build())
-                .build())
+            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR).build())
+            .heaterActor(HeaterActor.builder().type(HeaterType.FLOOR).build())
             .build();
     }
 
@@ -286,32 +141,7 @@ public class HomeConfig {
             .mode(RoomMode.HEATING)
             .temperature(Temperature.builder().build())
             .humidity(new Humidity())
-            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR)
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
-                    .temperature(21)
-                    .startTime(LocalTime.of(5, 0))
-                    .endTime(LocalTime.of(8, 0))
-                    .build())
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
-                    .temperature(20)
-                    .startTime(LocalTime.of(8, 0))
-                    .endTime(LocalTime.of(16, 0))
-                    .build())
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
-                    .temperature(21)
-                    .startTime(LocalTime.of(16, 0))
-                    .endTime(LocalTime.of(22, 0))
-                    .build())
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(SATURDAY, SUNDAY))
-                    .temperature(21)
-                    .startTime(LocalTime.of(8, 0))
-                    .endTime(LocalTime.of(22, 0))
-                    .build())
-                .build())
+            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR).build())
             .build();
     }
 
@@ -322,29 +152,8 @@ public class HomeConfig {
             .mode(RoomMode.HEATING)
             .temperature(Temperature.builder().build())
             .humidity(new Humidity())
-            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR)
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
-                    .temperature(23)
-                    .startTime(LocalTime.of(16, 0))
-                    .endTime(LocalTime.of(17, 0))
-                    .build())
-                .build())
-            .heaterActor(HeaterActor.builder()
-                .type(HeaterType.FLOOR)
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
-                    .temperature(22)
-                    .startTime(LocalTime.of(6, 0))
-                    .endTime(LocalTime.of(7, 0))
-                    .build())
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
-                    .temperature(22)
-                    .startTime(LocalTime.of(18, 0))
-                    .endTime(LocalTime.of(20, 0))
-                    .build())
-                .build())
+            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR).build())
+            .heaterActor(HeaterActor.builder().type(HeaterType.FLOOR).build())
             .build();
     }
 
@@ -355,14 +164,7 @@ public class HomeConfig {
             .mode(RoomMode.HEATING)
             .temperature(Temperature.builder().build())
             .humidity(new Humidity())
-            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR)
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
-                    .temperature(16.5)
-                    .startTime(LocalTime.of(5, 0))
-                    .endTime(LocalTime.of(21, 0))
-                    .build())
-                .build())
+            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR).build())
             .build();
     }
 
@@ -373,14 +175,7 @@ public class HomeConfig {
             .mode(RoomMode.HEATING)
             .temperature(Temperature.builder().build())
             .humidity(new Humidity())
-            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR)
-                .schedule(Schedule.builder().type(ScheduleType.HEATING)
-                    .days(Set.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY))
-                    .temperature(13)
-                    .startTime(LocalTime.of(5, 0))
-                    .endTime(LocalTime.of(20, 0))
-                    .build())
-                .build())
+            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR).build())
             .build();
     }
 

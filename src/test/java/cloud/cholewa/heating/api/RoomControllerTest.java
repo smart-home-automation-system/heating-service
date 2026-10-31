@@ -54,9 +54,14 @@ class RoomControllerTest {
                 true,
                 20.5,
                 20.5,
-                List.of(new RoomReply.HeaterSchedule(
-                    ScheduleType.HEATING, List.of(MONDAY, SUNDAY), LocalTime.of(7, 0), LocalTime.of(23, 0), 20.5
-                ))
+                List.of(
+                    new RoomReply.HeaterSchedule(
+                        7L, ScheduleType.HEATING, List.of(MONDAY, SUNDAY), LocalTime.of(7, 0), LocalTime.of(23, 0), 20.5, true
+                    ),
+                    new RoomReply.HeaterSchedule(
+                        8L, ScheduleType.HEATING, List.of(SUNDAY), LocalTime.of(9, 0), LocalTime.of(12, 0), 22, false
+                    )
+                )
             ),
             new RoomReply.Heater(HeaterType.FLOOR, null, null, null, null, null, List.of())
         )
@@ -79,7 +84,8 @@ class RoomControllerTest {
               "targetTemperature": 20.5,
               "scheduledTemperature": 20.5,
               "schedules": [
-                {"type": "HEATING", "days": ["MONDAY", "SUNDAY"], "startTime": "07:00:00", "endTime": "23:00:00", "temperature": 20.5}
+                {"id": 7, "type": "HEATING", "days": ["MONDAY", "SUNDAY"], "startTime": "07:00:00", "endTime": "23:00:00", "temperature": 20.5, "enabled": true},
+                {"id": 8, "type": "HEATING", "days": ["SUNDAY"], "startTime": "09:00:00", "endTime": "12:00:00", "temperature": 22.0, "enabled": false}
               ]
             },
             {"type": "floor", "schedules": []}
