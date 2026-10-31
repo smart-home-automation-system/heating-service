@@ -18,7 +18,10 @@ import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +32,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class HeatingScheduleServiceTest {
+
+    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-31T10:00:00Z"), ZoneId.of("Europe/Warsaw"));
 
     @Mock
     private HeatingScheduleRepository repository;
@@ -55,7 +60,7 @@ class HeatingScheduleServiceTest {
         final RelayConfig relayConfig = new RelayConfig();
         relayConfig.setHeater(Map.of("living_room", 1, "office", 3));
         relayConfig.setFloor(Map.of("living_room", 0));
-        sut = new HeatingScheduleService(home, repository, relayConfig);
+        sut = new HeatingScheduleService(home, repository, relayConfig, CLOCK);
     }
 
     @Test

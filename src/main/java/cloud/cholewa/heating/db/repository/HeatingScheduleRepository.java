@@ -8,4 +8,7 @@ public interface HeatingScheduleRepository extends R2dbcRepository<HeatingSchedu
 
     //by id: the order of the schedules of a heater decides which one the control loop heats to
     Flux<HeatingScheduleEntity> findAllByOrderByIdAsc();
+
+    //the schedules of one heater, for the overlap of a written one (HAS-356)
+    Flux<HeatingScheduleEntity> findAllByRoomAndHeater(String room, String heater);
 }

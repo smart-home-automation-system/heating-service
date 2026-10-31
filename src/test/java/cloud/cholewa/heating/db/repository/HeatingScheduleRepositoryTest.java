@@ -1,11 +1,13 @@
 package cloud.cholewa.heating.db.repository;
 
+import cloud.cholewa.heating.config.ClockConfig;
 import cloud.cholewa.heating.config.HomeConfig;
 import cloud.cholewa.heating.config.RelayConfig;
 import cloud.cholewa.heating.db.model.HeatingScheduleEntity;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.Home;
 import cloud.cholewa.heating.model.Schedule;
+import cloud.cholewa.heating.model.ScheduleBody;
 import cloud.cholewa.heating.service.HeatingScheduleService;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
@@ -25,11 +27,13 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,7 +45,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataR2dbcTest
 @Testcontainers
 @ActiveProfiles("test")
-@Import({HomeConfig.class, HeatingScheduleService.class, HeatingScheduleRepositoryTest.Binding.class})
+@Import({HomeConfig.class, ClockConfig.class, HeatingScheduleService.class, HeatingScheduleRepositoryTest.Binding.class})
 class HeatingScheduleRepositoryTest {
 
     //binds RelayConfig from application.yaml, which the slice would not
@@ -158,6 +162,54 @@ class HeatingScheduleRepositoryTest {
         insert("ARRAY['MONDAY']", "'08:00'", "'07:00'").as(StepVerifier::create).verifyError();
         insert("ARRAY['FUNDAY']", "'07:00'", "'08:00'").as(StepVerifier::create).verifyError();
         insert("ARRAY[]::text[]", "'07:00'", "'08:00'").as(StepVerifier::create).verifyError();
+    }
+
+    //a write of HAS-356 through the service: the days into the array, an id from the identity, the overlap
+    //checked against the stored rows, the row replaced in place; it is removed at the end - the other tests
+    //read all 30
+    @Test
+    void should_create_replace_and_remove_a_schedule_of_a_heater() {
+        //the office radiator runs 07:00-23:00 every day (row 1)
+        service.create("office", "radiator", new ScheduleBody(List.of("MONDAY"), "22:00", "23:30", new BigDecimal("18.5")))
+            .as(StepVerifier::create)
+            .verifyErrorMessage("the window overlaps schedule 1 (MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY,SATURDAY,SUNDAY 07:00-23:00)");
+
+        final AtomicLong id = new AtomicLong();
+        service.create("office", "radiator", new ScheduleBody(List.of("SUNDAY", "MONDAY"), "05:00", "07:00", new BigDecimal("18.5")))
+            .as(StepVerifier::create)
+            .assertNext(created -> {
+                assertThat(created.id()).isGreaterThan(30);
+                id.set(created.id());
+            })
+            .verifyComplete();
+
+        sut.findAllByRoomAndHeater("office", "radiator").map(HeatingScheduleEntity::id).collectList().as(StepVerifier::create)
+            .assertNext(ids -> assertThat(ids).containsExactlyInAnyOrder(1L, id.get()))
+            .verifyComplete();
+        sut.findById(id.get()).as(StepVerifier::create)
+            .assertNext(row -> {
+                assertThat(row.days()).containsExactly("MONDAY", "SUNDAY");
+                assertThat(row.temperature()).isEqualByComparingTo("18.5");
+                assertThat(row.createdAt()).isNotNull();
+            })
+            .verifyComplete();
+
+        service.replace(id.get(), new ScheduleBody(List.of("SATURDAY"), "05:00", "06:00", new BigDecimal("19")))
+            .as(StepVerifier::create)
+            .assertNext(replaced -> assertThat(replaced.days()).containsExactly(DayOfWeek.SATURDAY))
+            .verifyComplete();
+        service.enable(id.get(), false).as(StepVerifier::create).verifyComplete();
+        sut.findById(id.get()).as(StepVerifier::create)
+            .assertNext(row -> {
+                assertThat(row.days()).containsExactly("SATURDAY");
+                assertThat(row.endTime()).hasToString("06:00");
+                assertThat(row.enabled()).isFalse();
+                assertThat(row.updatedAt()).isAfterOrEqualTo(row.createdAt());
+            })
+            .verifyComplete();
+
+        service.remove(id.get()).as(StepVerifier::create).verifyComplete();
+        sut.count().as(StepVerifier::create).expectNext(30L).verifyComplete();
     }
 
     private Mono<Long> insert(final String days, final String from, final String to) {
