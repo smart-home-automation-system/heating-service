@@ -377,7 +377,7 @@ review - the owner had Claude implement the window hold (HAS-232) and the decisi
   - **Loaded into memory, never read at a reading**: `HeatingScheduleService.load` reads every row (by
     id - the order of a heater's schedules is the order the loop tries them in) and replaces the list of
     every heater of `Home` whole (`HeaterActor.replaceSchedules`, a volatile immutable list: the loop and
-    the readers iterate it while it is replaced). The write API (HAS-356) calls the same load after a write.
+    the readers iterate it while it is replaced). The write API (HAS-356, below) calls the same load after a write.
   - **Loaded before anything decides a room**: `HeatingScheduleLoader` is a `SmartLifecycle` of phase 0,
     so it runs before the two listener containers, the web server and the scheduled tasks; a
     `CommandLineRunner` would run after them, and a reading in between would switch off every heater as
@@ -393,7 +393,29 @@ review - the owner had Claude implement the window hold (HAS-232) and the decisi
     start (`covers` never crosses midnight). Temperatures are `NUMERIC(3,1)`; `created_at` /
     `updated_at` default to the clock of the house for the seeded rows.
   - `HeatingScheduleRepositoryTest` (PostgreSQL in Docker) loads the seeded rows into the heaters of the
-    real `HomeConfig` and compares them one by one with the 30 schedules of 1.12.0.
+    real `HomeConfig` and compares them one by one with the 30 schedules of 1.12.0, and runs a create,
+    a replace, a switch and a remove through the service against the table.
+- **The schedules are written through the API** (HAS-356, `HeatingScheduleController`):
+  - **Every rule is in `ScheduleRules`** - pure, pinned rule by rule by `ScheduleRulesTest`; the dashboard
+    copies it, so a rule changed here changes there too. No `@Valid`: the body (`ScheduleBody`) is text
+    and `BigDecimal`, so a broken rule answers `INVALID_SCHEDULE` with its reason, not an unreadable body.
+  - **No overlap within a heater** on a day in common, a disabled schedule included (switching one on is
+    then never checked); touching windows are allowed. So at most one schedule of a heater is on at a
+    moment and the order of the rows no longer decides anything - the seeded 30 had no overlap.
+  - **A write answers once the heaters hold it**: stored, then `load()` again, then the answer - the next
+    pass of the room (within a minute, HAS-352) heats by it. A load failing after the row was stored fails
+    the write; the heaters keep what they had until the next write or a restart. `load()` and the reads
+    of a write are deferred: nothing of a write runs before the one ahead of it has ended.
+  - **The writes go one after the other** (`HeatingScheduleService.oneAtATime`: each subscribes when the
+    one ahead has ended, however it ended), or two at once could each pass the overlap check. A write is
+    bounded (`WRITE_TIMEOUT`, 30 s) - one hung on the database would hold every later one - and one cancelled
+    while it waited lets the next go only once the write ahead of it has ended. One pod
+    only: the two pods of a rolling deploy are not written to at once (one writer at a time - the
+    dashboard or Bruno).
+  - A heater is found as the reads find a room (its name in any case) and by its type; one the room has
+    not, or the service does not drive (`RelayConfig.drives` - SANCTUM), is `NOT_FOUND_HEATER`. The codes
+    `INVALID_SCHEDULE`, `NOT_FOUND_SCHEDULE` and `NOT_FOUND_HEATER` are wire contract (`HeatingErrorIdTest`),
+    answered by `ScheduleExceptionProcessor` at WARN.
 - **Surefire activates the `test` profile for every class** (`spring.profiles.active` in the
   pom), so a test without `@ActiveProfiles` does not fall through to the shared document and
   switch the log output to JSON for the classes that follow.

@@ -43,7 +43,9 @@ the days, the hours and the temperature, and whether the schedule is enabled. Th
 memory at the start, before the service consumes a reading, and the control loop decides from
 memory; a start without them fails, so a rollout stops at the new pod and the old one keeps
 heating. The rooms and their heaters stay in the code (`HomeConfig`). Until 1.12.0 the schedules
-were in the code too, and the migration `V5` inserted those 30 verbatim.
+were in the code too, and the migration `V5` inserted those 30 verbatim. Since HAS-356 they are
+written through the API (below): a write is checked, stored and loaded into the heaters before it
+answers, so the next pass of the room - within a minute - heats by it.
 
 The aggregate state ("is heating required right now") is exposed over REST and polled by
 `boiler-service`, which uses it to decide whether to fire the furnace. The heating system
@@ -120,6 +122,10 @@ is also the path the Kubernetes ingress routes to this service.
 | `GET` | `/home/heating/rooms` | Every room of the house with its temperature, heaters and schedules — see below |
 | `GET` | `/home/heating/rooms/{name}` | One room; `404` with the code `NOT_FOUND_ROOM` for an unknown name |
 | `GET` | `/home/heating/rooms/{name}/temperature/history?from=&to=` | The stored temperatures of one room over a range of at most 31 days, averaged into buckets — see below |
+| `POST` | `/home/heating/rooms/{name}/heaters/{heater}/schedules` | A new schedule of a heater (`radiator`, `floor`), switched on; `201` with the stored schedule — see below |
+| `PUT` | `/home/heating/schedules/{id}` | Replaces the days, the window and the temperature of a schedule; whether it is enabled stays; `200` with the stored schedule |
+| `PUT` | `/home/heating/schedules/{id}/enabled?value=true\|false` | Switches a schedule on or off; `204` |
+| `DELETE` | `/home/heating/schedules/{id}` | Removes a schedule; `204` |
 | `GET` | `/home/heating/floor-pump` | What the relay of the floor pump last reported: `working`, `updatedAt` |
 | `GET` | `/home/heating/status/active` | Whether the system is enabled and any heater is currently active — polled by `boiler-service` |
 
@@ -200,6 +206,30 @@ they ask neither a device nor the database.
   is a path that is not served.
 - `/floor-pump` answers `{"working": true, "updatedAt": "…"}`, and `{}` until the relay of
   the pump has answered once.
+
+### Writing the schedules
+
+```http
+POST /home/heating/rooms/living%20room/heaters/radiator/schedules
+{"days": ["SATURDAY", "SUNDAY"], "startTime": "09:00", "endTime": "22:00", "temperature": 21.0}
+```
+
+answers `201` with `{"id": 31, "room": "living room", "heater": "radiator", "days": [...],
+"startTime": "09:00:00", "endTime": "22:00:00", "temperature": 21.0, "enabled": true}` - the times
+written as `GET /rooms` writes them. `PUT /schedules/{id}` takes the same body. The rules
+(`ScheduleRules`, copied by the dashboard):
+
+- every field is required, nothing has a default;
+- `days`: at least one, the constant names `MONDAY` … `SUNDAY`, none twice;
+- `startTime` / `endTime`: `HH:mm`, the start before the end - a window never runs across midnight;
+- `temperature`: 5 to 30 °C in steps of 0.5;
+- no window of the same heater on a day in common may overlap it, a disabled one included; windows
+  that touch (08:00-17:00 and 17:00-22:00) are allowed - both ends are exclusive.
+
+A broken rule is a `400` with the code `INVALID_SCHEDULE` and the reason in `details`; an unknown id
+is a `404` `NOT_FOUND_SCHEDULE`; a heater the room does not have or the service does not drive (the
+radiator of the sanctum) a `404` `NOT_FOUND_HEATER`; an unknown room `NOT_FOUND_ROOM`. A write
+answers once the heaters hold it.
 
 ### Temperature history of a room
 

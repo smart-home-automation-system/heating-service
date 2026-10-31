@@ -16,6 +16,6 @@ class HeatingErrorIdTest {
     @Test
     void should_keep_the_codes_callers_rely_on() {
         assertThat(Arrays.stream(HeatingErrorId.values()).map(ErrorId::codeOf))
-            .containsExactlyInAnyOrder("NOT_FOUND_ROOM");
+            .containsExactlyInAnyOrder("NOT_FOUND_ROOM", "NOT_FOUND_HEATER", "NOT_FOUND_SCHEDULE", "INVALID_SCHEDULE");
     }
 }
