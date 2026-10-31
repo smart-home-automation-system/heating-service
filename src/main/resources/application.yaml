@@ -121,7 +121,8 @@ device:
 # seconds
 internal:
   service:
-    # the device registry: the opening sensors of the rooms and the BTHome gateways that hear them
+    # the device registry: the opening sensors of the rooms and the BTHome gateways that hear them;
+    # the calendar of the house, whose days off run the Sunday schedules (HAS-358)
     database:
       url: http://database-service:6200
       connect-timeout: 3s

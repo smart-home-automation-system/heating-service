@@ -24,8 +24,8 @@ review - the owner had Claude implement the window hold (HAS-232) and the decisi
 - Is called by: `boiler-service` (`GET /home/heating/status/active`) and, through
   `api-gateway-service`, by whoever switches the heating on and off (`/home/heating`).
 - Calls: the Shelly relays on the LAN over HTTP, PostgreSQL, `database-service` (the device
-  registry: opening sensors and BTHome gateways) and the BTHome gateways (`Shelly.GetComponents`
-  through `ShellyRpcClient` of `shelly-client`).
+  registry: opening sensors and BTHome gateways; the calendar of the house since HAS-358) and the BTHome
+  gateways (`Shelly.GetComponents` through `ShellyRpcClient` of `shelly-client`).
 - Owns its own database, `home-automation-heating` — it got one in HAS-123 because the
   legacy database carried a `V1` migration that no longer matched; never `flyway repair`.
 - Uses libraries: `cholewa-commons`, `smart-home-sdk`, `shelly-client`.
@@ -416,6 +416,20 @@ review - the owner had Claude implement the window hold (HAS-232) and the decisi
     not, or the service does not drive (`RelayConfig.drives` - SANCTUM), is `NOT_FOUND_HEATER`. The codes
     `INVALID_SCHEDULE`, `NOT_FOUND_SCHEDULE` and `NOT_FOUND_HEATER` are wire contract (`HeatingErrorIdTest`),
     answered by `ScheduleExceptionProcessor` at WARN.
+- **A day off on a weekday runs the Sunday schedules** (HAS-358, package `calendar`):
+  - **`Schedule.covers(time, day)` judges the day it is given**, never the weekday of the clock: the
+    control loop (`ScheduleService`) and `GET /rooms` (`RoomMapper`) both take it from
+    `HouseCalendar.scheduleDay(date)` - a `day off` on Monday to Friday is `SUNDAY`, anything else its
+    weekday (a Saturday holiday stays Saturday). The rule relies on every schedule listing Saturday and
+    Sunday together; one for Sunday without Saturday would be the one a holiday runs.
+  - **The calendar is read outside `covers`**: `HouseCalendar.refresh()` asks `CalendarClient` (a copy
+    of blinds-service's, `GET /home/calendar/days?from=&to=`, the type, never the reason) about today
+    once - in the minute decision before the rooms (`DecisionScheduler`) and at the start right after the
+    schedules (`HeatingScheduleLoader`, never fatal) - and keeps a few days around today in memory. A
+    failed read is the weekday with a WARN, asked again after `RETRY_AFTER` (10 min); a date never asked
+    about is its weekday. `refresh()` never fails; a read is bounded by the client (3 s + 5 s).
+  - A new day is known from the first pass after midnight; a reading in the minute before it judges the
+    new date by its weekday - schedules start at 05:00 at the earliest.
 - **Surefire activates the `test` profile for every class** (`spring.profiles.active` in the
   pom), so a test without `@ActiveProfiles` does not fall through to the shared document and
   switch the log output to JSON for the classes that follow.

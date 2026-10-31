@@ -1,18 +1,23 @@
 package cloud.cholewa.heating.service;
 
+import cloud.cholewa.heating.calendar.CalendarClient;
+import cloud.cholewa.heating.calendar.HouseCalendar;
+import cloud.cholewa.heating.calendar.HouseCalendarFixture;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.model.Schedule;
 import cloud.cholewa.heating.model.Temperature;
+import cloud.cholewa.home.model.DayType;
 import cloud.cholewa.home.model.RoomName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.time.Clock;
@@ -25,8 +30,10 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 import static java.time.DayOfWeek.MONDAY;
+import static java.time.DayOfWeek.SATURDAY;
 import static java.time.DayOfWeek.SUNDAY;
 import static java.time.DayOfWeek.THURSDAY;
+import static java.time.DayOfWeek.WEDNESDAY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
@@ -36,8 +43,37 @@ class ScheduleServiceTest {
     @Mock
     private Clock clock;
 
-    @InjectMocks
+    @Mock
+    private CalendarClient calendarClient;
+
     private ScheduleService sut;
+
+    @BeforeEach
+    void setUp() {
+        sut = new ScheduleService(clock, HouseCalendarFixture.weekdays());
+    }
+
+    //HAS-358: a holiday on a Wednesday heats by the Sunday schedule, not by the Wednesday one
+    @Test
+    void should_heat_a_holiday_on_a_weekday_by_the_sunday_schedule() {
+        final LocalDateTime holiday = LocalDateTime.of(2026, 11, 11, 10, 0);
+        final Clock fixed = Clock.fixed(holiday.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault());
+        when(calendarClient.typeOf(holiday.toLocalDate())).thenReturn(Mono.just(DayType.DAY_OFF));
+        final HouseCalendar calendar = new HouseCalendar(calendarClient, fixed);
+        calendar.refresh().as(StepVerifier::create).verifyComplete();
+        final HeaterActor heater = testedHeaterActor(List.of(
+            testedSchedule(LocalTime.of(5, 0), LocalTime.of(8, 0), Set.of(WEDNESDAY), 20.5),
+            testedSchedule(LocalTime.of(9, 0), LocalTime.of(22, 0), Set.of(SATURDAY, SUNDAY), 21.0)));
+
+        new ScheduleService(fixed, calendar)
+            .processSchedule(testedRoom(List.of(heater), Temperature.builder().value(19.8).build()))
+            .as(StepVerifier::create)
+            .expectNextCount(1)
+            .verifyComplete();
+
+        assertThat(heater.isInSchedule()).isTrue();
+        assertThat(heater.getTargetTemperature()).isEqualTo(21.0);
+    }
 
     @Test
     void should_process_schedule_when_has_no_heaters() {

@@ -7,7 +7,6 @@ import lombok.Setter;
 import lombok.Singular;
 
 import java.time.DayOfWeek;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Set;
 
@@ -36,13 +35,14 @@ public class Schedule {
     @Builder.Default
     private boolean enabled = true;
 
-    //whether the schedule is on at that moment, whatever the temperature of the room. Both ends
-    //are exclusive. The one place for this rule: the control loop decides by it (ScheduleService)
-    //and a reader is told by it (RoomMapper)
-    public boolean covers(final LocalDateTime moment) {
+    //whether the schedule is on at that time of a day it judges as `day`, whatever the temperature of the
+    //room. Both ends are exclusive. The day is the one HouseCalendar.scheduleDay gives the date - a day off
+    //on a weekday is Sunday (HAS-358) - never the weekday of the clock alone. The one place for this rule:
+    //the control loop decides by it (ScheduleService) and a reader is told by it (RoomMapper)
+    public boolean covers(final LocalTime time, final DayOfWeek day) {
         return enabled
-            && startTime.isBefore(moment.toLocalTime())
-            && endTime.isAfter(moment.toLocalTime())
-            && days.contains(moment.getDayOfWeek());
+            && startTime.isBefore(time)
+            && endTime.isAfter(time)
+            && days.contains(day);
     }
 }

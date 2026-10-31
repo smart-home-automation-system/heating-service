@@ -103,7 +103,7 @@ class HeatingScheduleWriteTest {
         });
         //the heater holds it already: the next pass of the room - within a minute - heats by it
         assertThat(officeRadiator.getSchedules()).extracting(Schedule::getId).containsExactly(4L, 5L);
-        assertThat(officeRadiator.getSchedules().getLast().covers(LocalDateTime.of(2026, 11, 1, 10, 0))).isTrue();
+        assertThat(officeRadiator.getSchedules().getLast().covers(LocalTime.of(10, 0), SUNDAY)).isTrue();
     }
 
     @Test
@@ -197,10 +197,10 @@ class HeatingScheduleWriteTest {
         sut.enable(4L, false).as(StepVerifier::create).verifyComplete();
         assertThat(table.getFirst().enabled()).isFalse();
         assertThat(table.getFirst().createdAt()).isEqualTo(CREATED);
-        assertThat(officeRadiator.getSchedules().getFirst().covers(saturdayNoon)).isFalse();
+        assertThat(officeRadiator.getSchedules().getFirst().covers(saturdayNoon.toLocalTime(), saturdayNoon.getDayOfWeek())).isFalse();
 
         sut.enable(4L, true).as(StepVerifier::create).verifyComplete();
-        assertThat(officeRadiator.getSchedules().getFirst().covers(saturdayNoon)).isTrue();
+        assertThat(officeRadiator.getSchedules().getFirst().covers(saturdayNoon.toLocalTime(), saturdayNoon.getDayOfWeek())).isTrue();
     }
 
     @Test

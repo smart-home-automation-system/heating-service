@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.service;
 
+import cloud.cholewa.heating.calendar.HouseCalendarFixture;
 import cloud.cholewa.heating.db.model.TemperatureBucket;
 import cloud.cholewa.heating.db.repository.TemperatureRepository;
 import cloud.cholewa.heating.infrastructure.error.RoomNotFoundException;
@@ -43,7 +44,7 @@ class TemperatureHistoryServiceTest {
             .build();
 
         return new TemperatureHistoryService(
-            new RoomService(new Home(List.of(livingRoom)), new RoomMapper(Clock.systemDefaultZone(), WindowSensorsFixture.none())),
+            new RoomService(new Home(List.of(livingRoom)), new RoomMapper(Clock.systemDefaultZone(), WindowSensorsFixture.none(), HouseCalendarFixture.weekdays())),
             temperatureRepository
         );
     }
