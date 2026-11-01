@@ -174,6 +174,10 @@ shelly:
         bathroom_up: 1
         living_room: 0
         bathroom_down: 2
+      # the radiators that are a Shelly Gen1 plug of their own (HAS-361), by room: the address of the plug. Switched by
+      # their schedule and the house switch, never part of what the furnace hears
+      standalone:
+        sanctum: 10.78.30.135
 
 # what has no default in this document: a pod without one of them does not start (cholewa-commons,
 # checked before the first bean is created)
@@ -280,6 +284,9 @@ shelly:
         host: localhost
       up_right:
         host: localhost
+    relay:
+      standalone:
+        sanctum: localhost:1
 
 logbook:
   format:

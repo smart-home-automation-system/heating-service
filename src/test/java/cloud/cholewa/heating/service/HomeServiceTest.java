@@ -45,6 +45,9 @@ class HomeServiceTest {
     @Mock(answer = Answers.RETURNS_SMART_NULLS)
     private FloorPumpService floorPumpService;
 
+    @Mock
+    private cloud.cholewa.heating.config.RelayConfig relayConfig;
+
     @InjectMocks
     private HomeService sut;
 

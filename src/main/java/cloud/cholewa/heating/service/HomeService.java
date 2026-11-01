@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.service;
 
+import cloud.cholewa.heating.config.RelayConfig;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.Home;
 import cloud.cholewa.heating.model.HomeStatus;
@@ -26,6 +27,7 @@ public class HomeService {
     private final ScheduleService scheduleService;
     private final HeatingService heatingService;
     private final FloorPumpService floorPumpService;
+    private final RelayConfig relayConfig;
 
     public Mono<Void> processRoomTemperature(final RoomName roomName, final double temperature) {
         return Flux.fromIterable(home.rooms())
@@ -73,11 +75,12 @@ public class HomeService {
         room.getTemperature().update(temperature, LocalDateTime.now(clock));
     }
 
-    //logged on a change only: the decision of every minute (HAS-352) would otherwise log a line a minute
+    //logged on a change only: the decision of every minute (HAS-352) would otherwise log a line a minute. A standalone
+    //radiator (HAS-361, sanctum) is left out: it heats by itself, and this is what the furnace hears (boiler-service)
     private Mono<Void> determineAnyHeaterActive() {
         return Mono.fromRunnable(() -> home.rooms().stream()
-            .map(Room::getHeaterActors)
-            .flatMap(List::stream)
+            .flatMap(room -> room.getHeaterActors().stream()
+                .filter(actor -> !relayConfig.isStandalone(room.getName(), actor.getType())))
             .map(HeaterActor::isWorking)
             .reduce(Boolean::logicalOr)
             .ifPresentOrElse(

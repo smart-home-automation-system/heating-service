@@ -42,6 +42,7 @@ class HeatingScheduleServiceTest {
     private HeaterActor livingRoomFloor;
     private HeaterActor officeRadiator;
     private HeaterActor sanctumRadiator;
+    private RelayConfig relayConfig;
     private HeatingScheduleService sut;
 
     @BeforeEach
@@ -56,8 +57,9 @@ class HeatingScheduleServiceTest {
             Room.builder().name(RoomName.SANCTUM).heaterActor(sanctumRadiator).build(),
             Room.builder().name(RoomName.LOFT).build()
         ));
-        //as in application.yaml: no relay of SANCTUM, whose radiator is switched outside the service
-        final RelayConfig relayConfig = new RelayConfig();
+        //as in application.yaml before HAS-361: no relay of SANCTUM - a heater the service does not drive; the
+        //standalone radiator is the test of its own below
+        relayConfig = new RelayConfig();
         relayConfig.setHeater(Map.of("living_room", 1, "office", 3));
         relayConfig.setFloor(Map.of("living_room", 0));
         sut = new HeatingScheduleService(home, repository, relayConfig, CLOCK);
@@ -110,6 +112,18 @@ class HeatingScheduleServiceTest {
         assertThat(livingRoomRadiator.getSchedules()).isEmpty();
         assertThat(livingRoomFloor.getSchedules()).isEmpty();
         assertThat(sanctumRadiator.getSchedules()).isEmpty();
+    }
+
+    //HAS-361: the radiator of sanctum is a standalone plug - its stored schedule is loaded into it
+    @Test
+    void should_load_the_schedule_of_the_standalone_radiator() {
+        relayConfig.setStandalone(Map.of("sanctum", "192.0.2.135"));
+        when(repository.findAllByOrderByIdAsc()).thenReturn(Flux.just(
+            row(7L, "sanctum", "radiator", List.of("MONDAY"), 7, 23, "20.5", true)));
+
+        sut.load().as(StepVerifier::create).verifyComplete();
+
+        assertThat(sanctumRadiator.getSchedules()).extracting(Schedule::getId).containsExactly(7L);
     }
 
     //read again, the schedules of a heater are what is stored now - a removed one is gone
