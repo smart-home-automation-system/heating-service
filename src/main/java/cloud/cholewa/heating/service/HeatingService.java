@@ -41,9 +41,9 @@ public class HeatingService {
     //The windows of the room are judged once for the pass, so that every heater of it follows the same
     //decision (HAS-232): a window or a door open for heating.window.hold-after holds them all, the
     //floor included. At every pass of the room - a reading, the decision of every minute or the switch (HAS-352).
-    //Only the heaters this service drives (RelayConfig.drives): the radiator of SANCTUM is switched outside it, and its
-    //reading (HAS-360) ended the pass with "Unknown configuration for room heater". A room with no heater driven here
-    //is answered as it is - never empty, or the reading would end before "any heater active" and the floor pump
+    //Only the heaters this service drives are decided - the radiator of SANCTUM is switched outside it, and since its
+    //thermometer is read (HAS-360) a reading of that room had ended the pass with an unknown relay. A room with no
+    //heater driven here is answered as it is: never empty, or the reading would end before the floor pump
     public Mono<Room> processHeatingRequest(final Room room) {
         return Mono.fromSupplier(() -> windowSensors.windowOf(room.getName()))
             .doOnNext(window -> logHold(room.getName(), window))

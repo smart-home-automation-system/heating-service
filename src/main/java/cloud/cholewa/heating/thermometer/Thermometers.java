@@ -32,18 +32,18 @@ import java.util.stream.Collectors;
 public class Thermometers {
 
     private final DeviceRegistryClient deviceRegistryClient;
-    private final AtomicReference<Map<String, RoomName>> thermometers = new AtomicReference<>(Map.of());
+    private final AtomicReference<Map<String, RoomName>> known = new AtomicReference<>(Map.of());
 
     //the room of the thermometer with this MQTT id, when it is one this service reads
     public Optional<RoomName> roomOf(final String deviceId) {
-        return Optional.ofNullable(deviceId).map(id -> thermometers.get().get(id));
+        return Optional.ofNullable(deviceId).map(id -> known.get().get(id));
     }
 
     public Mono<Void> refresh() {
         return Mono.defer(deviceRegistryClient::getTemperatureSensors)
             .map(Thermometers::read)
             .doOnNext(read -> {
-                final Map<String, RoomName> before = thermometers.getAndSet(read);
+                final Map<String, RoomName> before = known.getAndSet(read);
                 if (!before.equals(read)) {
                     log.info("Shelly thermometers read: {}", read);
                 }

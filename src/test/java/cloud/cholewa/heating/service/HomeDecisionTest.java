@@ -36,6 +36,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 //HAS-352: every room decided without a reading - the real schedule, heating and floor pump services, only the
@@ -192,9 +194,8 @@ class HomeDecisionTest {
 
         assertThat(commands).containsExactly("cinema on");
         assertThat(homeStatus.isAnyHeaterActive()).isTrue();
-        org.mockito.Mockito.verify(shellyClient, org.mockito.Mockito.never()).getHeaterActorStatus(any(),
-            org.mockito.ArgumentMatchers.eq(RoomName.SANCTUM));
-        org.mockito.Mockito.verify(shellyClient).getFloorPumpStatus();
+        verify(shellyClient, never()).getHeaterActorStatus(any(), org.mockito.ArgumentMatchers.eq(RoomName.SANCTUM));
+        verify(shellyClient).getFloorPumpStatus();
     }
 
     private static Room room(final RoomName name, final double temperature, final Schedule schedule) {
