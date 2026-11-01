@@ -71,7 +71,9 @@ class AppConfigTest {
                 new ShellyTimeoutProperties(Duration.ofSeconds(10), Duration.ofMillis(300))
             );
             ShellyClient shellyClient = new ShellyClient(
-                sut.shellyWebClient(WebClient.builder(), httpClient), shellyConfig(mockWebServer));
+                sut.shellyWebClient(WebClient.builder(), httpClient), shellyConfig(mockWebServer), new RelayConfig(),
+                sut.standaloneHeaterClient(WebClient.builder(),
+                    new ShellyTimeoutProperties(Duration.ofSeconds(10), Duration.ofSeconds(5))));
 
             Duration elapsed = shellyClient.getFloorPumpStatus()
                 .as(StepVerifier::create)

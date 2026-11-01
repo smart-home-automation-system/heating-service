@@ -1,5 +1,7 @@
 package cloud.cholewa.heating.config;
 
+import cloud.cholewa.shelly.http.ShellyGen1Client;
+import cloud.cholewa.shelly.http.ShellyTimeouts;
 import io.netty.channel.ChannelOption;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,6 +33,13 @@ public class AppConfig {
         return HttpClient.create(connectionProvider)
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, Math.toIntExact(timeouts.connectTimeout().toMillis()))
             .responseTimeout(timeouts.responseTimeout());
+    }
+
+    //the standalone radiators (HAS-361): a Gen1 plug of its own, with the timeouts of the Pro 4 calls rather than the
+    //defaults of shelly-client; nothing else here uses a Gen1 client
+    @Bean
+    ShellyGen1Client standaloneHeaterClient(final WebClient.Builder builder, final ShellyTimeoutProperties timeouts) {
+        return new ShellyGen1Client(builder, new ShellyTimeouts(timeouts.connectTimeout(), timeouts.responseTimeout()));
     }
 
     @Bean

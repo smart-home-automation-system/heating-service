@@ -67,6 +67,8 @@ class ApplicationYamlTest {
 
                 //the relays of the house, not the dead address of the test document
                 assertThat(environment.getProperty("shelly.actor.port")).isEqualTo("80");
+                //HAS-361: the Plug S Gen1 of the radiator of sanctum
+                assertThat(environment.getProperty("shelly.actor.relay.standalone.sanctum")).isEqualTo("10.78.30.135");
                 assertThat(shellyHosts(environment)).hasSize(4).doesNotContain("localhost", "", null);
                 assertThat(environment.getProperty("database.port")).isEqualTo("5432");
             });
@@ -107,6 +109,7 @@ class ApplicationYamlTest {
                 assertThat(environment.getProperty("database.port")).isEqualTo("1");
                 assertThat(environment.getProperty("shelly.actor.port")).isEqualTo("1");
                 assertThat(shellyHosts(environment)).hasSize(4).containsOnly("localhost");
+                assertThat(environment.getProperty("shelly.actor.relay.standalone.sanctum")).isEqualTo("localhost:1");
                 assertThat(environment.getProperty("spring.flyway.enabled")).isEqualTo("false");
             });
     }

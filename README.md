@@ -43,8 +43,13 @@ temperature sensors of the device registry with a Shelly binding - the Plus H&T 
 window sensors every five minutes. Their `status/temperature:0` on the device queue is a reading of the room
 like one from `amx-service` (stored, decided, in the history and the silence check), their
 `status/humidity:0` the humidity of the room. A room with an Eaton room sensor keeps the Eaton reading; a
-Bluetooth thermometer of a gateway is not read here yet (HAS-364). The radiator of sanctum is switched
-outside this service, so its reading decides nothing there - and no longer ends the pass with an error.
+Bluetooth thermometer of a gateway is not read here yet (HAS-364).
+
+**The radiator of sanctum is a standalone heater** (HAS-361): a Shelly Plug S Gen1 of its own
+(`shelly.actor.relay.standalone.sanctum`), not a relay of a Pro 4. It follows its schedules and the house switch like
+every heater - by the readings of the H&T of the room - but it never counts in what the furnace hears
+(`GET /home/heating/status/active`, polled by `boiler-service`), nor for the floor pump. Its schedules are written
+through the API and the dashboard editor like the others.
 
 **The heating schedules are stored in Postgres** (table `heating_schedule`, HAS-355): per heater
 the days, the hours and the temperature, and whether the schedule is enabled. They are read into
@@ -199,8 +204,7 @@ they ask neither a device nor the database.
   commanded only when it has to change and its state read every five minutes, so a quiet minute calls
   no device.
 - `heatingEnabled` says whether any heater of the room was working at the end of the last
-  control pass that reached its heaters. For `sanctum`, whose radiator is switched outside this
-  service, and for a room without a heater, it is never there.
+  control pass that reached its heaters. For a room without a heater it is never there.
 - `working` is what the relay last reported and `updatedAt` when: a relay is asked again only
   with a reading of its room, so both stay as they were while the sensor is silent.
 - `inSchedule` is the decision made with the last reading: a schedule covered that moment
@@ -244,8 +248,8 @@ written as `GET /rooms` writes them. `PUT /schedules/{id}` takes the same body. 
   that touch (08:00-17:00 and 17:00-22:00) are allowed - both ends are exclusive.
 
 A broken rule is a `400` with the code `INVALID_SCHEDULE` and the reason in `details`; an unknown id
-is a `404` `NOT_FOUND_SCHEDULE`; a heater the room does not have or the service does not drive (the
-radiator of the sanctum) a `404` `NOT_FOUND_HEATER`; an unknown room `NOT_FOUND_ROOM`. A write
+is a `404` `NOT_FOUND_SCHEDULE`; a heater the room does not have or the service does not drive a `404`
+`NOT_FOUND_HEATER` (the radiator of the sanctum takes schedules since HAS-361); an unknown room `NOT_FOUND_ROOM`. A write
 answers once the heaters hold it.
 
 ### Temperature history of a room

@@ -36,7 +36,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -65,7 +64,9 @@ class HomeDecisionTest {
     @BeforeEach
     void setUp() {
         when(windowSensors.windowOf(any())).thenReturn(RoomWindow.NO_SENSOR);
-        when(relayConfig.drives(any(), any())).thenAnswer(call -> call.getArgument(0) != RoomName.SANCTUM);
+        //HAS-361: every heater of the test is driven, the radiator of sanctum as a standalone one
+        when(relayConfig.drives(any(), any())).thenReturn(true);
+        when(relayConfig.isStandalone(any(), any())).thenAnswer(call -> call.getArgument(0) == RoomName.SANCTUM);
         when(shellyClient.getHeaterActorStatus(any(), any())).thenAnswer(call ->
             Mono.just(ShellyPro4StatusResponse.builder().output(relays.getOrDefault(call.getArgument(1), false)).build()));
         when(shellyClient.controlHeaterActor(any(), any(), anyBoolean())).thenAnswer(call -> {
@@ -88,7 +89,7 @@ class HomeDecisionTest {
         final Home home = new Home(rooms);
         sut = new HomeService(clock, home, homeStatus, new ScheduleService(clock, HouseCalendarFixture.weekdays()),
             new HeatingService(clock, homeStatus, shellyClient, windowSensors, relayConfig),
-            new FloorPumpService(clock, home, shellyClient));
+            new FloorPumpService(clock, home, shellyClient), relayConfig);
     }
 
     @Test
@@ -182,20 +183,31 @@ class HomeDecisionTest {
         assertThat(commands).containsExactly("cinema on");
     }
 
-    //HAS-360: sanctum has a reading now (its Shelly thermometer) and a radiator this service does not drive - decided
-    //every minute without a device call and without ending the pass: the other rooms and the floor pump still go
+    //HAS-361: the standalone radiator of sanctum follows its schedule like every heater - but the furnace never hears it
     @Test
-    void should_decide_a_room_with_a_heater_not_driven_here_without_ending_the_pass() {
-        build(List.of(room(RoomName.SANCTUM, 17.0, schedule(LocalTime.of(0, 0), LocalTime.of(23, 59), 21.0)), cinema));
+    void should_drive_the_standalone_radiator_without_it_ever_making_a_heater_active() {
+        build(List.of(room(RoomName.SANCTUM, 17.0, schedule(LocalTime.of(0, 0), LocalTime.of(23, 59), 21.0)), livia));
         homeStatus.setEnabledHomeHeatingSystem(true);
         clock.set(MONDAY_0457.withHour(12));
 
         sut.decideRooms().as(StepVerifier::create).verifyComplete();
 
-        assertThat(commands).containsExactly("cinema on");
-        assertThat(homeStatus.isAnyHeaterActive()).isTrue();
-        verify(shellyClient, never()).getHeaterActorStatus(any(), org.mockito.ArgumentMatchers.eq(RoomName.SANCTUM));
+        assertThat(commands).containsExactly("sanctum on");
+        assertThat(homeStatus.isAnyHeaterActive()).isFalse();
         verify(shellyClient).getFloorPumpStatus();
+    }
+
+    //HAS-361: the house switch switches the standalone radiator off like every other heater
+    @Test
+    void should_switch_the_standalone_radiator_off_with_the_house() {
+        build(List.of(room(RoomName.SANCTUM, 17.0, schedule(LocalTime.of(0, 0), LocalTime.of(23, 59), 21.0))));
+        relays.put(RoomName.SANCTUM, true);
+        homeStatus.setEnabledHomeHeatingSystem(false);
+        clock.set(MONDAY_0457.withHour(12));
+
+        sut.decideRooms().as(StepVerifier::create).verifyComplete();
+
+        assertThat(commands).containsExactly("sanctum off");
     }
 
     private static Room room(final RoomName name, final double temperature, final Schedule schedule) {

@@ -10,8 +10,8 @@ Part of the smart-home-automation-system organization — org-wide conventions, 
 repository map and working rules come from the workspace-level context
 (`organization-repository/claude/organization.md`). The user writes the code in this
 repository themselves; Claude's default role here is analysis, code review and security
-review - the owner had Claude implement the window hold (HAS-232), the decision of every room (HAS-352) and the
-Shelly thermometers (HAS-360).
+review - the owner had Claude implement the window hold (HAS-232), the decision of every room (HAS-352), the
+Shelly thermometers (HAS-360) and the standalone radiator of sanctum (HAS-361).
 
 ## Role in the system
 
@@ -233,16 +233,10 @@ Shelly thermometers (HAS-360).
   `anyHeaterActive` and the floor pump. Before, one actor cancelled the rest and the pass ended
   there; harmless while a slow relay merely answered late, not once slow became an error.
   Only a `BoilerException` is skipped: anything else — a room missing from `ShellyConfig` or
-  the relay map — still ends the pass, and `HomeService` logs why. One room is in that state
-  today: SANCTUM has a radiator of its own, but it is driven outside these services — for now
-  by a scene in the Shelly cloud, from the temperature sensor of that room (owner,
-  2026-10-06). `HomeConfig` models the radiator as an actor while `ShellyConfig` and the
-  relay map have no entry for it, deliberately: this service must not switch it. A SANCTUM
-  reading reaching the listener ended its pass with "Unknown configuration for room heater" until
-  HAS-360: since then `HeatingService.processHeatingRequest` decides only the heaters of
-  `RelayConfig.drives` and answers a room with none as it is (`defaultIfEmpty`), so its pass
-  goes on to "any heater active" and the floor pump - do not "fix" it by adding a relay entry
-  (HAS-361 gives the radiator a standalone actor of its own).
+  the relay map — still ends the pass, and `HomeService` logs why. A heater neither a relay nor a
+  standalone radiator (below) is not driven at all: `HeatingService.processHeatingRequest` decides only
+  the heaters of `RelayConfig.drives` and answers a room with none as it is (`defaultIfEmpty`, HAS-360),
+  so its pass goes on to "any heater active" and the floor pump.
   What to know about the skip:
   - State is written only from a device response, never from the intent, so a skipped actor
     keeps what it last reported. **That value can be old, and it still feeds
@@ -356,6 +350,21 @@ Shelly thermometers (HAS-360).
     the values of `state` are those of `blinds-service` - the dashboard copies them.
   - The Gen1 Door/Window 2 of the sauna entrance is out (owner, 2026-10-17, as in HAS-290): no
     `/events/gen1` here. The static `OpeningSensor` / `OpeningType` of `HomeConfig` are gone.
+- **The radiator of sanctum is a standalone heater** (HAS-361; until then a scene in the Shelly cloud switched it
+  from the H&T of the room, owner 2026-10-06): a Shelly Plug S Gen1 of its own, `shelly.actor.relay.standalone`
+  (room -> address, `RelayConfig.isStandalone` / `standaloneAddress`), not a relay of a Pro 4. What to keep:
+  - **Driven like every heater**: `RelayConfig.drives` is true for it, so its schedules are stored, loaded and
+    written through the API, the rule of every room decides it (in schedule and below the target, no hysteresis),
+    every minute and on the switch - the house switch switches it off (`HomeDecisionTest`).
+  - **Never what the furnace hears**: `HomeService.determineAnyHeaterActive` leaves it out, so
+    `GET /status/active` (boiler-service) never sees it - the only place it could touch the furnace; the floor
+    pump counts FLOOR actors only. `heatingEnabled` of the room does follow it.
+  - **Read and switched through `ShellyGen1Client`** (`/relay/0`, `ShellyClient`): its own bean
+    `standaloneHeaterClient` with the timeouts of the Pro 4 calls (`AppConfig`), its answer told as a Pro 4
+    relay; a plug that answers no `ison` is a failed call (`BoilerException`), never "off". The test document
+    points it at `localhost:1`.
+  - The heater switches with the readings of the H&T (every two hours or on a change) - the cloud scene had the
+    same limit; the scene is disabled, not removed, by the owner after the deploy (as with the lights).
 - **A room without an Eaton room sensor is read from its Shelly thermometer** (HAS-360, package
   `thermometer`): `Thermometers` reads the switched-on `temperature sensor` devices of the registry
   with the window sensors (`WindowSensorsRefresh`, every 5 min; a failed read keeps the last) and keeps
@@ -401,8 +410,8 @@ Shelly thermometers (HAS-360).
     out of schedule. **Fatal when it fails** (three tries, 30 s), as the heating switch is: a pod without
     its schedules would hold every room cold, so the rollout stops at it.
   - **A row this version cannot place is skipped with a WARN**, the others load: a room or heater the
-    house does not have, one this service does not drive (`RelayConfig.drives` - the radiator of `SANCTUM`, switched
-    outside: a schedule there would make the loop drive a relay it has no entry for), a name or a day it
+    house does not have, one this service does not drive (`RelayConfig.drives` - neither a relay nor a standalone
+    radiator: a schedule there would make the loop drive a relay it has no entry for), a name or a day it
     does not know. A heater without a row is never in a schedule.
   - **`enabled`**: a disabled schedule is listed in `GET /rooms` and `Schedule.covers` is false for it -
     still the one rule. `ScheduleType` is `HEATING` alone (`COOLING` was never used); the table has no type.
@@ -430,7 +439,8 @@ Shelly thermometers (HAS-360).
     only: the two pods of a rolling deploy are not written to at once (one writer at a time - the
     dashboard or Bruno).
   - A heater is found as the reads find a room (its name in any case) and by its type; one the room has
-    not, or the service does not drive (`RelayConfig.drives` - SANCTUM), is `NOT_FOUND_HEATER`. The codes
+    not, or the service does not drive (`RelayConfig.drives`), is `NOT_FOUND_HEATER` - the radiator of SANCTUM was until
+    HAS-361. The codes
     `INVALID_SCHEDULE`, `NOT_FOUND_SCHEDULE` and `NOT_FOUND_HEATER` are wire contract (`HeatingErrorIdTest`),
     answered by `ScheduleExceptionProcessor` at WARN.
 - **A day off on a weekday runs the Sunday schedules** (HAS-358, package `calendar`):

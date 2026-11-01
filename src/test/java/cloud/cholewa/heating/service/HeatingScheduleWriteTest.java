@@ -74,12 +74,15 @@ class HeatingScheduleWriteTest {
                 .build(),
             Room.builder().name(RoomName.OFFICE).heaterActor(officeRadiator).build(),
             Room.builder().name(RoomName.SANCTUM).heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR).build()).build(),
+            //a radiator with no relay and no standalone address: one the service does not drive
+            Room.builder().name(RoomName.GARDEN).heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR).build()).build(),
             Room.builder().name(RoomName.LOFT).build()
         ));
-        //as in application.yaml: no relay of SANCTUM, whose radiator is switched outside the service
+        //as in application.yaml: the radiator of SANCTUM a standalone plug (HAS-361)
         final RelayConfig relayConfig = new RelayConfig();
         relayConfig.setHeater(Map.of("living_room", 1, "office", 3));
         relayConfig.setFloor(Map.of("living_room", 0));
+        relayConfig.setStandalone(Map.of("sanctum", "192.0.2.135"));
         sut = new HeatingScheduleService(home, repository, relayConfig, CLOCK);
     }
 
@@ -126,10 +129,21 @@ class HeatingScheduleWriteTest {
             .verifyError(RoomNotFoundException.class);
     }
 
-    //SANCTUM's radiator is switched outside the service, LOFT has none, and the office has no floor heating
+    //HAS-361: the standalone radiator of sanctum takes a schedule like every heater - NOT_FOUND_HEATER until then
+    @Test
+    void should_accept_a_schedule_of_the_standalone_radiator_of_sanctum() {
+        backTheRepositoryWithTheTable();
+
+        sut.create("sanctum", "radiator", body(List.of("MONDAY"), "16:00", "22:00", "21"))
+            .as(StepVerifier::create)
+            .assertNext(created -> assertThat(created.room()).isEqualTo(RoomName.SANCTUM))
+            .verifyComplete();
+    }
+
+    //the GARDEN radiator has no relay, LOFT has none, and the office has no floor heating
     @Test
     void should_refuse_a_heater_the_room_has_not_or_the_service_does_not_drive() {
-        assertHeaterNotFound("sanctum", "radiator");
+        assertHeaterNotFound("garden", "radiator");
         assertHeaterNotFound("loft", "radiator");
         assertHeaterNotFound("office", "floor");
         assertHeaterNotFound("office", "towel rail");
