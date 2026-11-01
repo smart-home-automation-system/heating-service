@@ -1,6 +1,7 @@
 package cloud.cholewa.heating.service;
 
 import cloud.cholewa.heating.client.ShellyClient;
+import cloud.cholewa.heating.config.RelayConfig;
 import cloud.cholewa.heating.infrastructure.error.BoilerException;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.HomeStatus;
@@ -29,6 +30,7 @@ public class HeatingService {
     private final HomeStatus homeStatus;
     private final ShellyClient shellyClient;
     private final WindowSensors windowSensors;
+    private final RelayConfig relayConfig;
 
     public Mono<SystemActiveReply> queryHeatingSystemEnabledAndActive() {
         return Mono.just(SystemActiveReply.builder()
@@ -36,20 +38,28 @@ public class HeatingService {
             .build());
     }
 
-    //The windows of the room are judged once for the pass, so that every heater of it follows the same
-    //decision (HAS-232): a window or a door open for heating.window.hold-after holds them all, the
-    //floor included. At every pass of the room - a reading, the decision of every minute or the switch (HAS-352)
+    /**
+     * The windows of the room are judged once for the pass, so that every heater of it follows the same decision
+     * (HAS-232): a window or a door open for heating.window.hold-after holds them all, the floor included. At every
+     * pass of the room - a reading, the decision of every minute or the switch (HAS-352).
+     * <p>
+     * Only the heaters this service drives are decided - the radiator of SANCTUM is switched outside it, and since its
+     * thermometer is read (HAS-360) a reading of that room had ended the pass with an unknown relay. A room with no
+     * heater driven here is answered as it is: never empty, or the reading would end before the floor pump.
+     */
     public Mono<Room> processHeatingRequest(final Room room) {
         return Mono.fromSupplier(() -> windowSensors.windowOf(room.getName()))
             .doOnNext(window -> logHold(room.getName(), window))
             .flatMapMany(window -> Flux.fromIterable(room.getHeaterActors())
+                .filter(heaterActor -> relayConfig.drives(room.getName(), heaterActor.getType()))
                 .flatMap(heaterActor -> handleHeaterActor(room.getName(), heaterActor, window.hold())))
             .mapNotNull(HeaterActor::isWorking)
             .reduce(Boolean::logicalOr)
             .map(heatingEnabled -> {
                 room.setRoomHeatingEnabled(heatingEnabled);
                 return room;
-            });
+            })
+            .defaultIfEmpty(room);
     }
 
     /*

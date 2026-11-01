@@ -1,9 +1,11 @@
 package cloud.cholewa.heating.service;
 
 import cloud.cholewa.heating.client.ShellyClient;
+import cloud.cholewa.heating.config.RelayConfig;
 import cloud.cholewa.heating.infrastructure.error.BoilerException;
 import cloud.cholewa.heating.infrastructure.error.HeatingException;
 import cloud.cholewa.heating.model.HeaterActor;
+import cloud.cholewa.heating.model.HeaterType;
 import cloud.cholewa.heating.model.HomeStatus;
 import cloud.cholewa.heating.model.Room;
 import cloud.cholewa.heating.window.RoomWindow;
@@ -53,6 +55,8 @@ class HeatingServiceTest {
     private HomeStatus homeStatus;
     @Mock
     private WindowSensors windowSensors;
+    @Mock
+    private RelayConfig relayConfig;
 
     @InjectMocks
     HeatingService sut;
@@ -61,6 +65,23 @@ class HeatingServiceTest {
     @BeforeEach
     void noWindowSensors() {
         lenient().when(windowSensors.windowOf(any())).thenReturn(RoomWindow.NO_SENSOR);
+        lenient().when(relayConfig.drives(any(), any())).thenReturn(true);
+    }
+
+    //HAS-360: the radiator of SANCTUM is switched outside this service - its reading decides nothing there, asks no
+    //device and answers the room, so the pass goes on to "any heater active" and the floor pump
+    @Test
+    void should_answer_a_room_whose_heaters_this_service_does_not_drive_as_it_is() {
+        when(relayConfig.drives(RoomName.SANCTUM, HeaterType.RADIATOR)).thenReturn(false);
+        final Room sanctum = Room.builder().name(RoomName.SANCTUM)
+            .heaterActor(HeaterActor.builder().type(HeaterType.RADIATOR).build()).build();
+
+        sut.processHeatingRequest(sanctum).as(StepVerifier::create)
+            .expectNext(sanctum)
+            .verifyComplete();
+
+        verifyNoMoreInteractions(shellyClient);
+        assertThat(sanctum.isHeatingDecided()).isFalse();
     }
 
     @Test

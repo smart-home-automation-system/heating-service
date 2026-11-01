@@ -54,7 +54,11 @@ public class RoomMapper {
     }
 
     private RoomReply.Reading toReading(final Humidity humidity) {
-        return humidity == null ? null : toReading(humidity.getValue(), humidity.getUpdatedAt());
+        if (humidity == null) {
+            return null;
+        }
+        final Humidity reading = humidity.snapshot();
+        return toReading(reading.getValue(), reading.getUpdatedAt());
     }
 
     private RoomReply.Reading toReading(final double value, final LocalDateTime updatedAt) {

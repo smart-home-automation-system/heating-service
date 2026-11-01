@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.rabbit;
 
+import cloud.cholewa.heating.thermometer.ThermometerEventRouter;
 import cloud.cholewa.heating.window.WindowEventRouter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,7 +11,7 @@ import reactor.core.publisher.Mono;
 
 //Every event of every device arrives here (HAS-232) - device.<env>.heating on /device, bound with
 //"#", about 130 a minute - over the third connection of DeviceRabbitConfig. WindowEventRouter picks
-//the windows by the routing key. Each one is logged at DEBUG only - at INFO the volume alone would
+//the windows by the routing key, ThermometerEventRouter the Shelly thermometers (HAS-360). Each one is logged at DEBUG only - at INFO the volume alone would
 //drown the log
 @Slf4j
 @Service
@@ -18,6 +19,7 @@ import reactor.core.publisher.Mono;
 public class DeviceEventConsumer {
 
     private final WindowEventRouter windowEventRouter;
+    private final ThermometerEventRouter thermometerEventRouter;
 
     @RabbitListener(queues = "${device.queue}", containerFactory = "deviceListenerContainerFactory")
     Mono<Void> consume(final Message message) {
@@ -25,6 +27,7 @@ public class DeviceEventConsumer {
 
         return Mono.fromRunnable(() -> log.debug("Device event received with routing key: {}", routingKey))
             .then(Mono.defer(() -> windowEventRouter.route(routingKey, message.getBody())))
+            .then(Mono.defer(() -> thermometerEventRouter.route(routingKey, message.getBody())))
             //an event that cannot be handled is logged and acknowledged: a Mono that errors is
             //redelivered at once, which for a message that fails the same way is a tight loop
             .onErrorResume(throwable -> {
