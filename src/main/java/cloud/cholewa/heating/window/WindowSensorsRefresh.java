@@ -1,6 +1,7 @@
 package cloud.cholewa.heating.window;
 
 import cloud.cholewa.commons.scheduling.ScheduledPass;
+import cloud.cholewa.heating.thermometer.Thermometers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -23,10 +24,14 @@ public class WindowSensorsRefresh {
 
     private final WindowSensors windowSensors;
     private final OpeningSensorMonitor openingSensorMonitor;
+    private final Thermometers thermometers;
 
     @Scheduled(initialDelayString = "PT0S", fixedDelayString = "PT5M")
     Mono<Void> refresh() {
-        return ScheduledPass.bounded("heating window sensors", LIMIT, () -> windowSensors.refresh()
+        //the Shelly thermometers of the registry first (HAS-360): one call to database-service, so a gateway that hangs
+        //the window sensors to the bound never keeps them stale; a failed read keeps the last ones
+        return ScheduledPass.bounded("heating window sensors", LIMIT, () -> thermometers.refresh()
+            .then(windowSensors.refresh())
             .then(openingSensorMonitor.check())
             .onErrorResume(throwable -> {
                 log.error("Error while checking the window sensors", throwable);

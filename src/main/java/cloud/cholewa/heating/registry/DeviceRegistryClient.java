@@ -14,7 +14,8 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Optional;
 
-//The opening sensors and the BTHome gateways of the device registry of database-service (HAS-232),
+//The opening sensors, the BTHome gateways (HAS-232) and the temperature sensors (HAS-360) of the device registry of
+//database-service,
 //a copy of the client of blinds-service. What a failing database-service says goes to the log, never
 //further; no body at all, or one that is not a list, is a failed call - never an empty registry,
 //which would let every window of the house go
@@ -34,6 +35,11 @@ public class DeviceRegistryClient {
     //every opening sensor, switched on or off - the window sensors decide what a switched-off one is
     public Mono<List<SmartDevice>> getOpeningSensors() {
         return devices(DeviceKind.OPENING_SENSOR, null);
+    }
+
+    //every room thermometer, switched on or off (HAS-360): the Eaton room sensors and the Shelly thermometers
+    public Mono<List<SmartDevice>> getTemperatureSensors() {
+        return devices(DeviceKind.TEMPERATURE_SENSOR, null);
     }
 
     public Mono<List<SmartDevice>> getBthomeGateways() {

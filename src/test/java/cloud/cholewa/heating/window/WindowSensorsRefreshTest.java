@@ -1,5 +1,7 @@
 package cloud.cholewa.heating.window;
 
+import cloud.cholewa.heating.thermometer.Thermometers;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -17,7 +19,24 @@ class WindowSensorsRefreshTest {
 
     private final WindowSensors windowSensors = mock(WindowSensors.class);
     private final OpeningSensorMonitor openingSensorMonitor = mock(OpeningSensorMonitor.class);
-    private final WindowSensorsRefresh sut = new WindowSensorsRefresh(windowSensors, openingSensorMonitor);
+    private final Thermometers thermometers = mock(Thermometers.class);
+    private final WindowSensorsRefresh sut = new WindowSensorsRefresh(windowSensors, openingSensorMonitor, thermometers);
+
+    @BeforeEach
+    void setUp() {
+        when(thermometers.refresh()).thenReturn(Mono.empty());
+    }
+
+    //HAS-360: the thermometers are read with the window sensors, also when the windows failed
+    @Test
+    void should_read_the_thermometers_with_the_window_sensors() {
+        when(windowSensors.refresh()).thenReturn(Mono.error(new IllegalStateException("registry down")));
+        when(openingSensorMonitor.check()).thenReturn(Mono.empty());
+
+        sut.refresh().as(StepVerifier::create).verifyComplete();
+
+        verify(thermometers).refresh();
+    }
 
     @Test
     void should_complete_when_the_read_fails() {

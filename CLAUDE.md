@@ -10,21 +10,23 @@ Part of the smart-home-automation-system organization — org-wide conventions, 
 repository map and working rules come from the workspace-level context
 (`organization-repository/claude/organization.md`). The user writes the code in this
 repository themselves; Claude's default role here is analysis, code review and security
-review - the owner had Claude implement the window hold (HAS-232) and the decision of every room (HAS-352).
+review - the owner had Claude implement the window hold (HAS-232), the decision of every room (HAS-352) and the
+Shelly thermometers (HAS-360).
 
 ## Role in the system
 
 - Consumes: `temperature.prod.heating` on the `/temperature` virtual host
   (`TemperatureMessage` from `smart-home-sdk`), published by `amx-service`; and since HAS-232
   `device.prod.heating` on `/device` - the events of every device, of which only the window
-  sensors are read.
+  sensors and, since HAS-360, the Shelly thermometers are read.
 - Publishes: plain-text notifications about silent temperature and window sensors to the headers exchange
   `notification` on the `/notification` virtual host (HAS-94), consumed by
   `notification-service` and posted on Discord.
 - Is called by: `boiler-service` (`GET /home/heating/status/active`) and, through
   `api-gateway-service`, by whoever switches the heating on and off (`/home/heating`).
 - Calls: the Shelly relays on the LAN over HTTP, PostgreSQL, `database-service` (the device
-  registry: opening sensors and BTHome gateways; the calendar of the house since HAS-358) and the BTHome
+  registry: opening sensors and BTHome gateways, the temperature sensors since HAS-360; the calendar of the house
+  since HAS-358) and the BTHome
   gateways (`Shelly.GetComponents` through `ShellyRpcClient` of `shelly-client`).
 - Owns its own database, `home-automation-heating` — it got one in HAS-123 because the
   legacy database carried a `V1` migration that no longer matched; never `flyway repair`.
@@ -39,8 +41,8 @@ review - the owner had Claude implement the window hold (HAS-232) and the decisi
   `localhost:6005` and a dummy for the three passwords of the broker, so it starts without
   `rabbitmq-password`, `notification-rabbitmq-password` and `device-rabbitmq-password` - under
   `home` alone the start is refused without them (below).
-- Spring Boot **4.1.2** (HAS-303; 4.1.1 since HAS-151, 2026-10-03) with logbook 4.2.0; `cholewa-commons` 1.12.0,
-  `smart-home-sdk` 1.15.0, `shelly-client` 2.3.0 since HAS-352; own libraries on the
+- Spring Boot **4.1.2** (HAS-303; 4.1.1 since HAS-151, 2026-10-03) with logbook 4.2.0; `cholewa-commons` 1.13.0
+  (HAS-360), `smart-home-sdk` 1.15.0, `shelly-client` 2.3.0 since HAS-352; own libraries on the
   latest releases, as the org rule asks of every service task.
 
 ## Specifics
@@ -236,8 +238,11 @@ review - the owner had Claude implement the window hold (HAS-232) and the decisi
   by a scene in the Shelly cloud, from the temperature sensor of that room (owner,
   2026-10-06). `HomeConfig` models the radiator as an actor while `ShellyConfig` and the
   relay map have no entry for it, deliberately: this service must not switch it. A SANCTUM
-  reading reaching the listener would therefore end its pass with "Unknown configuration for
-  room heater" — do not "fix" that by adding a relay entry.
+  reading reaching the listener ended its pass with "Unknown configuration for room heater" until
+  HAS-360: since then `HeatingService.processHeatingRequest` decides only the heaters of
+  `RelayConfig.drives` and answers a room with none as it is (`defaultIfEmpty`), so its pass
+  goes on to "any heater active" and the floor pump - do not "fix" it by adding a relay entry
+  (HAS-361 gives the radiator a standalone actor of its own).
   What to know about the skip:
   - State is written only from a device response, never from the intent, so a skipped actor
     keeps what it last reported. **That value can be old, and it still feeds
@@ -351,6 +356,18 @@ review - the owner had Claude implement the window hold (HAS-232) and the decisi
     the values of `state` are those of `blinds-service` - the dashboard copies them.
   - The Gen1 Door/Window 2 of the sauna entrance is out (owner, 2026-10-17, as in HAS-290): no
     `/events/gen1` here. The static `OpeningSensor` / `OpeningType` of `HomeConfig` are gone.
+- **A room without an Eaton room sensor is read from its Shelly thermometer** (HAS-360, package
+  `thermometer`): `Thermometers` reads the switched-on `temperature sensor` devices of the registry
+  with the window sensors (`WindowSensorsRefresh`, every 5 min; a failed read keeps the last) and keeps
+  deviceId -> room of those with a Shelly binding, **in a room with no Eaton room sensor** - a room with
+  both keeps the Eaton reading, one series in the history (`ThermometersTest`); two in a room, the
+  lower registry id. A `bthome` one (a BLU H&T) is skipped without a word - HAS-364 reads it through
+  its gateway. `ThermometerEventRouter` picks `<deviceId>.status.temperature:0` / `humidity:0` of a
+  known one by the routing key before a body is read: the temperature a `TemperatureMessage` of the
+  room with the house time (`TemperatureService.handleTemperature`, as an Eaton reading), the
+  humidity `Humidity.update` (one reading, `snapshot` for `RoomMapper`). A status without a value is
+  skipped. The Plus H&T of sanctum (registry 104) publishes at every wake-up - every two hours or on
+  a change - so the 24 h silence check covers it.
 - **Every room is decided every minute and on the switch** (HAS-352, `HomeService.decideRooms`). A room
   was decided only when its reading came (about every 10 minutes): on 2026-10-30 two rooms started nine
   minutes after the switch, a switched-off house kept its relays on, and a schedule boundary waited for the

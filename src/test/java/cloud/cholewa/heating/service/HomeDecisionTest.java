@@ -49,6 +49,8 @@ class HomeDecisionTest {
     private final HomeStatus homeStatus = new HomeStatus();
     private final ShellyClient shellyClient = mock(ShellyClient.class);
     private final WindowSensors windowSensors = mock(WindowSensors.class);
+    //every heater of the test is driven here but the radiator of sanctum, as in application.yaml
+    private final cloud.cholewa.heating.config.RelayConfig relayConfig = mock(cloud.cholewa.heating.config.RelayConfig.class);
     /** What each relay was last told, by room. */
     private final Map<RoomName, Boolean> relays = new HashMap<>();
     private final List<String> commands = new ArrayList<>();
@@ -61,6 +63,7 @@ class HomeDecisionTest {
     @BeforeEach
     void setUp() {
         when(windowSensors.windowOf(any())).thenReturn(RoomWindow.NO_SENSOR);
+        when(relayConfig.drives(any(), any())).thenAnswer(call -> call.getArgument(0) != RoomName.SANCTUM);
         when(shellyClient.getHeaterActorStatus(any(), any())).thenAnswer(call ->
             Mono.just(ShellyPro4StatusResponse.builder().output(relays.getOrDefault(call.getArgument(1), false)).build()));
         when(shellyClient.controlHeaterActor(any(), any(), anyBoolean())).thenAnswer(call -> {
@@ -82,7 +85,7 @@ class HomeDecisionTest {
     private void build(final List<Room> rooms) {
         final Home home = new Home(rooms);
         sut = new HomeService(clock, home, homeStatus, new ScheduleService(clock, HouseCalendarFixture.weekdays()),
-            new HeatingService(clock, homeStatus, shellyClient, windowSensors),
+            new HeatingService(clock, homeStatus, shellyClient, windowSensors, relayConfig),
             new FloorPumpService(clock, home, shellyClient));
     }
 
@@ -175,6 +178,23 @@ class HomeDecisionTest {
         sut.decideRooms().as(StepVerifier::create).verifyComplete();
 
         assertThat(commands).containsExactly("cinema on");
+    }
+
+    //HAS-360: sanctum has a reading now (its Shelly thermometer) and a radiator this service does not drive - decided
+    //every minute without a device call and without ending the pass: the other rooms and the floor pump still go
+    @Test
+    void should_decide_a_room_with_a_heater_not_driven_here_without_ending_the_pass() {
+        build(List.of(room(RoomName.SANCTUM, 17.0, schedule(LocalTime.of(0, 0), LocalTime.of(23, 59), 21.0)), cinema));
+        homeStatus.setEnabledHomeHeatingSystem(true);
+        clock.set(MONDAY_0457.withHour(12));
+
+        sut.decideRooms().as(StepVerifier::create).verifyComplete();
+
+        assertThat(commands).containsExactly("cinema on");
+        assertThat(homeStatus.isAnyHeaterActive()).isTrue();
+        org.mockito.Mockito.verify(shellyClient, org.mockito.Mockito.never()).getHeaterActorStatus(any(),
+            org.mockito.ArgumentMatchers.eq(RoomName.SANCTUM));
+        org.mockito.Mockito.verify(shellyClient).getFloorPumpStatus();
     }
 
     private static Room room(final RoomName name, final double temperature, final Schedule schedule) {

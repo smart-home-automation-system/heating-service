@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.rabbit;
 
+import cloud.cholewa.heating.thermometer.ThermometerEventRouter;
 import cloud.cholewa.heating.window.WindowEventRouter;
 import cloud.cholewa.shelly.codec.ShellyDecodeException;
 import org.junit.jupiter.api.Test;
@@ -21,7 +22,13 @@ import static org.mockito.Mockito.when;
 class DeviceEventConsumerTest {
 
     private final WindowEventRouter router = mock(WindowEventRouter.class);
-    private final DeviceEventConsumer consumer = new DeviceEventConsumer(router);
+    private final ThermometerEventRouter thermometerRouter = mock(ThermometerEventRouter.class);
+    private final DeviceEventConsumer consumer = new DeviceEventConsumer(router, thermometerRouter);
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        org.mockito.Mockito.lenient().when(thermometerRouter.route(any(), any())).thenReturn(Mono.empty());
+    }
 
     //an event that completes is acknowledged; one that errored would be redelivered at once
     @ParameterizedTest
@@ -32,6 +39,7 @@ class DeviceEventConsumerTest {
         consumer.consume(message(routingKey)).as(StepVerifier::create).verifyComplete();
 
         verify(router).route(eq(routingKey), any());
+        verify(thermometerRouter).route(eq(routingKey), any());
     }
 
     @Test

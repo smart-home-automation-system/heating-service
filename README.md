@@ -38,6 +38,14 @@ cached and re-read from the device only when it is older than five minutes, so a
 readings does not turn into a burst of device calls. Radiator and floor heaters are handled
 separately — when any floor heater is on, the floor pump is switched on as well.
 
+**A room without an Eaton room sensor is read from its Shelly thermometer** (HAS-360): the switched-on
+temperature sensors of the device registry with a Shelly binding - the Plus H&T of sanctum - read with the
+window sensors every five minutes. Their `status/temperature:0` on the device queue is a reading of the room
+like one from `amx-service` (stored, decided, in the history and the silence check), their
+`status/humidity:0` the humidity of the room. A room with an Eaton room sensor keeps the Eaton reading; a
+Bluetooth thermometer of a gateway is not read here yet (HAS-364). The radiator of sanctum is switched
+outside this service, so its reading decides nothing there - and no longer ends the pass with an error.
+
 **The heating schedules are stored in Postgres** (table `heating_schedule`, HAS-355): per heater
 the days, the hours and the temperature, and whether the schedule is enabled. They are read into
 memory at the start, before the service consumes a reading, and the control loop decides from
@@ -172,7 +180,8 @@ they ask neither a device nor the database.
   is held now (open for `heating.window.hold-after`). The values of `state` are those of the
   window of a blind in `blinds-service`.
 - **A missing field means "not known", never "off" or zero.** `temperature` is missing until
-  the first reading of the room, `humidity` until one is reported (nothing reports it today),
+  the first reading of the room, `humidity` until one is reported (a Shelly thermometer, since HAS-360 -
+  sanctum),
   `working` and `updatedAt` of a heater until its relay has answered, `inSchedule` and
   `heatingEnabled` until a control pass has decided them, `mode` for a room that has none
   configured. `heaters` is always there, empty for a room without a heater. The two
@@ -291,7 +300,7 @@ Kubernetes probes, live on the management port, not on the application one.
 | Direction | Queue / exchange | Virtual host | Payload |
 |---|---|---|---|
 | consumes | queue `temperature.prod.heating` (`temperature.dev.heating` in the `local` profile) | `/temperature` | `cloud.cholewa.home.model.TemperatureMessage` (`smart-home-sdk`) |
-| consumes | queue `device.prod.heating` (`device.dev.heating` in the `local` profile), bound with `#` to `amq.topic` | `/device` | the events of every device; only `<gateway>.status.bthomesensor:<id>` of a known window sensor is read (`{id, value, last_updated_ts}`) |
+| consumes | queue `device.prod.heating` (`device.dev.heating` in the `local` profile), bound with `#` to `amq.topic` | `/device` | the events of every device; only `<gateway>.status.bthomesensor:<id>` of a known window sensor is read (`{id, value, last_updated_ts}`), and `<deviceId>.status.temperature:0` / `humidity:0` of a Shelly thermometer of the registry (`tC`, `rh`, HAS-360) |
 | publishes | exchange `notification` (headers), `category=alert\|info`, `env=prod` (`dev` in the `local` profile), `level=error\|warn\|info` | `/notification` | plain text (`text/plain`, UTF-8) |
 
 Messages are produced by `amx-service`; both sides use `JacksonJsonMessageConverter`. The
