@@ -11,7 +11,7 @@ repository map and working rules come from the workspace-level context
 (`organization-repository/claude/organization.md`). The user writes the code in this
 repository themselves; Claude's default role here is analysis, code review and security
 review - the owner had Claude implement the window hold (HAS-232), the decision of every room (HAS-352), the
-Shelly thermometers (HAS-360, HAS-364) and the standalone radiator of sanctum (HAS-361).
+Shelly thermometers (HAS-360, HAS-364, HAS-368) and the standalone radiator of sanctum (HAS-361).
 
 ## Role in the system
 
@@ -42,7 +42,7 @@ Shelly thermometers (HAS-360, HAS-364) and the standalone radiator of sanctum (H
   `rabbitmq-password`, `notification-rabbitmq-password` and `device-rabbitmq-password` - under
   `home` alone the start is refused without them (below).
 - Spring Boot **4.1.2** (HAS-303; 4.1.1 since HAS-151, 2026-10-03) with logbook 4.2.0; `cholewa-commons` 1.13.0
-  (HAS-360), `smart-home-sdk` 1.15.0, `shelly-client` 2.3.0 since HAS-352; own libraries on the
+  (HAS-360), `smart-home-sdk` 1.15.0, `shelly-client` 2.4.0 since HAS-368 (the add-on sensors of a Gen1 status); own libraries on the
   latest releases, as the org rule asks of every service task.
 
 ## Specifics
@@ -396,6 +396,21 @@ Shelly thermometers (HAS-360, HAS-364) and the standalone radiator of sanctum (H
     within five minutes. Humidity: `Humidity.updateIfNewer`.
   - **A room on its Eaton sensor** logs the BLU temperature at INFO ("not taken: the room keeps its Eaton
     sensor") - every five minutes per bathroom until HAS-365 removes the Eaton sensors 8 / 11.
+- **A Gen1 thermometer is polled** (HAS-368; the Shelly 1 with the temperature add-on of the sauna, 10.78.30.42).
+  What to keep:
+  - **Known by its Shelly binding of generation 1 and its address** (`Thermometers.Known.gen1`, address -> room, the
+    rooms without an Eaton sensor only), read with the others every five minutes; a Gen1 binding has no `deviceId`,
+    so 1.18.0 ignored one and the registry entry could precede the deploy.
+  - `Gen1Thermometers` reads `/status` through the one `ShellyGen1Client` of the service (`standaloneHeaterClient`,
+    the timeouts of the Pro 4 calls) every `heating.thermometer.gen1-poll` (PT1M; seconds, 30 s - 1 h,
+    `ThermometerPropertiesTest`), bounded at 25 s - below the shortest poll. Sensor 0 of `ext_temperature` goes to
+    `ThermometerReadings.temperature` as a reading of now - the Eaton rule and the newer-wins rule of `accept` hold;
+    **the same value only every `REPEAT_AFTER` (10 min)**, a change at once: a poll a minute would otherwise store 1440
+    rows a day (the history buckets are 20 min at least, the silence check 24 h). `ext_humidity` sensor 0 when there
+    is a DHT22.
+  - One device after the other, each with its own `onErrorResume`: no answer or no temperature is a failed read - a
+    WARN at most once an hour per device, an INFO on its return; the last reading of the room holds, and the 24 h
+    silence check covers a dead device.
 - **Every room is decided every minute and on the switch** (HAS-352, `HomeService.decideRooms`). A room
   was decided only when its reading came (about every 10 minutes): on 2026-10-30 two rooms started nine
   minutes after the switch, a switched-off house kept its relays on, and a schedule boundary waited for the
