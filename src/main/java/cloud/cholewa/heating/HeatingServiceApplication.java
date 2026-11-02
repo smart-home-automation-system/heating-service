@@ -6,6 +6,7 @@ import cloud.cholewa.heating.config.NotificationConnectionProperties;
 import cloud.cholewa.heating.config.RelayConfig;
 import cloud.cholewa.heating.config.SensorMonitorProperties;
 import cloud.cholewa.heating.config.ShellyTimeoutProperties;
+import cloud.cholewa.heating.config.ThermometerProperties;
 import cloud.cholewa.heating.config.WindowProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -20,7 +21,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
     ShellyTimeoutProperties.class,
     DeviceConnectionProperties.class,
     InternalServiceProperties.class,
-    WindowProperties.class
+    WindowProperties.class,
+    ThermometerProperties.class
 })
 public class HeatingServiceApplication {
 

@@ -47,7 +47,11 @@ bathrooms, the `bthome` binding): its temperature and humidity components found 
 read, their values taken from that read (the first reading after a start) and from the `bthomesensor` status topics,
 each dated when the gateway heard it - a value not heard for 30 minutes is not taken. A room with an Eaton room
 sensor keeps the Eaton reading (a BLU reading there is logged, not taken); of two thermometers in a room the newer
-reading counts.
+reading counts. Since HAS-368 a **Gen1 thermometer** too - a Shelly 1 with the temperature add-on (the sauna, a Shelly
+binding of generation 1 with its address): it can only be polled, so its `/status` is read every
+`heating.thermometer.gen1-poll` (PT1M; a bare number is seconds, 30 s - 1 h) and sensor 0 of `ext_temperature` is a
+reading of the room of now - the same value again every 10 minutes at most, a change at once; `ext_humidity` with a
+DHT22. A device that does not answer is a WARN at most once an hour, and the last reading holds.
 
 **The radiator of sanctum is a standalone heater** (HAS-361): a Shelly Plug S Gen1 of its own
 (`shelly.actor.relay.standalone.sanctum`), not a relay of a Pro 4. It follows its schedules and the house switch like

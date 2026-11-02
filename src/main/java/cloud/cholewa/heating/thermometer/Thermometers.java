@@ -26,6 +26,8 @@ import java.util.stream.Collectors;
 //- A Wi-Fi thermometer (HAS-360) has a Shelly binding with its MQTT id - the Plus H&T of sanctum.
 //- A BLU H&T (HAS-364) has the bthome binding, its Bluetooth address: it is read through the gateway that hears it
 //  (BluThermometers) - the bathrooms.
+//- A Gen1 thermometer (HAS-368) has a Shelly binding of generation 1 with its address - the Shelly 1 with the
+//  temperature add-on of the sauna: it can only be polled (Gen1Thermometers).
 //- A room with an Eaton room sensor keeps the Eaton reading (one reading a room, the stored history stays one
 //  series) - a switched-off Eaton sensor too, amx-service publishes it all the same. Its Wi-Fi thermometer is not
 //  read at all; its BLU thermometer is mapped (the log shows it), its readings are dropped (accept).
@@ -42,15 +44,22 @@ public class Thermometers {
 
     /**
      * The thermometers of the registry: the Wi-Fi ones by their MQTT id (the rooms without an Eaton sensor only),
-     * the BLU ones by their address in lower case (every room) and the rooms that keep their Eaton sensor.
+     * the BLU ones by their address in lower case (every room), the Gen1 ones by their address (the rooms without an
+     * Eaton sensor only) and the rooms that keep their Eaton sensor.
      */
-    record Known(Map<String, RoomName> wifi, Map<String, RoomName> blu, Set<RoomName> eatonRooms) {
-        static final Known NONE = new Known(Map.of(), Map.of(), Set.of());
+    record Known(Map<String, RoomName> wifi, Map<String, RoomName> blu, Map<String, RoomName> gen1,
+                 Set<RoomName> eatonRooms) {
+        static final Known NONE = new Known(Map.of(), Map.of(), Map.of(), Set.of());
     }
 
     //the room of the Wi-Fi thermometer with this MQTT id, when it is one this service reads
     public Optional<RoomName> roomOf(final String deviceId) {
         return Optional.ofNullable(deviceId).map(id -> known.get().wifi().get(id));
+    }
+
+    //the Gen1 thermometers to poll, by their address (HAS-368)
+    public Map<String, RoomName> gen1() {
+        return known.get().gen1();
     }
 
     //the room of the BLU thermometer with this Bluetooth address
@@ -92,8 +101,8 @@ public class Thermometers {
             .doOnNext(read -> {
                 final Known before = known.getAndSet(read);
                 if (!before.equals(read)) {
-                    log.info("Shelly thermometers read: Wi-Fi {}, BLU {}; rooms on their Eaton sensor: {}",
-                        read.wifi(), read.blu(), read.eatonRooms());
+                    log.info("Shelly thermometers read: Wi-Fi {}, BLU {}, Gen1 {}; rooms on their Eaton sensor: {}",
+                        read.wifi(), read.blu(), read.gen1(), read.eatonRooms());
                 }
             })
             .then()
@@ -118,6 +127,14 @@ public class Thermometers {
             .filter(device -> Optional.ofNullable(device.getBthome()).map(BthomeBinding::getAddress).isPresent())
             .collect(Collectors.toUnmodifiableMap(device -> device.getBthome().getAddress().toLowerCase(Locale.ROOT),
                 SmartDevice::getRoom, (one, other) -> one));
-        return new Known(wifi, blu, eatonRooms);
+        final Map<String, RoomName> gen1 = shelly.stream()
+            .filter(device -> !eatonRooms.contains(device.getRoom()))
+            .filter(device -> Optional.ofNullable(device.getShelly())
+                .filter(binding -> Integer.valueOf(1).equals(binding.getGeneration()))
+                .map(ShellyBinding::getAddress)
+                .isPresent())
+            .collect(Collectors.toUnmodifiableMap(device -> device.getShelly().getAddress(), SmartDevice::getRoom,
+                (one, other) -> one));
+        return new Known(wifi, blu, gen1, eatonRooms);
     }
 }

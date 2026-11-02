@@ -36,7 +36,7 @@ public class AppConfig {
     }
 
     //the standalone radiators (HAS-361): a Gen1 plug of its own, with the timeouts of the Pro 4 calls rather than the
-    //defaults of shelly-client; nothing else here uses a Gen1 client
+    //defaults of shelly-client; the Gen1 thermometers are read through it too (HAS-368)
     @Bean
     ShellyGen1Client standaloneHeaterClient(final WebClient.Builder builder, final ShellyTimeoutProperties timeouts) {
         return new ShellyGen1Client(builder, new ShellyTimeouts(timeouts.connectTimeout(), timeouts.responseTimeout()));
