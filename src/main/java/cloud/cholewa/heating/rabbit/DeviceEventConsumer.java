@@ -11,7 +11,7 @@ import reactor.core.publisher.Mono;
 
 //Every event of every device arrives here (HAS-232) - device.<env>.heating on /device, bound with
 //"#", about 130 a minute - over the third connection of DeviceRabbitConfig. WindowEventRouter picks
-//the windows by the routing key, ThermometerEventRouter the Shelly thermometers (HAS-360). Each one is logged at DEBUG only - at INFO the volume alone would
+//the windows by the routing key, ThermometerEventRouter the Shelly thermometers (HAS-360) and the BLU ones of the gateways (HAS-364). Each one is logged at DEBUG only - at INFO the volume alone would
 //drown the log
 @Slf4j
 @Service

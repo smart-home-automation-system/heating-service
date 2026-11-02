@@ -1,6 +1,7 @@
 package cloud.cholewa.heating.window;
 
 import cloud.cholewa.commons.scheduling.ScheduledPass;
+import cloud.cholewa.heating.thermometer.ThermometerReadings;
 import cloud.cholewa.heating.thermometer.Thermometers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ public class WindowSensorsRefresh {
     private final WindowSensors windowSensors;
     private final OpeningSensorMonitor openingSensorMonitor;
     private final Thermometers thermometers;
+    private final ThermometerReadings thermometerReadings;
 
     @Scheduled(initialDelayString = "PT0S", fixedDelayString = "PT5M")
     Mono<Void> refresh() {
@@ -32,6 +34,8 @@ public class WindowSensorsRefresh {
         //the window sensors to the bound never keeps them stale; a failed read keeps the last ones
         return ScheduledPass.bounded("heating window sensors", LIMIT, () -> thermometers.refresh()
             .then(windowSensors.refresh())
+            //the values of the BLU thermometers the gateways hold (HAS-364): the first reading of a room after a start
+            .then(Mono.defer(() -> thermometerReadings.fromGateways(windowSensors.gatewayComponents())))
             .then(openingSensorMonitor.check())
             .onErrorResume(throwable -> {
                 log.error("Error while checking the window sensors", throwable);

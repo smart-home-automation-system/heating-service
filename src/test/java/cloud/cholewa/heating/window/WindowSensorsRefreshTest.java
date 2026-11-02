@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.window;
 
+import cloud.cholewa.heating.thermometer.ThermometerReadings;
 import cloud.cholewa.heating.thermometer.Thermometers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,7 @@ import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -20,11 +22,14 @@ class WindowSensorsRefreshTest {
     private final WindowSensors windowSensors = mock(WindowSensors.class);
     private final OpeningSensorMonitor openingSensorMonitor = mock(OpeningSensorMonitor.class);
     private final Thermometers thermometers = mock(Thermometers.class);
-    private final WindowSensorsRefresh sut = new WindowSensorsRefresh(windowSensors, openingSensorMonitor, thermometers);
+    private final ThermometerReadings thermometerReadings = mock(ThermometerReadings.class);
+    private final WindowSensorsRefresh sut = new WindowSensorsRefresh(windowSensors, openingSensorMonitor, thermometers,
+        thermometerReadings);
 
     @BeforeEach
     void setUp() {
         when(thermometers.refresh()).thenReturn(Mono.empty());
+        when(thermometerReadings.fromGateways(any())).thenReturn(Mono.empty());
     }
 
     //HAS-360: the thermometers are read with the window sensors, also when the windows failed
@@ -61,6 +66,20 @@ class WindowSensorsRefreshTest {
             .verifyComplete();
 
         assertThat(checked).isFalse();
+    }
+
+    //HAS-364: the values of the BLU thermometers the gateways answered, after the read of the gateways
+    @Test
+    void should_hand_the_components_the_gateways_answered_to_the_thermometers() {
+        final java.util.Map<String, java.util.List<cloud.cholewa.shelly.model.ShellyComponent>> read =
+            java.util.Map.of("shellydimmerg3-0892724f4e30", java.util.List.of());
+        when(windowSensors.refresh()).thenReturn(Mono.empty());
+        when(windowSensors.gatewayComponents()).thenReturn(read);
+        when(openingSensorMonitor.check()).thenReturn(Mono.empty());
+
+        sut.refresh().as(StepVerifier::create).verifyComplete();
+
+        verify(thermometerReadings).fromGateways(read);
     }
 
     //Spring calls the method once and subscribes to the same Mono for every run

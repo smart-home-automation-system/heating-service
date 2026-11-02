@@ -42,8 +42,12 @@ separately — when any floor heater is on, the floor pump is switched on as wel
 temperature sensors of the device registry with a Shelly binding - the Plus H&T of sanctum - read with the
 window sensors every five minutes. Their `status/temperature:0` on the device queue is a reading of the room
 like one from `amx-service` (stored, decided, in the history and the silence check), their
-`status/humidity:0` the humidity of the room. A room with an Eaton room sensor keeps the Eaton reading; a
-Bluetooth thermometer of a gateway is not read here yet (HAS-364).
+`status/humidity:0` the humidity of the room. Since HAS-364 a **BLU H&T** heard by a BTHome gateway too (the
+bathrooms, the `bthome` binding): its temperature and humidity components found on the gateways the window sensors
+read, their values taken from that read (the first reading after a start) and from the `bthomesensor` status topics,
+each dated when the gateway heard it - a value not heard for 30 minutes is not taken. A room with an Eaton room
+sensor keeps the Eaton reading (a BLU reading there is logged, not taken); of two thermometers in a room the newer
+reading counts.
 
 **The radiator of sanctum is a standalone heater** (HAS-361): a Shelly Plug S Gen1 of its own
 (`shelly.actor.relay.standalone.sanctum`), not a relay of a Pro 4. It follows its schedules and the house switch like
@@ -304,7 +308,7 @@ Kubernetes probes, live on the management port, not on the application one.
 | Direction | Queue / exchange | Virtual host | Payload |
 |---|---|---|---|
 | consumes | queue `temperature.prod.heating` (`temperature.dev.heating` in the `local` profile) | `/temperature` | `cloud.cholewa.home.model.TemperatureMessage` (`smart-home-sdk`) |
-| consumes | queue `device.prod.heating` (`device.dev.heating` in the `local` profile), bound with `#` to `amq.topic` | `/device` | the events of every device; only `<gateway>.status.bthomesensor:<id>` of a known window sensor is read (`{id, value, last_updated_ts}`), and `<deviceId>.status.temperature:0` / `humidity:0` of a Shelly thermometer of the registry (`tC`, `rh`, HAS-360) |
+| consumes | queue `device.prod.heating` (`device.dev.heating` in the `local` profile), bound with `#` to `amq.topic` | `/device` | the events of every device; only `<gateway>.status.bthomesensor:<id>` of a known window sensor is read (`{id, value, last_updated_ts}`), `<deviceId>.status.temperature:0` / `humidity:0` of a Shelly thermometer of the registry (`tC`, `rh`, HAS-360), and `<gateway>.status.bthomesensor:<id>` of the temperature or humidity of a BLU H&T (HAS-364) |
 | publishes | exchange `notification` (headers), `category=alert\|info`, `env=prod` (`dev` in the `local` profile), `level=error\|warn\|info` | `/notification` | plain text (`text/plain`, UTF-8) |
 
 Messages are produced by `amx-service`; both sides use `JacksonJsonMessageConverter`. The

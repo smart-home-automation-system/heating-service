@@ -36,6 +36,7 @@ import static org.mockito.Mockito.when;
 class ThermometerEventRouterTest {
 
     private static final String HT = "shellyplusht-b0b21c138428";
+    private static final String GATEWAY = "shellydimmerg3-0892724f4e30";
     private static final ZoneId HOUSE = ZoneId.of("Europe/Warsaw");
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-11-01T13:30:00Z"), HOUSE);
 
@@ -43,15 +44,26 @@ class ThermometerEventRouterTest {
     private final TemperatureService temperatureService = mock(TemperatureService.class);
     private final Room sanctum = Room.builder().name(RoomName.SANCTUM).temperature(Temperature.builder().build())
         .humidity(new Humidity()).build();
+    private final Room bathroomDown = Room.builder().name(RoomName.BATHROOM_DOWN).temperature(Temperature.builder().build())
+        .humidity(new Humidity()).build();
+    private final BluThermometers bluThermometers = mock(BluThermometers.class);
     private final ThermometerEventRouter router = new ThermometerEventRouter(
-        new ShellyMqttDecoder(JsonMapper.builder().build()), thermometers, temperatureService,
-        new Home(List.of(sanctum)), CLOCK);
+        new ShellyMqttDecoder(JsonMapper.builder().build()), thermometers, bluThermometers,
+        new ThermometerReadings(thermometers, bluThermometers, temperatureService, new Home(List.of(sanctum, bathroomDown)),
+            CLOCK));
 
     @BeforeEach
     void setUp() {
         when(thermometers.roomOf(anyString())).thenReturn(Optional.empty());
         when(thermometers.roomOf(HT)).thenReturn(Optional.of(RoomName.SANCTUM));
         when(temperatureService.handleTemperature(any())).thenReturn(Mono.empty());
+        when(thermometers.accept(any(), any(), any())).thenReturn(true);
+        when(thermometers.reads(any())).thenReturn(true);
+        when(bluThermometers.target(anyString(), any())).thenReturn(Optional.empty());
+        when(bluThermometers.target(GATEWAY, 206)).thenReturn(Optional.of(
+            new BluThermometers.Target(RoomName.BATHROOM_DOWN, BluThermometers.Metric.TEMPERATURE, "7c:c6:b6:2b:0d:e0")));
+        when(bluThermometers.target(GATEWAY, 205)).thenReturn(Optional.of(
+            new BluThermometers.Target(RoomName.BATHROOM_DOWN, BluThermometers.Metric.HUMIDITY, "7c:c6:b6:2b:0d:e0")));
     }
 
     private static byte[] body(final String json) {
@@ -95,6 +107,48 @@ class ThermometerEventRouterTest {
     @Test
     void should_skip_a_status_without_a_value() {
         router.route(HT + ".status.temperature:0", body("{\"id\":0,\"tC\":null,\"errors\":[\"read\"]}"))
+            .as(StepVerifier::create).verifyComplete();
+
+        verify(temperatureService, never()).handleTemperature(any());
+    }
+
+    //HAS-364: the temperature of a BLU H&T published by its gateway - a reading of the room, dated when the gateway
+    //heard it (13:28:20 UTC is 14:28:20 in the house)
+    @Test
+    void should_hand_the_temperature_of_a_blu_thermometer_to_the_room() {
+        router.route(GATEWAY + ".status.bthomesensor:206", body("{\"id\":206,\"value\":26.9,\"last_updated_ts\":1793539700}"))
+            .as(StepVerifier::create).verifyComplete();
+
+        verify(temperatureService).handleTemperature(new TemperatureMessage().room(RoomName.BATHROOM_DOWN).temperature(26.9)
+            .date(LocalDateTime.of(2026, 11, 1, 14, 28, 20)));
+    }
+
+    //HAS-364: the humidity of a BLU H&T in GET /rooms
+    @Test
+    void should_keep_the_humidity_of_a_blu_thermometer() {
+        router.route(GATEWAY + ".status.bthomesensor:205", body("{\"id\":205,\"value\":57,\"last_updated_ts\":1793539700}"))
+            .as(StepVerifier::create).verifyComplete();
+
+        assertThat(bathroomDown.getHumidity().snapshot().getValue()).isEqualTo(57);
+        verify(temperatureService, never()).handleTemperature(any());
+    }
+
+    //a bthomesensor of a window, of another device or of a sensor not heard yet: nothing, its body never read
+    @Test
+    void should_never_read_another_bthome_component_and_skip_one_without_a_value() {
+        router.route(GATEWAY + ".status.bthomesensor:202", body("not json")).as(StepVerifier::create).verifyComplete();
+        router.route(GATEWAY + ".status.bthomesensor:206", body("{\"id\":206,\"value\":null,\"last_updated_ts\":0}"))
+            .as(StepVerifier::create).verifyComplete();
+
+        verify(temperatureService, never()).handleTemperature(any());
+    }
+
+    //a reading Thermometers does not take (an Eaton room, not newer) is not stored
+    @Test
+    void should_not_store_a_reading_that_is_not_taken() {
+        when(thermometers.accept(any(), any(), any())).thenReturn(false);
+
+        router.route(GATEWAY + ".status.bthomesensor:206", body("{\"id\":206,\"value\":26.9,\"last_updated_ts\":1793539700}"))
             .as(StepVerifier::create).verifyComplete();
 
         verify(temperatureService, never()).handleTemperature(any());
