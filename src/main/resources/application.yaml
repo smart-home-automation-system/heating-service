@@ -143,6 +143,10 @@ heating:
     # how long the state of a sensor stands without its gateway confirming it; the gateways are read
     # every 5 min, so 10 min to 24 h
     gateway-silent-after: PT30M
+  # the Shelly thermometers that can only be polled (HAS-368): the Gen1 Shelly 1 with the temperature add-on of the
+  # sauna, read this often; a bare number is seconds, 30 s to 1 h
+  thermometer:
+    gen1-poll: PT1M
 
 shelly:
   actor:

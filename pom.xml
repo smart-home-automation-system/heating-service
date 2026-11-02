@@ -32,7 +32,7 @@
 
 		<!--  internal dependencies versions-->
 		<cholewa-commons.version>1.13.0</cholewa-commons.version>
-		<shelly-client.version>2.3.0</shelly-client.version>
+		<shelly-client.version>2.4.0</shelly-client.version>
 		<smart-home-sdk.version>1.15.0</smart-home-sdk.version>
 
 		<!--  plugins versions-->

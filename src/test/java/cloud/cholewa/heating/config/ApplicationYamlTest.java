@@ -64,6 +64,9 @@ class ApplicationYamlTest {
                     new InternalServiceProperties.Endpoint("http://database-service:6200", Duration.ofSeconds(3), Duration.ofSeconds(5)));
                 assertThat(context.getBean(WindowProperties.class))
                     .isEqualTo(new WindowProperties(Duration.ofMinutes(3), Duration.ofMinutes(30)));
+                //HAS-368: the Gen1 thermometer of the sauna polled every minute
+                assertThat(context.getBean(ThermometerProperties.class))
+                    .isEqualTo(new ThermometerProperties(Duration.ofMinutes(1)));
 
                 //the relays of the house, not the dead address of the test document
                 assertThat(environment.getProperty("shelly.actor.port")).isEqualTo("80");
@@ -123,7 +126,8 @@ class ApplicationYamlTest {
         NotificationConnectionProperties.class,
         DeviceConnectionProperties.class,
         InternalServiceProperties.class,
-        WindowProperties.class
+        WindowProperties.class,
+        ThermometerProperties.class
     })
     static class Properties {
     }

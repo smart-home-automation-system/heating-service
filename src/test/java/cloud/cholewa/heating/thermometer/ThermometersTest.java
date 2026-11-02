@@ -83,6 +83,33 @@ class ThermometersTest {
         assertThat(read.blu()).isEmpty();
     }
 
+    //HAS-368: a Gen1 thermometer by its address - a Shelly binding of generation 1, which has no MQTT id
+    @Test
+    void should_read_a_gen1_thermometer_by_its_address() {
+        final SmartDevice sauna = new SmartDevice(150L).name("Sauna temperature").room(RoomName.SAUNA)
+            .kind(DeviceKind.TEMPERATURE_SENSOR).enabled(true)
+            .shelly(new ShellyBinding().address("192.0.2.42").generation(1));
+        final SmartDevice cinema = new SmartDevice(151L).name("Temperature").room(RoomName.CINEMA)
+            .kind(DeviceKind.TEMPERATURE_SENSOR).enabled(true)
+            .shelly(new ShellyBinding().address("192.0.2.43").generation(1));
+
+        final Thermometers.Known read = Thermometers.read(List.of(sauna, cinema, eaton(10, RoomName.CINEMA, 54),
+            shelly(104, RoomName.SANCTUM, SANCTUM_HT)));
+
+        assertThat(read.gen1()).containsExactly(java.util.Map.entry("192.0.2.42", RoomName.SAUNA));
+        assertThat(read.wifi()).containsOnlyKeys(SANCTUM_HT);
+    }
+
+    @Test
+    void should_skip_a_switched_off_gen1_thermometer_or_one_without_an_address() {
+        final SmartDevice off = new SmartDevice(150L).room(RoomName.SAUNA).kind(DeviceKind.TEMPERATURE_SENSOR)
+            .enabled(false).shelly(new ShellyBinding().address("192.0.2.42").generation(1));
+        final SmartDevice noAddress = new SmartDevice(152L).room(RoomName.GARDEN).kind(DeviceKind.TEMPERATURE_SENSOR)
+            .enabled(true).shelly(new ShellyBinding().generation(1));
+
+        assertThat(Thermometers.read(List.of(off, noAddress)).gen1()).isEmpty();
+    }
+
     //HAS-364: a BLU H&T by its address in lower case, in any room - mapped in an Eaton room too, where accept drops it
     @Test
     void should_read_a_blu_thermometer_by_its_address() {
