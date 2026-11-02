@@ -86,6 +86,25 @@ class WindowSensorsTest {
         when(rpc.dynamicComponents("10.0.0.40")).thenReturn(Mono.just(List.of()));
     }
 
+    //HAS-364: what every gateway answered is handed to the BLU thermometers; a gateway that fails keeps its last answer,
+    //one gone from the registry leaves none
+    @Test
+    void should_keep_what_every_gateway_answered_for_the_thermometers() {
+        final ShellyComponent window = window(202, WINDOW, false, START_TS);
+        gateway("10.0.0.36", window);
+        refresh();
+        assertThat(sut.gatewayComponents()).containsOnlyKeys(TREADMILL.toLowerCase(), OFFICE_MAIN.toLowerCase());
+        assertThat(sut.gatewayComponents().get(TREADMILL.toLowerCase())).containsExactly(window);
+
+        when(rpc.dynamicComponents("10.0.0.36")).thenReturn(Mono.error(new IllegalStateException("timeout")));
+        refresh();
+        assertThat(sut.gatewayComponents().get(TREADMILL.toLowerCase())).containsExactly(window);
+
+        when(registry.getBthomeGateways()).thenReturn(Mono.just(List.of(gateway(80, "OFFICE MAIN", "10.0.0.40", OFFICE_MAIN))));
+        refresh();
+        assertThat(sut.gatewayComponents()).containsOnlyKeys(OFFICE_MAIN.toLowerCase());
+    }
+
     //a room without a sensor heats as it always did
     @Test
     void should_never_hold_a_room_without_a_sensor() {

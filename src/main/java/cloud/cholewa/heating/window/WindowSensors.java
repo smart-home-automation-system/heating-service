@@ -72,6 +72,8 @@ public class WindowSensors {
     private final Map<Long, Reading> readings = new ConcurrentHashMap<>();
     //when the registry first listed a sensor switched on: one that never reports is silent from then on
     private final Map<Long, LocalDateTime> firstListed = new ConcurrentHashMap<>();
+    //what every gateway answered at its last read, for the BLU thermometers (HAS-364): one read of a gateway serves both
+    private final Map<String, List<ShellyComponent>> gatewayComponents = new ConcurrentHashMap<>();
     //the gateways the last read failed on: a WARN when one starts failing, an INFO when it is back
     private final Set<String> failing = ConcurrentHashMap.newKeySet();
 
@@ -141,6 +143,7 @@ public class WindowSensors {
                 //a gateway the registry no longer lists is read no more: its components go with it
                 final Set<String> listed = listedNow.stream().map(Gateway::deviceId).collect(Collectors.toSet());
                 components.keySet().removeIf(key -> !listed.contains(key.gateway()));
+                gatewayComponents.keySet().retainAll(listed);
                 failing.retainAll(listed);
                 return listedNow;
             })
@@ -157,6 +160,7 @@ public class WindowSensors {
         return shellyRpcClient.dynamicComponents(gateway.address())
             .doOnNext(list -> {
                 apply(gateway, list);
+                gatewayComponents.put(gateway.deviceId(), List.copyOf(list));
                 if (failing.remove(gateway.deviceId())) {
                     log.info("Gateway {} ({}) is read again", gateway.id(), gateway.name());
                 }
@@ -197,6 +201,12 @@ public class WindowSensors {
 
         components.keySet().removeIf(key -> key.gateway().equals(gateway.deviceId()) && !found.containsKey(key));
         components.putAll(found);
+    }
+
+    //the components every gateway of the registry answered at its last read, by its MQTT id in lower case - a gateway
+    //that failed keeps what it answered before (its values carry their time, so nothing old passes for new)
+    public Map<String, List<ShellyComponent>> gatewayComponents() {
+        return Map.copyOf(gatewayComponents);
     }
 
     //is this status topic the window of a sensor - asked before a body is read

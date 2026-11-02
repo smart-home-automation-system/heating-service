@@ -17,6 +17,15 @@ public class Humidity {
         this.updatedAt = newUpdatedAt;
     }
 
+    //the reading only when it is newer than the one held: a BLU H&T is read again from its gateway every five minutes
+    public synchronized boolean updateIfNewer(final double newValue, final LocalDateTime newUpdatedAt) {
+        if (updatedAt != null && !newUpdatedAt.isAfter(updatedAt)) {
+            return false;
+        }
+        update(newValue, newUpdatedAt);
+        return true;
+    }
+
     public synchronized Humidity snapshot() {
         final Humidity copy = new Humidity();
         copy.value = value;

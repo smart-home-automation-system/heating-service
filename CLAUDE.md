@@ -11,7 +11,7 @@ repository map and working rules come from the workspace-level context
 (`organization-repository/claude/organization.md`). The user writes the code in this
 repository themselves; Claude's default role here is analysis, code review and security
 review - the owner had Claude implement the window hold (HAS-232), the decision of every room (HAS-352), the
-Shelly thermometers (HAS-360) and the standalone radiator of sanctum (HAS-361).
+Shelly thermometers (HAS-360, HAS-364) and the standalone radiator of sanctum (HAS-361).
 
 ## Role in the system
 
@@ -369,14 +369,33 @@ Shelly thermometers (HAS-360) and the standalone radiator of sanctum (HAS-361).
   `thermometer`): `Thermometers` reads the switched-on `temperature sensor` devices of the registry
   with the window sensors (`WindowSensorsRefresh`, every 5 min; a failed read keeps the last) and keeps
   deviceId -> room of those with a Shelly binding, **in a room with no Eaton room sensor** - a room with
-  both keeps the Eaton reading, one series in the history (`ThermometersTest`); two in a room, the
-  lower registry id. A `bthome` one (a BLU H&T) is skipped without a word - HAS-364 reads it through
-  its gateway. `ThermometerEventRouter` picks `<deviceId>.status.temperature:0` / `humidity:0` of a
+  both keeps the Eaton reading, one series in the history (`ThermometersTest`). `ThermometerEventRouter` picks `<deviceId>.status.temperature:0` / `humidity:0` of a
   known one by the routing key before a body is read: the temperature a `TemperatureMessage` of the
   room with the house time (`TemperatureService.handleTemperature`, as an Eaton reading), the
   humidity `Humidity.update` (one reading, `snapshot` for `RoomMapper`). A status without a value is
   skipped. The Plus H&T of sanctum (registry 104) publishes at every wake-up - every two hours or on
   a change - so the 24 h silence check covers it.
+- **A BLU H&T is read through the gateway that hears it** (HAS-364; the bathrooms, registry 136 / 137 - HAS-363).
+  What to keep:
+  - **One read of a gateway serves both**: `WindowSensors` keeps what every gateway answered
+    (`gatewayComponents`, a failed one keeps its last answer, one gone from the registry none), and
+    `WindowSensorsRefresh` hands it to `ThermometerReadings.fromGateways` after the windows. `BluThermometers` (a
+    sibling of `WindowSensors`, not a generalised map) finds the temperature (`0x45`) and humidity (`0x2E`)
+    components of the `bthome` thermometers of `Thermometers` (by address, every room) and builds its map anew
+    from every read; `ThermometerEventRouter` takes their `bthomesensor` status topics between reads.
+  - **The read is the first reading after a start**: a BLU sensor publishes on a change only, but the gateway
+    stamps every packet (about one a minute, measured 2026-11-01), so the read brings a newer reading every five
+    minutes even when nothing changed - the 24 h silence check and the history cover the room by themselves.
+  - **One way in, `ThermometerReadings`** (the Wi-Fi H&T too): a reading is dated when the device was heard (the
+    gateway's `last_updated_ts`, never after now; now for the Wi-Fi one); one heard more than `STALE_AFTER` (30 min)
+    ago is not taken - a dead battery would otherwise hand its last value over at every start.
+    `Thermometers.accept` takes a temperature only in a room without an Eaton sensor and only when newer than the
+    last one taken there - before the first, than the one the room holds (seeded), so a rollout does not store the
+    gateway's reading twice; so of two thermometers in a room the newer reading counts (the lower registry id
+    rule of HAS-360 is gone). The gate moves before the write: a failed write loses that reading, the next comes
+    within five minutes. Humidity: `Humidity.updateIfNewer`.
+  - **A room on its Eaton sensor** logs the BLU temperature at INFO ("not taken: the room keeps its Eaton
+    sensor") - every five minutes per bathroom until HAS-365 removes the Eaton sensors 8 / 11.
 - **Every room is decided every minute and on the switch** (HAS-352, `HomeService.decideRooms`). A room
   was decided only when its reading came (about every 10 minutes): on 2026-10-30 two rooms started nine
   minutes after the switch, a switched-off house kept its relays on, and a schedule boundary waited for the
