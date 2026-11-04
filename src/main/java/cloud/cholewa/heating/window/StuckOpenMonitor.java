@@ -27,7 +27,8 @@ import java.util.stream.Collectors;
 //A window sensor that may be stuck open (HAS-350). A BLU Door/Window sends its window state only on a
 //change: a lost "closed" packet leaves its room read open until the window moves again, and the hold of
 //HAS-232 lasts for good (2026-10-30: four sensors, held since 17 - 26.10, all closed). The hold stays as it
-//is (owner); the household is told once, and only when the hold costs heat - at a pass all three hold:
+//is, by the owner's choice, and the household is told once, only when the hold costs heat - when at a
+//pass all three of these hold:
 //- the sensor reads open and its gateway has heard no new window value from it for the time of
 //  heating.window.stuck-open-after, measured by the stateAt of an open sensor and never by its last packet,
 //  since the battery beacons keep coming while the window value is frozen
