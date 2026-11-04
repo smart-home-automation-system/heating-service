@@ -306,6 +306,50 @@ public class WindowSensors {
             .toList();
     }
 
+    /**
+     * A switched-on sensor whose gateway stands for "open" now (HAS-350).
+     *
+     * @param openSince since when it reads open
+     * @param stateAt   when its gateway last heard the window value it holds - the window component's
+     *                  {@code last_updated_ts}, never later than now; {@code openSince} when the gateway gave
+     *                  none. Never the time of the last packet of the device: its battery beacons keep coming
+     *                  while the window value is frozen
+     */
+    public record OpenSensor(long id, String name, RoomName room, LocalDateTime openSince, LocalDateTime stateAt) {
+    }
+
+    /** What a gateway stands for now of a sensor: open or closed, and when that value was heard (HAS-350). */
+    public record WindowValue(boolean open, LocalDateTime stateAt) {
+    }
+
+    //the switched-on sensors of these rooms that read open now, by id
+    public List<OpenSensor> open(final Set<RoomName> rooms, final LocalDateTime now) {
+        return sensors.get().values().stream()
+            .filter(sensor -> sensor.enabled() && rooms.contains(sensor.room()))
+            .flatMap(sensor -> valueOf(sensor.id(), now)
+                .filter(WindowValue::open)
+                .map(value -> new OpenSensor(sensor.id(), sensor.name(), sensor.room(),
+                    readings.get(sensor.id()).openSince(), value.stateAt()))
+                .stream())
+            .sorted(Comparator.comparingLong(OpenSensor::id))
+            .toList();
+    }
+
+    //the value a gateway stands for now, empty while the sensor is not known
+    public Optional<WindowValue> valueOf(final long sensor, final LocalDateTime now) {
+        return Optional.ofNullable(readings.get(sensor))
+            .filter(reading -> isKnown(reading, now))
+            .map(reading -> new WindowValue(reading.open(), stateAt(reading, now)));
+    }
+
+    private LocalDateTime stateAt(final Reading reading, final LocalDateTime now) {
+        if (reading.updatedAt() == null) {
+            return reading.openSince() != null ? reading.openSince() : reading.confirmedAt();
+        }
+        final LocalDateTime heard = LocalDateTime.ofInstant(reading.updatedAt(), clock.getZone());
+        return heard.isAfter(now) ? now : heard;
+    }
+
     //a switched-on sensor of the registry, as last read
     Optional<Sensor> describe(final long sensor) {
         return Optional.ofNullable(sensors.get().get(sensor)).filter(Sensor::enabled);

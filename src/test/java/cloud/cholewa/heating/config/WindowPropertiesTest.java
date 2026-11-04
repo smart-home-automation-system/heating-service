@@ -23,13 +23,13 @@ class WindowPropertiesTest {
         .withInitializer(new ConfigDataApplicationContextInitializer())
         .withUserConfiguration(Properties.class);
 
-    //owner, 2026-10-17: three minutes, not five
+    //owner, 2026-10-17: three minutes, not five; HAS-350: a stuck window told after six hours
     @Test
     void should_hold_the_heating_after_three_minutes_and_keep_a_state_half_an_hour() {
         contextRunner
             .withPropertyValues("spring.profiles.active=home")
             .run(context -> assertThat(context.getBean(WindowProperties.class))
-                .isEqualTo(new WindowProperties(Duration.ofMinutes(3), Duration.ofMinutes(30))));
+                .isEqualTo(new WindowProperties(Duration.ofMinutes(3), Duration.ofMinutes(30), Duration.ofHours(6))));
     }
 
     //without the unit a bare number would bind as milliseconds: every open door would stop the heating
@@ -39,7 +39,16 @@ class WindowPropertiesTest {
             .withPropertyValues("spring.profiles.active=home", "heating.window.hold-after=4",
                 "heating.window.gateway-silent-after=45")
             .run(context -> assertThat(context.getBean(WindowProperties.class))
-                .isEqualTo(new WindowProperties(Duration.ofMinutes(4), Duration.ofMinutes(45))));
+                .isEqualTo(new WindowProperties(Duration.ofMinutes(4), Duration.ofMinutes(45), Duration.ofHours(6))));
+    }
+
+    //HAS-350: a stuck-open window is counted in hours - a bare 6 meant as hours must not be six minutes
+    @Test
+    void should_read_a_bare_stuck_open_after_as_hours() {
+        contextRunner
+            .withPropertyValues("spring.profiles.active=home", "heating.window.stuck-open-after=12")
+            .run(context -> assertThat(context.getBean(WindowProperties.class).stuckOpenAfter())
+                .isEqualTo(Duration.ofHours(12)));
     }
 
     //a hold below a minute would stop the heating for every trip through a door; above an hour it
@@ -53,7 +62,11 @@ class WindowPropertiesTest {
         "heating.window.hold-after=",
         "heating.window.gateway-silent-after=9",
         "heating.window.gateway-silent-after=PT24H1M",
-        "heating.window.gateway-silent-after="
+        "heating.window.gateway-silent-after=",
+        "heating.window.stuck-open-after=0",
+        "heating.window.stuck-open-after=PT59M",
+        "heating.window.stuck-open-after=PT168H1M",
+        "heating.window.stuck-open-after="
     })
     void should_not_start_with_a_value_out_of_its_range(final String value) {
         contextRunner

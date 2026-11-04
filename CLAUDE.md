@@ -11,7 +11,8 @@ repository map and working rules come from the workspace-level context
 (`organization-repository/claude/organization.md`). The user writes the code in this
 repository themselves; Claude's default role here is analysis, code review and security
 review - the owner had Claude implement the window hold (HAS-232), the decision of every room (HAS-352), the
-Shelly thermometers (HAS-360, HAS-364, HAS-368) and the standalone radiator of sanctum (HAS-361).
+Shelly thermometers (HAS-360, HAS-364, HAS-368), the standalone radiator of sanctum (HAS-361) and the stuck-open
+alert of the window sensors (HAS-350).
 
 ## Role in the system
 
@@ -340,6 +341,21 @@ Shelly thermometers (HAS-360, HAS-364, HAS-368) and the standalone radiator of s
     A row of a sensor removed, switched off or moved to an unheated room goes without a message.
     During a rollout both pods run the pass - a duplicate alert is possible, as for the
     temperature sensors.
+  - **A sensor stuck open** (HAS-350, `StuckOpenMonitor`, after the silent ones in every refresh): the hold stays
+    (owner, 2026-10-30), the household is told once - level warn on the alert queue (`publishReminder`, the one
+    warn-level alert of the library) - when at a pass all three hold: the sensor reads open and its gateway has heard
+    no new window value for `heating.window.stuck-open-after` (**PT6H**, owner; hours, 1 h - 7 days, pinned by
+    `WindowPropertiesTest`); its room is held (`RoomWindow.hold`); the room would heat without the hold - the house
+    switch on and a heater of the room `isInSchedule` (the loop sets it only below the target, so nothing in summer).
+    **The age is `WindowSensors.OpenSensor.stateAt`**: the window component's `last_updated_ts` (never after now,
+    `openSince` without one) - never the last packet of the device, whose battery beacons keep coming while the
+    window value is frozen (`should_age_an_open_window_by_its_window_value_only`). `opening_sensor_open_alert` (V6),
+    the message first and the row second, one per sensor and open period, no reminder; it ends with one info when the
+    gateway stands for a newer value (closed, or an open heard after `state_updated_at`), silently for a sensor
+    switched off, gone or in an unheated room; not known keeps it (the silent alert tells that). A room warmed above
+    its target keeps its row quietly. blinds-service keeps its copy of `WindowSensors` without it - one message, not two.
+    Rehearsed (2026-11-04) in a Docker network `--internal`: a run outside the cluster polls the Gen1 thermometer of
+    the sauna on the LAN and could switch a real relay - the isolated network keeps every device out of reach.
   - **The third connection** (`DeviceRabbitConfig`): `DeviceConnection` builds the factory to
     `/device` (user `device`, `device-rabbitmq-password`) by hand and keeps it - a copy of the
     setup of `NotificationConnection` without confirms - and the listener has its own container

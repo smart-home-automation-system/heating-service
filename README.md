@@ -103,6 +103,14 @@ minutes; a BLU sensor sends only on a change, so its own silence proves nothing)
 its room: the room heats as without it, and the sensor is reported on Discord the way a silent
 temperature sensor is (once, every 24 hours, and once more when it is back).
 
+A sensor may also be **stuck open** (HAS-350): a BLU sensor sends its window state only on a change, so a lost
+"closed" packet leaves its room held for good. When a sensor has read open for `heating.window.stuck-open-after`
+(**6 hours**; a bare number is hours, 1 hour to 7 days) without a new window value from its gateway, while it holds
+its room and the room would heat without the hold (the heating of the house on, a heater of the room in schedule
+below its target), the household is told once on Discord (warn) to open and close it; one info follows when the
+gateway hears a newer value. No reminders; above the target - in summer - nothing is said. The hold itself stays
+as it is. The rows are in `opening_sensor_open_alert` (V6), so a restart repeats nothing.
+
 The three scheduled tasks - the hourly sensor check, the window hold every minute and the read
 of the window sensors every five minutes - run on a pool of threads, and every pass ends at a
 bound of its own (15 min, 50 s and 4 min) with a WARN: one that hangs no longer stops the

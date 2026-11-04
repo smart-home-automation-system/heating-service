@@ -63,7 +63,7 @@ class ApplicationYamlTest {
                 assertThat(context.getBean(InternalServiceProperties.class).database()).isEqualTo(
                     new InternalServiceProperties.Endpoint("http://database-service:6200", Duration.ofSeconds(3), Duration.ofSeconds(5)));
                 assertThat(context.getBean(WindowProperties.class))
-                    .isEqualTo(new WindowProperties(Duration.ofMinutes(3), Duration.ofMinutes(30)));
+                    .isEqualTo(new WindowProperties(Duration.ofMinutes(3), Duration.ofMinutes(30), Duration.ofHours(6)));
                 //HAS-368: the Gen1 thermometer of the sauna polled every minute
                 assertThat(context.getBean(ThermometerProperties.class))
                     .isEqualTo(new ThermometerProperties(Duration.ofMinutes(1)));

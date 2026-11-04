@@ -54,7 +54,7 @@ class WindowSensorsTest {
     private final DeviceRegistryClient registry = mock(DeviceRegistryClient.class);
     private final ShellyRpcClient rpc = mock(ShellyRpcClient.class);
     private final WindowSensors sut = new WindowSensors(registry, rpc, JsonMapper.builder().build(),
-        new WindowProperties(Duration.ofMinutes(3), Duration.ofMinutes(30)), new Clock() {
+        new WindowProperties(Duration.ofMinutes(3), Duration.ofMinutes(30), Duration.ofHours(6)), new Clock() {
         @Override
         public ZoneId getZone() {
             return HOUSE;
@@ -317,6 +317,47 @@ class WindowSensorsTest {
         sut.observe(TREADMILL, 215, status(215, 1, START_TS + 300));
 
         assertThat(sut.windowOf(RoomName.BEDROOM).state()).isEqualTo(WindowState.CLOSED);
+    }
+
+    //HAS-350: the age of an open window is the time its gateway last heard the window value - a battery packet of the
+    //same sensor (another component, a newer time) and a read repeating the same value leave it where it was
+    @Test
+    void should_age_an_open_window_by_its_window_value_only() {
+        final ShellyComponent battery = component("bthomesensor:207",
+            Map.of("id", 207, "addr", DOOR, "obj_id", 1, "idx", 0),
+            Map.of("id", 207, "value", 100, "last_updated_ts", START_TS + 7200));
+        gateway("10.0.0.36", window(206, DOOR, true, START_TS), battery);
+        refresh();
+
+        now.set(START.plusHours(3));
+        refresh();
+
+        assertThat(sut.open(HEATED, START.plusHours(3)))
+            .containsExactly(new WindowSensors.OpenSensor(68, "Terrace door", RoomName.LIVING_ROOM, START, START));
+        assertThat(sut.valueOf(68, START.plusHours(3))).contains(new WindowSensors.WindowValue(true, START));
+    }
+
+    //a newer window value moves it: closed, or an open heard later
+    @Test
+    void should_give_the_time_of_a_newer_window_value() {
+        gateway("10.0.0.36", window(206, DOOR, true, START_TS));
+        refresh();
+
+        sut.observe(TREADMILL, 206, status(206, false, START_TS + 600));
+
+        assertThat(sut.valueOf(68, START.plusMinutes(11))).contains(new WindowSensors.WindowValue(false, START.plusMinutes(10)));
+        assertThat(sut.open(HEATED, START.plusMinutes(11))).isEmpty();
+    }
+
+    //a sensor its gateway no longer stands for is neither open nor closed
+    @Test
+    void should_have_no_value_of_a_sensor_not_known() {
+        gateway("10.0.0.36", window(206, DOOR, true, START_TS));
+        refresh();
+
+        final LocalDateTime later = START.plusMinutes(31);
+        assertThat(sut.valueOf(68, later)).isEmpty();
+        assertThat(sut.open(HEATED, later)).isEmpty();
     }
 
     private void refresh() {

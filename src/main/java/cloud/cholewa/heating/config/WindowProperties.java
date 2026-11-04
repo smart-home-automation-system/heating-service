@@ -23,6 +23,10 @@ import java.time.temporal.ChronoUnit;
  *                           when it changes (no beacon), so the silence of the sensor itself proves
  *                           nothing; the gateway that stopped answering does. At least two reads of
  *                           the gateway
+ * @param stuckOpenAfter     how long a sensor may read open without a new window value before the
+ *                           household is told it may be stuck - a lost "closed" packet holds the heating of
+ *                           its room for good (HAS-350; owner, 2026-10-30: six hours for a start). A bare
+ *                           number is hours here; 1 hour to 7 days
  */
 @Validated
 @ConfigurationProperties(prefix = "heating.window")
@@ -30,6 +34,8 @@ public record WindowProperties(
     @NotNull @DurationMin(minutes = 1) @DurationMax(hours = 1) @DurationUnit(ChronoUnit.MINUTES)
     Duration holdAfter,
     @NotNull @DurationMin(minutes = 10) @DurationMax(hours = 24) @DurationUnit(ChronoUnit.MINUTES)
-    Duration gatewaySilentAfter
+    Duration gatewaySilentAfter,
+    @NotNull @DurationMin(hours = 1) @DurationMax(days = 7) @DurationUnit(ChronoUnit.HOURS)
+    Duration stuckOpenAfter
 ) {
 }

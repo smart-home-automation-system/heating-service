@@ -21,15 +21,30 @@ class WindowSensorsRefreshTest {
 
     private final WindowSensors windowSensors = mock(WindowSensors.class);
     private final OpeningSensorMonitor openingSensorMonitor = mock(OpeningSensorMonitor.class);
+    private final StuckOpenMonitor stuckOpenMonitor = mock(StuckOpenMonitor.class);
     private final Thermometers thermometers = mock(Thermometers.class);
     private final ThermometerReadings thermometerReadings = mock(ThermometerReadings.class);
-    private final WindowSensorsRefresh sut = new WindowSensorsRefresh(windowSensors, openingSensorMonitor, thermometers,
-        thermometerReadings);
+    private final WindowSensorsRefresh sut = new WindowSensorsRefresh(windowSensors, openingSensorMonitor,
+        stuckOpenMonitor, thermometers, thermometerReadings);
 
     @BeforeEach
     void setUp() {
         when(thermometers.refresh()).thenReturn(Mono.empty());
         when(thermometerReadings.fromGateways(any())).thenReturn(Mono.empty());
+        when(stuckOpenMonitor.check()).thenReturn(Mono.empty());
+    }
+
+    //HAS-350: the sensors that may be stuck open are checked after the silent ones
+    @Test
+    void should_check_the_stuck_open_sensors_after_the_silent_ones() {
+        when(windowSensors.refresh()).thenReturn(Mono.empty());
+        when(openingSensorMonitor.check()).thenReturn(Mono.empty());
+
+        sut.refresh().as(StepVerifier::create).verifyComplete();
+
+        final org.mockito.InOrder order = org.mockito.Mockito.inOrder(openingSensorMonitor, stuckOpenMonitor);
+        order.verify(openingSensorMonitor).check();
+        order.verify(stuckOpenMonitor).check();
     }
 
     //HAS-360: the thermometers are read with the window sensors, also when the windows failed
