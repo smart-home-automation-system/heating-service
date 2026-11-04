@@ -28,13 +28,13 @@ import java.util.stream.Collectors;
 //change: a lost "closed" packet leaves its room read open until the window moves again, and the hold of
 //HAS-232 lasts for good (2026-10-30: four sensors, held since 17 - 26.10, all closed). The hold stays as it
 //is (owner); the household is told once, and only when the hold costs heat - at a pass all three hold:
-//1. the sensor reads open and its gateway has heard no new window value from it for
-//   heating.window.stuck-open-after (WindowSensors.OpenSensor.stateAt - never its last packet: the battery
-//   beacons keep coming while the window value is frozen);
-//2. its room is held (RoomWindow.hold);
-//3. the room would heat without the hold: the heating of the house is on and a heater of the room is in
-//   schedule - decided by the control loop with the temperature below the target (ScheduleService). Above
-//   the target nothing is raised, so a door left open all summer says nothing.
+//- the sensor reads open and its gateway has heard no new window value from it for the time of
+//  heating.window.stuck-open-after, measured by the stateAt of an open sensor and never by its last packet,
+//  since the battery beacons keep coming while the window value is frozen
+//- the hold of its room is on, as RoomWindow says it
+//- the room would heat without the hold: the heating of the house is on and a heater of the room is in
+//  schedule, which the control loop decides with the temperature below the target. Above the target
+//  nothing is raised, so a door left open all summer says nothing
 //One message per sensor and open period, no reminder: opening_sensor_open_alert (V6) keeps it across a
 //restart. The row goes with one info once the gateway stands for a newer window value (closed, or an open
 //heard later); without a message when the sensor is switched off, gone from the registry or in a room this
