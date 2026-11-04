@@ -35,14 +35,15 @@ import java.util.stream.Collectors;
 //- the room would heat without the hold: the heating of the house is on and a heater of the room is in
 //  schedule, which the control loop decides with the temperature below the target. Above the target
 //  nothing is raised, so a door left open all summer says nothing
-//One message per sensor and open period, no reminder: opening_sensor_open_alert (V6) keeps it across a
-//restart. The row goes with one info once the gateway stands for a newer window value (closed, or an open
-//heard later); without a message when the sensor is switched off, gone from the registry or in a room this
-//service does not heat. A room that warms above the target keeps its row and says nothing. A sensor not
-//known for a while (its gateway silent) keeps its row: OpeningSensorMonitor tells that silence. The message
-//first and the row second, each sensor guarded - the way of OpeningSensorMonitor. The alert is on the alert
-//queue at the level warn (publishReminder: the one level-warn alert of the library) - it is not a failure of
-//a device. blinds-service keeps its copy of WindowSensors without this alert, or every message would come twice
+//One message per sensor and open period and no reminder, kept across a restart by the table
+//opening_sensor_open_alert of V6. The row goes with one info once the gateway stands for a newer window
+//value - closed, or an open heard later - and without a message when the sensor is switched off, gone from
+//the registry or in a room this service does not heat. A room that warms above the target keeps its row and
+//says nothing. A sensor whose gateway has gone silent keeps its row, and OpeningSensorMonitor tells that
+//silence. The message goes first and the row second, each sensor guarded, as OpeningSensorMonitor does it.
+//The alert is on the alert queue at the level warn, through publishReminder, the one warn-level alert of the
+//library, since it is not a failure of a device. blinds-service keeps its copy of WindowSensors without this
+//alert, or every message would come twice
 @Slf4j
 @Service
 @RequiredArgsConstructor
