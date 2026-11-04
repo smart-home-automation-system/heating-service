@@ -143,6 +143,9 @@ heating:
     # how long the state of a sensor stands without its gateway confirming it; the gateways are read
     # every 5 min, so 10 min to 24 h
     gateway-silent-after: PT30M
+    # a sensor read open this long without a new window value is told to the household while it holds a
+    # room that would heat (HAS-350; owner: 6 h for a start); a bare number is hours, 1 h to 7 days
+    stuck-open-after: PT6H
   # the Shelly thermometers that can only be polled (HAS-368): the Gen1 Shelly 1 with the temperature add-on of the
   # sauna, read this often; a bare number is seconds, 30 s to 1 h
   thermometer:
