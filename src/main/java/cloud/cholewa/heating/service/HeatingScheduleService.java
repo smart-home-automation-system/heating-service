@@ -157,12 +157,13 @@ public class HeatingScheduleService {
             .orElseThrow(() -> new RoomNotFoundException(name));
     }
 
-    //a heater the room has and this service drives: SANCTUM's radiator is switched outside it
+    //a heater the room has and this service keeps the schedules of - one it drives, or one left to another service
+    //(HAS-388, the radiator of sanctum)
     private HeaterType drivenHeater(final Room room, final String name) {
         return Arrays.stream(HeaterType.values())
             .filter(type -> type.toString().equalsIgnoreCase(name))
             .filter(type -> room.getHeaterActors().stream().anyMatch(heater -> heater.getType() == type))
-            .filter(type -> relayConfig.drives(room.getName(), type))
+            .filter(type -> relayConfig.keepsSchedules(room.getName(), type))
             .findFirst()
             .orElseThrow(() -> ScheduleException.heaterNotFound(room.getName().getValue(), name));
     }
@@ -183,12 +184,12 @@ public class HeatingScheduleService {
     private void distribute(final List<HeatingScheduleEntity> rows) {
         //by identity: a heater is the object of the house, not its value
         final Map<HeaterActor, List<Schedule>> byHeater = new IdentityHashMap<>();
-        //the heaters a row can name, by the names it is stored under; one the service does not drive is not
-        //among them (SANCTUM's radiator is switched outside it) - a schedule would make the loop drive it
+        //the heaters a row can name, by the names it is stored under: the ones the service keeps the schedules of - it
+        //drives them, or they are left to another service (HAS-388); the decision drives only the first
         final Map<String, HeaterActor> driven = new HashMap<>();
         home.rooms().forEach(room -> room.getHeaterActors().forEach(heater -> {
             byHeater.put(heater, new ArrayList<>());
-            if (relayConfig.drives(room.getName(), heater.getType())) {
+            if (relayConfig.keepsSchedules(room.getName(), heater.getType())) {
                 driven.putIfAbsent(key(room.getName().getValue(), heater.getType().toString()), heater);
             }
         }));

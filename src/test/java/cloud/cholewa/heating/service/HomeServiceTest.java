@@ -186,6 +186,8 @@ class HomeServiceTest {
             .heaterActor(HeaterActor.builder().working(false).build()).build();
 
         when(home.rooms()).thenReturn(List.of(read, unread));
+        //both heaters are relays of a Pro 4: what the furnace hears (HAS-388)
+        when(relayConfig.drivesRelay(any(), any())).thenReturn(true);
         when(scheduleService.processSchedule(read)).thenReturn(Mono.just(read));
         when(heatingService.processHeatingRequest(read)).thenReturn(Mono.just(read));
         when(floorPumpService.processFloorPump()).thenReturn(Mono.empty());

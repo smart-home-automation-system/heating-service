@@ -75,12 +75,13 @@ public class HomeService {
         room.getTemperature().update(temperature, LocalDateTime.now(clock));
     }
 
-    //logged on a change only: the decision of every minute (HAS-352) would otherwise log a line a minute. A standalone
-    //radiator (HAS-361, sanctum) is left out: it heats by itself, and this is what the furnace hears (boiler-service)
+    //logged on a change only: the decision of every minute (HAS-352) would otherwise log a line a minute. Only the relays
+    //of a Pro 4 count: a standalone radiator (HAS-361) heats by itself and a radiator left to another service (HAS-388,
+    //sanctum) is switched by nothing here - this is what the furnace hears (boiler-service)
     private Mono<Void> determineAnyHeaterActive() {
         return Mono.fromRunnable(() -> home.rooms().stream()
             .flatMap(room -> room.getHeaterActors().stream()
-                .filter(actor -> !relayConfig.isStandalone(room.getName(), actor.getType())))
+                .filter(actor -> relayConfig.drivesRelay(room.getName(), actor.getType())))
             .map(HeaterActor::isWorking)
             .reduce(Boolean::logicalOr)
             .ifPresentOrElse(

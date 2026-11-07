@@ -1,6 +1,8 @@
 package cloud.cholewa.heating.config;
 
 import org.junit.jupiter.api.Test;
+import cloud.cholewa.heating.model.HeaterType;
+import cloud.cholewa.home.model.RoomName;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -70,8 +72,14 @@ class ApplicationYamlTest {
 
                 //the relays of the house, not the dead address of the test document
                 assertThat(environment.getProperty("shelly.actor.port")).isEqualTo("80");
-                //HAS-361: the Plug S Gen1 of the radiator of sanctum
-                assertThat(environment.getProperty("shelly.actor.relay.standalone.sanctum")).isEqualTo("10.78.30.135");
+                //HAS-388: the radiator of sanctum left to its air conditioner - no plug, its schedules kept
+                assertThat(environment.getProperty("shelly.actor.relay.standalone.sanctum")).isNull();
+                assertThat(environment.getProperty("shelly.actor.relay.schedule-only[0]")).isEqualTo("sanctum");
+                //bound as the decision and the schedules read it: kept, never driven, never what the furnace hears
+                final RelayConfig relays = context.getBean(RelayConfig.class);
+                assertThat(relays.keepsSchedules(RoomName.SANCTUM, HeaterType.RADIATOR)).isTrue();
+                assertThat(relays.drives(RoomName.SANCTUM, HeaterType.RADIATOR)).isFalse();
+                assertThat(relays.drivesRelay(RoomName.OFFICE, HeaterType.RADIATOR)).isTrue();
                 assertThat(shellyHosts(environment)).hasSize(4).doesNotContain("localhost", "", null);
                 assertThat(environment.getProperty("database.port")).isEqualTo("5432");
             });
@@ -127,7 +135,8 @@ class ApplicationYamlTest {
         DeviceConnectionProperties.class,
         InternalServiceProperties.class,
         WindowProperties.class,
-        ThermometerProperties.class
+        ThermometerProperties.class,
+        RelayConfig.class
     })
     static class Properties {
     }
