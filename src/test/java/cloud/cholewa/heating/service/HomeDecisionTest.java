@@ -225,7 +225,7 @@ class HomeDecisionTest {
         sut.decideRooms().as(StepVerifier::create).verifyComplete();
 
         assertThat(commands).isEmpty();
-        verify(shellyClient, never()).getHeaterActorStatus(eq(HeaterType.RADIATOR), eq(RoomName.SANCTUM));
+        verify(shellyClient, never()).getHeaterActorStatus(HeaterType.RADIATOR, RoomName.SANCTUM);
         assertThat(homeStatus.isAnyHeaterActive()).isFalse();
     }
 
