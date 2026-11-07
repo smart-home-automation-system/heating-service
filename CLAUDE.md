@@ -43,7 +43,8 @@ alert of the window sensors (HAS-350).
   `rabbitmq-password`, `notification-rabbitmq-password` and `device-rabbitmq-password` - under
   `home` alone the start is refused without them (below).
 - Spring Boot **4.1.2** (HAS-303; 4.1.1 since HAS-151, 2026-10-03) with logbook 4.2.0; `cholewa-commons` 1.13.0
-  (HAS-360), `smart-home-sdk` 1.15.0, `shelly-client` 2.4.0 since HAS-368 (the add-on sensors of a Gen1 status); own libraries on the
+  (HAS-360), `smart-home-sdk` 1.18.0 and `shelly-client` 2.6.0 since HAS-388 (no-op bumps; 2.4.0 brought the add-on
+  sensors of a Gen1 status, HAS-368); own libraries on the
   latest releases, as the org rule asks of every service task.
 
 ## Specifics
@@ -366,7 +367,15 @@ alert of the window sensors (HAS-350).
     the values of `state` are those of `blinds-service` - the dashboard copies them.
   - The Gen1 Door/Window 2 of the sauna entrance is out (owner, 2026-10-17, as in HAS-290): no
     `/events/gen1` here. The static `OpeningSensor` / `OpeningType` of `HomeConfig` are gone.
-- **The radiator of sanctum is a standalone heater** (HAS-361; until then a scene in the Shelly cloud switched it
+- **The radiator of sanctum is left to its air conditioner** (HAS-388): `shelly.actor.relay.standalone` is empty in
+  `home`, and `shelly.actor.relay.schedule-only` names sanctum. `RelayConfig` has three questions since: `drives` (a
+  relay or a standalone radiator - what the decision switches), `keepsSchedules` (driven, or schedule-only - what
+  `HeatingScheduleService` loads and writes, so its schedules and `scheduledTemperature` stay in `GET /rooms`, the
+  contract `aircon-service` heats by, HAS-387) and `drivesRelay` (a relay of a Pro 4 - **what the furnace hears**,
+  `determineAnyHeaterActive`; it was "not standalone", which a schedule-only radiator would have passed). The plug is
+  neither read nor switched, its `working` left out; the decision skips the heater as one it does not drive. The
+  standalone machinery below stays (the test document still has one, for its tests).
+- **The radiator of sanctum is a standalone heater** (HAS-361, until HAS-388; until then a scene in the Shelly cloud switched it
   from the H&T of the room, owner 2026-10-06): a Shelly Plug S Gen1 of its own, `shelly.actor.relay.standalone`
   (room -> address, `RelayConfig.isStandalone` / `standaloneAddress`), not a relay of a Pro 4. What to keep:
   - **Driven like every heater**: `RelayConfig.drives` is true for it, so its schedules are stored, loaded and

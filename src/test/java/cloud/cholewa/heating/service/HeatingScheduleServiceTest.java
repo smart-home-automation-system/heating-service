@@ -126,6 +126,19 @@ class HeatingScheduleServiceTest {
         assertThat(sanctumRadiator.getSchedules()).extracting(Schedule::getId).containsExactly(7L);
     }
 
+    //HAS-388: the radiator of sanctum left to its air conditioner - no plug, its schedules kept all the same
+    @Test
+    void should_load_the_schedule_of_a_radiator_left_to_another_service() {
+        relayConfig.setScheduleOnly(List.of("sanctum"));
+        when(repository.findAllByOrderByIdAsc()).thenReturn(Flux.just(
+            row(7L, "sanctum", "radiator", List.of("MONDAY"), 7, 23, "20.5", true)));
+
+        sut.load().as(StepVerifier::create).verifyComplete();
+
+        assertThat(sanctumRadiator.getSchedules()).extracting(Schedule::getId).containsExactly(7L);
+        assertThat(relayConfig.drives(RoomName.SANCTUM, HeaterType.RADIATOR)).isFalse();
+    }
+
     //read again, the schedules of a heater are what is stored now - a removed one is gone
     @Test
     void should_replace_the_schedules_a_heater_had() {

@@ -59,6 +59,12 @@ every heater - by the readings of the H&T of the room - but it never counts in w
 (`GET /home/heating/status/active`, polled by `boiler-service`), nor for the floor pump. Its schedules are written
 through the API and the dashboard editor like the others.
 
+**Since HAS-388 the radiator of sanctum is left to its air conditioner**: the house runs no standalone radiator any
+more (`shelly.actor.relay.standalone` is empty, the plug is neither read nor switched), and sanctum is in
+`shelly.actor.relay.schedule-only` - its radiator keeps its schedules (stored, loaded, written through the API, answered
+in `GET /rooms` with `scheduledTemperature`), which `aircon-service` follows to heat the room with the unit. Its
+`working` is left out: nothing here reads it. The standalone radiator stays a configuration of the service.
+
 **The heating schedules are stored in Postgres** (table `heating_schedule`, HAS-355): per heater
 the days, the hours and the temperature, and whether the schedule is enabled. They are read into
 memory at the start, before the service consumes a reading, and the control loop decides from
@@ -265,7 +271,8 @@ written as `GET /rooms` writes them. `PUT /schedules/{id}` takes the same body. 
 
 A broken rule is a `400` with the code `INVALID_SCHEDULE` and the reason in `details`; an unknown id
 is a `404` `NOT_FOUND_SCHEDULE`; a heater the room does not have or the service does not drive a `404`
-`NOT_FOUND_HEATER` (the radiator of the sanctum takes schedules since HAS-361); an unknown room `NOT_FOUND_ROOM`. A write
+`NOT_FOUND_HEATER` (the radiator of the sanctum takes schedules since HAS-361, and keeps them since HAS-388 though
+nothing switches it); an unknown room `NOT_FOUND_ROOM`. A write
 answers once the heaters hold it.
 
 ### Temperature history of a room

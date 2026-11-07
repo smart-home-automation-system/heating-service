@@ -2,6 +2,7 @@ package cloud.cholewa.heating.config;
 
 import cloud.cholewa.heating.infrastructure.error.HeatingException;
 import cloud.cholewa.home.model.RoomName;
+import cloud.cholewa.heating.model.HeaterType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -20,6 +21,25 @@ class RelayConfigTest {
         sut = new RelayConfig();
         ReflectionTestUtils.setField(sut, "heater", Map.of("bedroom", 1, "living_room", 2));
         ReflectionTestUtils.setField(sut, "floor", Map.of("bathroom_up", 3, "kitchen", 4));
+    }
+
+    @Test
+    void should_keep_the_schedules_of_a_radiator_left_to_another_service() {
+        sut.setScheduleOnly(java.util.List.of("sanctum"));
+
+        assertThat(sut.keepsSchedules(RoomName.SANCTUM, HeaterType.RADIATOR)).isTrue();
+        assertThat(sut.drives(RoomName.SANCTUM, HeaterType.RADIATOR)).isFalse();
+        assertThat(sut.keepsSchedules(RoomName.SANCTUM, HeaterType.FLOOR)).isFalse();
+        assertThat(sut.keepsSchedules(RoomName.BEDROOM, HeaterType.RADIATOR)).isTrue();
+    }
+
+    @Test
+    void should_drive_a_relay_only_for_a_relay_of_a_pro_4() {
+        sut.setStandalone(Map.of("sanctum", "192.0.2.135"));
+
+        assertThat(sut.drivesRelay(RoomName.BEDROOM, HeaterType.RADIATOR)).isTrue();
+        assertThat(sut.drivesRelay(RoomName.SANCTUM, HeaterType.RADIATOR)).isFalse();
+        assertThat(sut.drives(RoomName.SANCTUM, HeaterType.RADIATOR)).isTrue();
     }
 
     @Test

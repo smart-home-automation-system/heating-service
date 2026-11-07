@@ -33,6 +33,8 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -67,6 +69,7 @@ class HomeDecisionTest {
         //HAS-361: every heater of the test is driven, the radiator of sanctum as a standalone one
         when(relayConfig.drives(any(), any())).thenReturn(true);
         when(relayConfig.isStandalone(any(), any())).thenAnswer(call -> call.getArgument(0) == RoomName.SANCTUM);
+        when(relayConfig.drivesRelay(any(), any())).thenAnswer(call -> call.getArgument(0) != RoomName.SANCTUM);
         when(shellyClient.getHeaterActorStatus(any(), any())).thenAnswer(call ->
             Mono.just(ShellyPro4StatusResponse.builder().output(relays.getOrDefault(call.getArgument(1), false)).build()));
         when(shellyClient.controlHeaterActor(any(), any(), anyBoolean())).thenAnswer(call -> {
@@ -208,6 +211,22 @@ class HomeDecisionTest {
         sut.decideRooms().as(StepVerifier::create).verifyComplete();
 
         assertThat(commands).containsExactly("sanctum off");
+    }
+
+    //HAS-388: the radiator of sanctum left to its air conditioner - its schedule stays, nothing is switched or read
+    @Test
+    void should_switch_nothing_for_a_radiator_left_to_another_service() {
+        when(relayConfig.drives(eq(RoomName.SANCTUM), any())).thenReturn(false);
+        when(relayConfig.isStandalone(any(), any())).thenReturn(false);
+        build(List.of(room(RoomName.SANCTUM, 17.0, schedule(LocalTime.of(0, 0), LocalTime.of(23, 59), 21.0)), livia));
+        homeStatus.setEnabledHomeHeatingSystem(true);
+        clock.set(MONDAY_0457.withHour(12));
+
+        sut.decideRooms().as(StepVerifier::create).verifyComplete();
+
+        assertThat(commands).isEmpty();
+        verify(shellyClient, never()).getHeaterActorStatus(HeaterType.RADIATOR, RoomName.SANCTUM);
+        assertThat(homeStatus.isAnyHeaterActive()).isFalse();
     }
 
     private static Room room(final RoomName name, final double temperature, final Schedule schedule) {

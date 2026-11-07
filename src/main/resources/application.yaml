@@ -182,9 +182,13 @@ shelly:
         living_room: 0
         bathroom_down: 2
       # the radiators that are a Shelly Gen1 plug of their own (HAS-361), by room: the address of the plug. Switched by
-      # their schedule and the house switch, never part of what the furnace hears
-      standalone:
-        sanctum: 10.78.30.135
+      # their schedule and the house switch, never part of what the furnace hears. None since HAS-388: the plug of
+      # sanctum (10.78.30.135) is left to its air conditioner
+      standalone: {}
+      # the radiators whose schedules are kept and served, and nothing switched (HAS-388): sanctum is heated by its air
+      # conditioner, which follows the schedule of the room (aircon-service)
+      schedule-only:
+        - sanctum
 
 # what has no default in this document: a pod without one of them does not start (cholewa-commons,
 # checked before the first bean is created)
