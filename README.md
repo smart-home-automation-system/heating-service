@@ -122,6 +122,12 @@ of the window sensors every five minutes - run on a pool of threads, and every p
 bound of its own (15 min, 50 s and 4 min) with a WARN: one that hangs no longer stops the
 others (HAS-303).
 
+Every night at 03:35 of the house the room temperatures (`room_temperature`) and the changes of the heating switch
+(`heating_status`) older than `heating.retention` (**730 days**; a bare number is days, 366 to 3650) are deleted,
+never the latest change of the switch - it is the state the service loads at the start (HAS-413). Each table on its
+own: its count deleted at INFO, a failure a WARN tried again the next night; the pass is bounded at 5 min. The
+alerts and the schedules are kept as they are.
+
 ## Run locally
 
 ```bash
