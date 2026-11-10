@@ -19,8 +19,11 @@ import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-//The retention of the changes of the house switch (HAS-413) on a PostgreSQL in Docker, on the tables of the migrations,
-//as TemperatureRepositoryTest: the latest change is the state of the switch and is never deleted, however old
+/**
+ * HAS-413, the retention of the changes of the house switch, run on a PostgreSQL in Docker against the tables of the
+ * migrations as in TemperatureRepositoryTest. The latest change is the state of the switch and is never deleted,
+ * however old it is.
+ */
 @DataR2dbcTest
 @Testcontainers
 @ActiveProfiles("test")

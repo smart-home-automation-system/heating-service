@@ -23,7 +23,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-//The nightly retention of the room temperatures and the changes of the house switch (HAS-413)
+/**
+ * HAS-413, the nightly retention of the room temperatures and of the changes of the house switch.
+ */
 class HeatingRetentionTest {
 
     private static final ZoneId HOUSE = ZoneId.of("Europe/Warsaw");
