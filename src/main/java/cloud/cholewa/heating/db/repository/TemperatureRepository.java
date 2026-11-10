@@ -2,6 +2,7 @@ package cloud.cholewa.heating.db.repository;
 
 import cloud.cholewa.heating.db.model.TemperatureBucket;
 import cloud.cholewa.heating.db.model.TemperatureEntity;
+import org.springframework.data.r2dbc.repository.Modifying;
 import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.r2dbc.repository.R2dbcRepository;
 import reactor.core.publisher.Flux;
@@ -36,4 +37,10 @@ public interface TemperatureRepository extends R2dbcRepository<TemperatureEntity
         ORDER BY at
         """)
     Flux<TemperatureBucket> findHistory(String room, LocalDateTime from, LocalDateTime to, long bucketSeconds);
+
+    //The readings before "before" (HAS-413), every room at once; run every night, so after the first night a day's
+    //readings at most. Run on PostgreSQL by TemperatureRepositoryTest
+    @Modifying
+    @Query("DELETE FROM room_temperature WHERE date < :before")
+    Mono<Long> deleteBefore(LocalDateTime before);
 }

@@ -150,6 +150,9 @@ heating:
   # sauna, read this often; a bare number is seconds, 30 s to 1 h
   thermometer:
     gen1-poll: PT1M
+  # the room temperatures and the changes of the house switch older than this are deleted every night at 03:35
+  # (HAS-413), never the latest change of the switch; a bare number is days, 366 to 3650
+  retention: 730d
 
 shelly:
   actor:
