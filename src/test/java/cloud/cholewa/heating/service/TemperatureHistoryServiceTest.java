@@ -95,7 +95,7 @@ class TemperatureHistoryServiceTest {
             .as(StepVerifier::create)
             .expectErrorSatisfies(throwable -> assertThat(throwable)
                 .isInstanceOf(RoomNotFoundException.class)
-                .hasMessage("attic"))
+                .hasMessage("Room name: attic"))
             .verify();
 
         verifyNoInteractions(temperatureRepository);

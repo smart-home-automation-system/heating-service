@@ -42,8 +42,9 @@ alert of the window sensors (HAS-350).
   `localhost:6005` and a dummy for the three passwords of the broker, so it starts without
   `rabbitmq-password`, `notification-rabbitmq-password` and `device-rabbitmq-password` - under
   `home` alone the start is refused without them (below).
-- Spring Boot **4.1.2** (HAS-303; 4.1.1 since HAS-151, 2026-10-03) with logbook 4.2.0; `cholewa-commons` 1.13.0
-  (HAS-360), `smart-home-sdk` 1.18.0 and `shelly-client` 2.6.0 since HAS-388 (no-op bumps; 2.4.0 brought the add-on
+- Spring Boot **4.1.2** (HAS-303; 4.1.1 since HAS-151, 2026-10-03) with logbook 4.2.0; `cholewa-commons` 1.14.0,
+  `smart-home-sdk` 1.19.0 and `shelly-client` 2.7.0 since HAS-215 (1.14.0 brought `DomainExceptionProcessor`, the
+  others no-op bumps; `cholewa-commons` 1.13.0 since HAS-360; 2.4.0 brought the add-on
   sensors of a Gen1 status, HAS-368); own libraries on the
   latest releases, as the org rule asks of every service task.
 
@@ -289,7 +290,9 @@ alert of the window sensors (HAS-350).
   builder is no way to hand a decision to `RoomMapper`.
   An unknown room is a 404 with the code `NOT_FOUND_ROOM`; the names of `HeatingErrorId` are
   wire contract, pinned by `HeatingErrorIdTest`, and the WARN of the processor by
-  `RoomControllerTest`. `HeaterType` goes out as `radiator` / `floor` (`@JsonValue`); `mode`,
+  `RoomControllerTest`. The processor is `DomainExceptionProcessor(NOT_FOUND, NOT_FOUND_ROOM)` of `cholewa-commons`
+  since HAS-215 (the own `RoomNotFoundExceptionProcessor` deleted): its `details` is the exception message, so
+  `RoomNotFoundException(name)` carries the whole `Room name: <name>` the dashboard has always read. `HeaterType` goes out as `radiator` / `floor` (`@JsonValue`); `mode`,
   the schedule `type` and `days` as constant names.
 - **The listener acknowledges manually** (`acknowledge-mode: manual`): with the default the
   container acks before the reactive pipeline runs, so the prefetch would throttle nothing.
