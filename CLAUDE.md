@@ -35,7 +35,7 @@ alert of the window sensors (HAS-350).
 
 ## Build & run
 
-- Build + tests: `mvn verify` - needs a running Docker (two tests start a PostgreSQL in it)
+- Build + tests: `mvn verify` - needs a running Docker (three tests start a PostgreSQL in it)
 - Local run: `home,local` Spring profiles, port `6002` (Actuator `8002`); in-cluster port
   `6200`, Actuator `8200`. Needs PostgreSQL and a RabbitMQ broker; the `local` profile uses
   the `temperature.dev.heating` and `device.dev.heating` queues, `database-service` on
@@ -54,9 +54,9 @@ alert of the window sensors (HAS-350).
   runs a reactive `@Scheduled(fixedDelay)` method by blocking a scheduler thread until its `Mono`
   completes; with Boot's one thread a hung pass stopped every task of blinds-service on 2026-10-22.
   The library defaults `spring.task.scheduling.pool.size` to 10 (`HeatingServiceApplicationTest`
-  pins it), and each of the three tasks wraps its pass in `ScheduledPass.bounded` - the pass built
+  pins it), and each task wraps its pass in `ScheduledPass.bounded` - the pass built
   anew for every run, cancelled at its `LIMIT` with a WARN, always completing:
-  `SensorMonitorScheduler` (hourly cron, 15 min), `DecisionScheduler` (every minute, 50 s - the
+  `SensorMonitorScheduler` (hourly cron, 15 min), `HeatingRetention` (03:35, 5 min, HAS-413), `DecisionScheduler` (every minute, 50 s - the
   `WindowHoldScheduler` until HAS-352) and
   `WindowSensorsRefresh` (every five minutes, 4 min). Their own `onErrorResume` with the ERROR stays
   inside the bound. A cut window hold leaves a heater the next minute switches off; a cut refresh
@@ -519,6 +519,20 @@ alert of the window sensors (HAS-350).
     about is its weekday. `refresh()` never fails; a read is bounded by the client (3 s + 5 s).
   - A new day is known from the first pass after midnight; a reading in the minute before it judges the
     new date by its weekday - schedules start at 05:00 at the earliest.
+- **The retention of the readings** (HAS-413, `HeatingRetention`, package `scheduler`): every night at 03:35 (cron on
+  the JVM zone - the image runs on the zone of the house, as every cron here) `room_temperature` and `heating_status`
+  lose their rows older than `heating.retention` (`RetentionProperties`, 730d; days, 366 - 3650, pinned by
+  `RetentionPropertiesTest`). What to keep:
+  - **The latest change of the switch is never deleted** (`HeatingStatusRepository.deleteBeforeKeepingTheLatest`, the
+    latest by date, then id): it is what `HomeStatusConfig` loads at the start, and a switch left alone for two years
+    would otherwise start the house off. `HeatingStatusRepositoryTest` (PostgreSQL in Docker) pins it.
+  - **No index on `date`**: the delete of `room_temperature` is a sequential scan - the index is `(room, date)` and
+    PostgreSQL 16 does not skip its first column. Production on 2026-11-10: 788 287 rows (95 MB), the oldest of
+    2026-01-17 - about 1.6 million at the retention. Rehearsed on 2.5 million rows (332 MB): 70 ms for a night's rows. A second index would cost every write of a reading for a pass a night.
+  - Each table its own WARN (`MeterRetention` of water-service, the pattern); "now" read inside the chain
+    (`Mono.defer`, `HeatingRetentionTest` subscribes twice); `ScheduledPass.bounded` at 5 min. The oldest reading is of
+    2026-01-17, so nothing is deleted before 2028-01-17 - until then every night logs 0.
+  - The alert tables (V3, V4, V6) and `heating_schedule` are not touched.
 - **Surefire activates the `test` profile for every class** (`spring.profiles.active` in the
   pom), so a test without `@ActiveProfiles` does not fall through to the shared document and
   switch the log output to JSON for the classes that follow.

@@ -21,6 +21,8 @@ import reactor.test.StepVerifier;
 import java.time.LocalDateTime;
 import java.util.TimeZone;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 //The one test that runs SQL: the history query is PostgreSQL's own, so it runs against a
 //PostgreSQL in Docker (Testcontainers), on the tables the migrations of the service create.
 //The slice builds a plain connection from spring.r2dbc.*, not the pooled one of cholewa-commons,
@@ -245,6 +247,21 @@ class TemperatureRepositoryTest {
         sut.findHistory(ROOM, MIDNIGHT, NEXT_MIDNIGHT, TWENTY_MINUTES).as(StepVerifier::create)
             .expectNext(new TemperatureBucket(MIDNIGHT, 20.01))
             .expectNext(new TemperatureBucket(MIDNIGHT.plusMinutes(20), 20.0))
+            .verifyComplete();
+    }
+
+    //HAS-413: every room at once, strictly before the bound - a reading at the bound stays
+    @Test
+    void should_delete_the_readings_before_the_bound_of_every_room() {
+        save(ROOM, MIDNIGHT.minusDays(731), 20.0);
+        save("bathroom up", MIDNIGHT.minusDays(800), 21.0);
+        save(ROOM, MIDNIGHT.minusDays(730), 22.0);
+        save(ROOM, MIDNIGHT, 23.0);
+
+        sut.deleteBefore(MIDNIGHT.minusDays(730)).as(StepVerifier::create).expectNext(2L).verifyComplete();
+
+        sut.findAll().map(TemperatureEntity::temperature).collectList().as(StepVerifier::create)
+            .assertNext(left -> assertThat(left).containsExactlyInAnyOrder(22.0, 23.0))
             .verifyComplete();
     }
 
