@@ -98,7 +98,7 @@ class RoomServiceTest {
             .as(StepVerifier::create)
             .expectErrorSatisfies(throwable -> assertThat(throwable)
                 .isInstanceOf(RoomNotFoundException.class)
-                .hasMessage("attic"))
+                .hasMessage("Room name: attic"))
             .verify();
     }
 
@@ -111,7 +111,7 @@ class RoomServiceTest {
             .as(StepVerifier::create)
             .expectErrorSatisfies(throwable -> assertThat(throwable)
                 .isInstanceOf(RoomNotFoundException.class)
-                .hasMessage(name))
+                .hasMessage("Room name: " + name))
             .verify();
     }
 }

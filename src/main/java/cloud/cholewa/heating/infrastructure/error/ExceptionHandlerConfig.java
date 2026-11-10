@@ -1,8 +1,8 @@
 package cloud.cholewa.heating.infrastructure.error;
 
 import cloud.cholewa.commons.error.GlobalErrorExceptionHandler;
+import cloud.cholewa.commons.error.processor.DomainExceptionProcessor;
 import cloud.cholewa.heating.infrastructure.error.processor.HeatingExceptionProcessor;
-import cloud.cholewa.heating.infrastructure.error.processor.RoomNotFoundExceptionProcessor;
 import cloud.cholewa.heating.infrastructure.error.processor.ScheduleExceptionProcessor;
 import org.springframework.boot.autoconfigure.web.WebProperties;
 import org.springframework.boot.webflux.error.ErrorAttributes;
@@ -13,6 +13,9 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.codec.ServerCodecConfigurer;
 
 import java.util.Map;
+
+import static cloud.cholewa.heating.infrastructure.error.HeatingErrorId.NOT_FOUND_ROOM;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @Configuration
 public class ExceptionHandlerConfig {
@@ -31,7 +34,7 @@ public class ExceptionHandlerConfig {
 
         globalErrorExceptionHandler.withCustomErrorProcessor(
             Map.ofEntries(
-                Map.entry(RoomNotFoundException.class, new RoomNotFoundExceptionProcessor()),
+                Map.entry(RoomNotFoundException.class, new DomainExceptionProcessor(NOT_FOUND, NOT_FOUND_ROOM)),
                 Map.entry(HeatingException.class, new HeatingExceptionProcessor()),
                 Map.entry(ScheduleException.class, new ScheduleExceptionProcessor())
             )
