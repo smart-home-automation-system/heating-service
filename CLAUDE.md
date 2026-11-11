@@ -375,7 +375,9 @@ alert of the window sensors (HAS-350) and the stored window readings (HAS-419).
     - **Written on a change of the reading only** - a new value, or the same value with a newer `updated_at`; never on a
       confirmation (a read repeating what is held). `WindowSensors.report` answers the change, `apply` / `observe`
       hand it to the store: the read of a gateway stores its changes one after the other, the listener subscribes to
-      what `observe` answers. **A failed write is a WARN and completes** - it never stops a refresh or the listener.
+      what `observe` answers. **A failed write is a WARN and completes** - it never stops a refresh or the listener -
+      and **a write is bounded** (`WindowSensorStore.WRITE_TIMEOUT`, 30 s, HAS-421): it is part of the chain of the
+      device listener (prefetch 10), and one hung on a dead connection held its slot for good.
     - **The upsert keeps the later reading** (`ON CONFLICT ... WHERE EXCLUDED.updated_at >= updated_at`): the listener
       and the read write side by side, and an older one must not win in the table either.
     - **Read back before the first read of a gateway** by `HeatingScheduleLoader` (the `SmartLifecycle` of phase 0 -
