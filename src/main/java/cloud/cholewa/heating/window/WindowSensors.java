@@ -133,7 +133,7 @@ public class WindowSensors {
     public record SilentSensor(long id, String name, RoomName room, LocalDateTime lastStateAt) {
     }
 
-    //The stored readings, before the first read of the gateways (WindowReadingLoader): each one not confirmed, so not
+    //The stored readings, before the first read of the gateways (HeatingScheduleLoader): each one not confirmed, so not
     //known - it is only what a gateway value is compared with. Never fails; a reading already in memory is kept
     public Mono<Void> restore() {
         return store.load()
@@ -289,27 +289,39 @@ public class WindowSensors {
                 tellOlder(gateway, sensor, open, updatedAt, held);
                 return confirmed(held, now);
             }
-            if (held != null && open.equals(held.open())) {
-                final Reading same = new Reading(open, updatedAt, now, held.openSince());
-                if (updatedAt != null && !updatedAt.equals(held.updatedAt())) {
-                    changed.set(new Change(sensor, same));
-                }
-                return same;
+            final Reading next = next(sensor, held, open, updatedAt, now);
+            if (isChange(held, next)) {
+                changed.set(new Change(sensor, next));
             }
-            log.info("Window sensor {} ({}): {}", sensor, nameOf(sensor), open ? "open" : "closed");
-            final Reading fresh = new Reading(open, updatedAt, now, open ? openedAt(updatedAt, now) : null);
-            changed.set(new Change(sensor, fresh));
-            return fresh;
+            return next;
         });
         return Optional.ofNullable(changed.get());
+    }
+
+    //a value not older than the one held: the same value keeps its opening, another one is logged and starts anew
+    private Reading next(final long sensor, final Reading held, final boolean open, final Instant updatedAt, final LocalDateTime now) {
+        if (held != null && Boolean.valueOf(open).equals(held.open())) {
+            return new Reading(open, updatedAt, now, held.openSince());
+        }
+        log.info("Window sensor {} ({}): {}", sensor, nameOf(sensor), word(open));
+        return new Reading(open, updatedAt, now, open ? openedAt(updatedAt, now) : null);
+    }
+
+    //a new value, or the same value heard later - never a confirmation of what is held
+    private static boolean isChange(final Reading held, final Reading next) {
+        return held == null || !Objects.equals(held.open(), next.open())
+            || next.updatedAt() != null && !next.updatedAt().equals(held.updatedAt());
+    }
+
+    private static String word(final Boolean open) {
+        return Boolean.TRUE.equals(open) ? "open" : "closed";
     }
 
     //once per sensor and start, so that the next restored state of a gateway shows in the logs
     private void tellOlder(final String gateway, final long sensor, final boolean open, final Instant updatedAt, final Reading held) {
         if (olderTold.add(sensor)) {
             log.info("Window sensor {} ({}): gateway {} gave {} heard at {}, older than the kept {} heard at {} - the kept one stays",
-                sensor, nameOf(sensor), gateway, open ? "open" : "closed", heardAt(updatedAt),
-                Boolean.TRUE.equals(held.open()) ? "open" : "closed", heardAt(held.updatedAt()));
+                sensor, nameOf(sensor), gateway, word(open), heardAt(updatedAt), word(held.open()), heardAt(held.updatedAt()));
         }
     }
 

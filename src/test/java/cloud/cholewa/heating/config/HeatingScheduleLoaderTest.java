@@ -2,6 +2,7 @@ package cloud.cholewa.heating.config;
 
 import cloud.cholewa.heating.calendar.HouseCalendar;
 import cloud.cholewa.heating.service.HeatingScheduleService;
+import cloud.cholewa.heating.window.WindowSensors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,9 +31,13 @@ class HeatingScheduleLoaderTest {
     @Mock
     private HouseCalendar houseCalendar;
 
+    @Mock
+    private WindowSensors windowSensors;
+
     @BeforeEach
     void setUp() {
         lenient().when(houseCalendar.refresh()).thenReturn(Mono.empty());
+        lenient().when(windowSensors.restore()).thenReturn(Mono.empty());
     }
 
     @InjectMocks
@@ -84,6 +89,30 @@ class HeatingScheduleLoaderTest {
         final var order = inOrder(service, houseCalendar);
         order.verify(service).load();
         order.verify(houseCalendar).refresh();
+    }
+
+    //HAS-419: the stored window readings in the same start, before the first read of a gateway
+    @Test
+    void should_read_the_stored_window_readings_back_at_the_start() {
+        when(service.load()).thenReturn(Mono.empty());
+
+        sut.start();
+
+        final var order = inOrder(service, houseCalendar, windowSensors);
+        order.verify(service).load();
+        order.verify(houseCalendar).refresh();
+        order.verify(windowSensors).restore();
+    }
+
+    //they are only what a gateway value is compared with: a failure never stops the start
+    @Test
+    void should_start_when_the_stored_window_readings_fail() {
+        when(service.load()).thenReturn(Mono.empty());
+        when(windowSensors.restore()).thenReturn(Mono.error(new IllegalStateException("database down")));
+
+        sut.start();
+
+        assertThat(sut.isRunning()).isTrue();
     }
 
     @Test

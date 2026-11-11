@@ -378,14 +378,16 @@ alert of the window sensors (HAS-350) and the stored window readings (HAS-419).
       what `observe` answers. **A failed write is a WARN and completes** - it never stops a refresh or the listener.
     - **The upsert keeps the later reading** (`ON CONFLICT ... WHERE EXCLUDED.updated_at >= updated_at`): the listener
       and the read write side by side, and an older one must not win in the table either.
-    - **Read back before the first read of a gateway** by `WindowReadingLoader`, a `SmartLifecycle` of phase 0 like
-      `HeatingScheduleLoader` (the scheduled read and the device listener start after it), **never fatal** (15 s).
+    - **Read back before the first read of a gateway** by `HeatingScheduleLoader` (the `SmartLifecycle` of phase 0 -
+      the scheduled read and the device listener start after it), after the schedules and the calendar, **never fatal**
+      (bounded at 30 s).
       A reading read back has `confirmedAt` null, so `isKnown` is false: it neither holds nor frees a room, it is the
       history a gateway value is compared with. The first gateway value confirms it (equal), replaces it (newer) or is
       ignored (older - an INFO once per sensor and start with both values and times). Not confirmed within
       gateway-silent-after, the sensor is silent as before (from the first listing).
-    - The rows of the sensors the registry no longer lists are deleted with each successful refresh (`retain`, an empty
-      registry deletes every row). One statement per call; the load is one query - the pool of 2 holds.
+    - The rows of the sensors the registry no longer lists are deleted once a successful refresh lists another set of
+      sensors than the last trim (`retain`); **a registry that lists none keeps every row** - one empty answer must not
+      wipe what a restart compares with. One statement per call; the load is one query - the pool of 2 holds.
     - **blinds-service gets the same change in its copy** (HAS-420) - two copies, the commons rule.
   - The Gen1 Door/Window 2 of the sauna entrance is out (owner, 2026-10-17, as in HAS-290): no
     `/events/gen1` here. The static `OpeningSensor` / `OpeningType` of `HomeConfig` are gone.
