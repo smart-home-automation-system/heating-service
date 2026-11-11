@@ -14,6 +14,10 @@ import cloud.cholewa.shelly.model.BthomeSensorStatus;
 import cloud.cholewa.shelly.model.ShellyComponent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import tools.jackson.databind.json.JsonMapper;
@@ -31,12 +35,20 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 //The windows and doors of a room from the opening sensors the registry places in it (HAS-232): the
 //components of the gateways, their status topics, the hold after three minutes, and what a silent
 //gateway does to its sensors
+@ExtendWith(OutputCaptureExtension.class)
 class WindowSensorsTest {
 
     private static final ZoneId HOUSE = ZoneId.of("Europe/Warsaw");
@@ -53,8 +65,9 @@ class WindowSensorsTest {
     private final AtomicReference<LocalDateTime> now = new AtomicReference<>(START);
     private final DeviceRegistryClient registry = mock(DeviceRegistryClient.class);
     private final ShellyRpcClient rpc = mock(ShellyRpcClient.class);
+    private final WindowSensorStore store = mock(WindowSensorStore.class);
     private final WindowSensors sut = new WindowSensors(registry, rpc, JsonMapper.builder().build(),
-        new WindowProperties(Duration.ofMinutes(3), Duration.ofMinutes(30), Duration.ofHours(6)), new Clock() {
+        new WindowProperties(Duration.ofMinutes(3), Duration.ofMinutes(30), Duration.ofHours(6)), store, new Clock() {
         @Override
         public ZoneId getZone() {
             return HOUSE;
@@ -84,6 +97,102 @@ class WindowSensorsTest {
             gateway(54, "TREADMILL", "10.0.0.36", TREADMILL),
             gateway(80, "OFFICE MAIN", "10.0.0.40", OFFICE_MAIN))));
         when(rpc.dynamicComponents("10.0.0.40")).thenReturn(Mono.just(List.of()));
+        when(store.save(anyLong(), any())).thenReturn(Mono.empty());
+        when(store.retain(any())).thenReturn(Mono.empty());
+        when(store.load()).thenReturn(Flux.empty());
+    }
+
+    //HAS-419, the case of 2026-11-10: stored closed two seconds after an open; after a restart the gateway brings the
+    //open back with its old time - the stored closed stays, now confirmed by the gateway, and the INFO tells it once
+    @Test
+    void should_keep_a_stored_reading_against_an_older_one_the_gateway_restored(final CapturedOutput output) {
+        stored(67, false, START_TS + 2, null);
+        gateway("10.0.0.36", window(202, WINDOW, true, START_TS));
+        now.set(START.plusMinutes(10));
+
+        refresh();
+        refresh();
+
+        assertThat(sut.valueOf(67, START.plusMinutes(10))).contains(new WindowSensors.WindowValue(false, START.plusSeconds(2)));
+        assertThat(sut.windowOf(RoomName.LIVING_ROOM).state()).isNotEqualTo(WindowState.OPEN);
+        assertThat(output.getOut()).containsOnlyOnce(
+            "Window sensor 67 (Living room window): gateway " + TREADMILL + " gave open heard at " + START
+                + ", older than the kept closed heard at " + START.plusSeconds(2) + " - the kept one stays");
+        verify(store, never()).save(anyLong(), any());
+    }
+
+    //a newer value of the gateway replaces the stored one, and is stored
+    @Test
+    void should_replace_a_stored_reading_by_a_newer_one_of_the_gateway() {
+        stored(67, false, START_TS, null);
+        gateway("10.0.0.36", window(202, WINDOW, true, START_TS + 60));
+        now.set(START.plusMinutes(5));
+
+        refresh();
+
+        assertThat(sut.valueOf(67, START.plusMinutes(5))).contains(new WindowSensors.WindowValue(true, START.plusMinutes(1)));
+        verify(store).save(eq(67L), argThat(reading -> Boolean.TRUE.equals(reading.open())
+            && Instant.ofEpochSecond(START_TS + 60).equals(reading.updatedAt()) && START.plusMinutes(1).equals(reading.openSince())));
+    }
+
+    //a stored reading no gateway stands for is never known - it neither holds nor frees a room - and the sensor is
+    //silent once the gateways had their time after the start, as any sensor never heard of
+    @Test
+    void should_never_know_a_stored_reading_no_gateway_stands_for() {
+        stored(67, true, START_TS - 3600, START.minusHours(1));
+        gateway("10.0.0.36");
+        refresh();
+
+        assertThat(sut.valueOf(67, START)).isEmpty();
+        assertThat(sut.windowOf(RoomName.LIVING_ROOM).state()).isEqualTo(WindowState.UNKNOWN);
+        assertThat(sut.silent(HEATED, START.plusMinutes(30))).isEmpty();
+        assertThat(sut.silent(HEATED, START.plusMinutes(31))).extracting(WindowSensors.SilentSensor::id).contains(67L);
+    }
+
+    //a component of the gateway without a window value, or a value that is no truth, confirms nothing read back from
+    //the table: only a value of the gateway does
+    @Test
+    void should_not_confirm_a_stored_reading_by_a_component_without_a_value() {
+        stored(56, true, START_TS - 600, START.minusMinutes(10));
+        gateway("10.0.0.36", window(215, BEDROOM_WINDOW, null, null));
+        refresh();
+        assertThat(sut.valueOf(56, START)).isEmpty();
+
+        sut.observe(TREADMILL, 215, status(215, 1, START_TS)).as(StepVerifier::create).verifyComplete();
+        assertThat(sut.valueOf(56, START)).isEmpty();
+        assertThat(sut.windowOf(RoomName.BEDROOM).state()).isEqualTo(WindowState.UNKNOWN);
+    }
+
+    //a confirmation is no change: a read that repeats a value stores nothing; the same value heard later is stored
+    @Test
+    void should_store_a_change_of_the_reading_only() {
+        gateway("10.0.0.36", window(202, WINDOW, false, START_TS));
+        refresh();
+        refresh();
+        verify(store, times(1)).save(anyLong(), any());
+
+        sut.observe(TREADMILL, 202, status(202, false, START_TS + 600)).as(StepVerifier::create).verifyComplete();
+        verify(store, times(2)).save(anyLong(), any());
+        sut.observe(TREADMILL, 202, status(202, false, START_TS + 600)).as(StepVerifier::create).verifyComplete();
+        verify(store, times(2)).save(anyLong(), any());
+    }
+
+    //the rows of the sensors the registry lists are kept, the others deleted - once the registry lists others, never
+    //on a registry that lists none (one empty answer must not wipe what a restart compares with)
+    @Test
+    void should_keep_the_stored_readings_of_the_listed_sensors_only() {
+        gateway("10.0.0.36");
+        refresh();
+        refresh();
+        verify(store, times(1)).retain(Set.of(67L, 68L, 56L));
+
+        sensors.remove(2);
+        refresh();
+        verify(store).retain(Set.of(67L, 68L));
+
+        sensors.clear();
+        refresh();
+        verify(store, times(2)).retain(any());
     }
 
     //HAS-364: what every gateway answered is handed to the BLU thermometers; a gateway that fails keeps its last answer,
@@ -362,6 +471,13 @@ class WindowSensorsTest {
 
     private void refresh() {
         sut.refresh().as(StepVerifier::create).verifyComplete();
+    }
+
+    //a reading stored before a restart, read back at the start
+    private void stored(final long sensor, final boolean open, final long updatedAt, final LocalDateTime openSince) {
+        when(store.load()).thenReturn(Flux.just(new WindowSensorStore.Stored(sensor,
+            new WindowSensors.Reading(open, Instant.ofEpochSecond(updatedAt), null, openSince))));
+        sut.restore().as(StepVerifier::create).verifyComplete();
     }
 
     private void gateway(final String address, final ShellyComponent... components) {

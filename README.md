@@ -117,6 +117,17 @@ below its target), the household is told once on Discord (warn) to open and clos
 gateway hears a newer value. No reminders; above the target - in summer - nothing is said. The hold itself stays
 as it is. The rows are in `opening_sensor_open_alert` (V6), so a restart repeats nothing.
 
+The **last reading of every sensor survives a restart** (HAS-419): on 2026-11-10 a grid outage restarted the BTHome
+gateways and this service together, and the gateways brought back the "open" half of short open/close pairs with its
+old time - the "closed" a few seconds later was gone from their storage, and nothing here remembered it. Every new
+reading of a sensor (a new value, or the same value heard later - never a plain confirmation) is now stored in
+`window_sensor_reading` (V7, one row per sensor), and read back at the start before the first read of the gateways.
+A reading read back is **not known** until a gateway stands for it: it neither holds nor frees a room, it is only what
+the gateway's value is compared with - an older one is ignored (an INFO once per sensor and start, with both values
+and their times), an equal or newer one confirms or replaces it. Not confirmed within the 30 minutes, the sensor is
+silent as before. A failed write is a WARN and never stops a read or the listener; the rows of a sensor gone from the
+registry go with the next read.
+
 The three scheduled tasks - the hourly sensor check, the window hold every minute and the read
 of the window sensors every five minutes - run on a pool of threads, and every pass ends at a
 bound of its own (15 min, 50 s and 4 min) with a WARN: one that hangs no longer stops the
