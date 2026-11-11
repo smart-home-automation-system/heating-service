@@ -39,6 +39,17 @@ class WindowSensorStoreFailureTest {
         assertThat(output.getOut()).contains("The reading of window sensor 67 could not be stored, a restart forgets it");
     }
 
+    //HAS-421: a write hung on a dead connection ends at the bound - it is part of the chain of the device listener
+    @Test
+    void should_end_a_hung_write_at_the_bound() {
+        when(repository.upsert(any(), any(), any(), any(), any())).thenReturn(Mono.never());
+
+        StepVerifier.withVirtualTime(() -> sut.save(67, new WindowSensors.Reading(true, Instant.EPOCH, LocalDateTime.now(), null)))
+            .expectSubscription()
+            .thenAwait(WindowSensorStore.WRITE_TIMEOUT)
+            .verifyComplete();
+    }
+
     @Test
     void should_know_none_when_the_read_fails(final CapturedOutput output) {
         when(repository.findAll()).thenReturn(Flux.error(new IllegalStateException("database down")));

@@ -9,6 +9,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -20,6 +21,10 @@ import java.util.Set;
 @Component
 @RequiredArgsConstructor
 public class WindowSensorStore {
+
+    //a write is part of the chain of the device listener (HAS-421): one hung on a dead connection must not hold its
+    //message for good - the bound of the same write in blinds-service (HAS-420)
+    static final Duration WRITE_TIMEOUT = Duration.ofSeconds(30);
 
     private final WindowSensorReadingRepository repository;
     private final Clock clock;
@@ -33,6 +38,7 @@ public class WindowSensorStore {
         return Mono.defer(() -> repository.upsert(sensorId, reading.open(), reading.updatedAt(), reading.openSince(),
                 LocalDateTime.now(clock)))
             .then()
+            .timeout(WRITE_TIMEOUT)
             .onErrorResume(e -> {
                 log.warn("The reading of window sensor {} could not be stored, a restart forgets it: {}", sensorId, e.toString());
                 return Mono.empty();
