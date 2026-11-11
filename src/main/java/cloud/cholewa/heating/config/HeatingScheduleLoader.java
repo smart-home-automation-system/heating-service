@@ -2,6 +2,7 @@ package cloud.cholewa.heating.config;
 
 import cloud.cholewa.heating.calendar.HouseCalendar;
 import cloud.cholewa.heating.service.HeatingScheduleService;
+import cloud.cholewa.heating.window.WindowSensors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.SmartLifecycle;
@@ -17,7 +18,9 @@ import java.time.Duration;
  * listeners (phase {@code Integer.MAX_VALUE}), the web server and the decision of every minute (registered
  * once the context is refreshed) all start after it - a runner runs after them, and a reading in between
  * would have switched off every heater as out of schedule.
- * The type of today is read from the calendar of the house right after them (HAS-358), never fatal.
+ * The type of today is read from the calendar of the house right after them (HAS-358), never fatal, and then the
+ * stored readings of the window sensors (HAS-419), never fatal either: before the first read of a gateway (a
+ * scheduled task) and the device listener, so a value a restarted gateway brings back is compared with them.
  * <p>
  * <b>Fatal when it fails</b>, as the heating switch is (HomeStatusConfig): a service without its schedules
  * would hold every room cold. The rollout then stops at the new pod and the old one keeps heating.
@@ -35,6 +38,7 @@ public class HeatingScheduleLoader implements SmartLifecycle {
 
     private final HeatingScheduleService service;
     private final HouseCalendar houseCalendar;
+    private final WindowSensors windowSensors;
 
     private volatile boolean running;
 
@@ -49,6 +53,14 @@ public class HeatingScheduleLoader implements SmartLifecycle {
         //the type of today too (HAS-358), so a reading in the first minute heats a holiday by its weekend
         //schedule - never fatal: without the calendar the day is its weekday, and refresh never fails
         houseCalendar.refresh().block(STARTUP_TIMEOUT);
+        //the stored window readings (HAS-419) - never fatal: they are only what a gateway value is compared with,
+        //restore never fails, and a hung query ends at the bound
+        windowSensors.restore()
+            .timeout(STARTUP_TIMEOUT)
+            .doOnError(throwable -> log.warn("The stored window sensor readings were not read back, the start knows none: {}",
+                throwable.toString()))
+            .onErrorComplete()
+            .block();
         running = true;
     }
 

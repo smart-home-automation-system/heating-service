@@ -11,8 +11,8 @@ repository map and working rules come from the workspace-level context
 (`organization-repository/claude/organization.md`). The user writes the code in this
 repository themselves; Claude's default role here is analysis, code review and security
 review - the owner had Claude implement the window hold (HAS-232), the decision of every room (HAS-352), the
-Shelly thermometers (HAS-360, HAS-364, HAS-368), the standalone radiator of sanctum (HAS-361) and the stuck-open
-alert of the window sensors (HAS-350).
+Shelly thermometers (HAS-360, HAS-364, HAS-368), the standalone radiator of sanctum (HAS-361), the stuck-open
+alert of the window sensors (HAS-350) and the stored window readings (HAS-419).
 
 ## Role in the system
 
@@ -35,7 +35,7 @@ alert of the window sensors (HAS-350).
 
 ## Build & run
 
-- Build + tests: `mvn verify` - needs a running Docker (three tests start a PostgreSQL in it)
+- Build + tests: `mvn verify` - needs a running Docker (four tests start a PostgreSQL in it - `WindowSensorStoreTest` since HAS-419)
 - Local run: `home,local` Spring profiles, port `6002` (Actuator `8002`); in-cluster port
   `6200`, Actuator `8200`. Needs PostgreSQL and a RabbitMQ broker; the `local` profile uses
   the `temperature.dev.heating` and `device.dev.heating` queues, `database-service` on
@@ -368,6 +368,27 @@ alert of the window sensors (HAS-350).
     `HeatingServiceApplicationTest` pins both listeners on their connections.
   - `GET /rooms` answers `window` (`state` / `openSince` / `hold`), worked out when asked;
     the values of `state` are those of `blinds-service` - the dashboard copies them.
+  - **The last reading of every sensor is stored** (HAS-419, epic HAS-418; `WindowSensorStore`,
+    `window_sensor_reading` V7). On 2026-11-10 a grid outage restarted the gateways (firmware 2.1.1) with the service;
+    the gateways restored the "open" half of short open/close pairs with its old `last_updated_ts` and lost the
+    "closed", and the rule "of two reports the one heard later counts" had nothing to compare with. What to keep:
+    - **Written on a change of the reading only** - a new value, or the same value with a newer `updated_at`; never on a
+      confirmation (a read repeating what is held). `WindowSensors.report` answers the change, `apply` / `observe`
+      hand it to the store: the read of a gateway stores its changes one after the other, the listener subscribes to
+      what `observe` answers. **A failed write is a WARN and completes** - it never stops a refresh or the listener.
+    - **The upsert keeps the later reading** (`ON CONFLICT ... WHERE EXCLUDED.updated_at >= updated_at`): the listener
+      and the read write side by side, and an older one must not win in the table either.
+    - **Read back before the first read of a gateway** by `HeatingScheduleLoader` (the `SmartLifecycle` of phase 0 -
+      the scheduled read and the device listener start after it), after the schedules and the calendar, **never fatal**
+      (bounded at 30 s).
+      A reading read back has `confirmedAt` null, so `isKnown` is false: it neither holds nor frees a room, it is the
+      history a gateway value is compared with. The first gateway value confirms it (equal), replaces it (newer) or is
+      ignored (older - an INFO once per sensor and start with both values and times). Not confirmed within
+      gateway-silent-after, the sensor is silent as before (from the first listing).
+    - The rows of the sensors the registry no longer lists are deleted once a successful refresh lists another set of
+      sensors than the last trim (`retain`); **a registry that lists none keeps every row** - one empty answer must not
+      wipe what a restart compares with. One statement per call; the load is one query - the pool of 2 holds.
+    - **blinds-service gets the same change in its copy** (HAS-420) - two copies, the commons rule.
   - The Gen1 Door/Window 2 of the sauna entrance is out (owner, 2026-10-17, as in HAS-290): no
     `/events/gen1` here. The static `OpeningSensor` / `OpeningType` of `HomeConfig` are gone.
 - **The radiator of sanctum is left to its air conditioner** (HAS-388): `shelly.actor.relay.standalone` is empty in

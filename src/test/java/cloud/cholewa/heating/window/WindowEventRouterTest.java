@@ -3,11 +3,14 @@ package cloud.cholewa.heating.window;
 import cloud.cholewa.shelly.codec.ShellyDecodeException;
 import cloud.cholewa.shelly.codec.ShellyMqttDecoder;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -24,15 +27,19 @@ class WindowEventRouterTest {
     private final WindowEventRouter router =
         new WindowEventRouter(new ShellyMqttDecoder(JsonMapper.builder().build()), windowSensors);
 
+    //HAS-419: what observe answers - the write of a changed reading - is part of the chain of the listener
     @Test
     void should_hand_the_window_of_a_known_sensor_to_the_window_sensors() {
         when(windowSensors.knows("shellyplugsg3-28372f2f0460", 215)).thenReturn(true);
+        final AtomicBoolean stored = new AtomicBoolean();
+        when(windowSensors.observe(any(), anyInt(), any())).thenReturn(Mono.fromRunnable(() -> stored.set(true)));
 
         route("shellyplugsg3-28372f2f0460.status.bthomesensor:215", """
             {"id":215,"value":true,"last_updated_ts":1792235311}""");
 
         verify(windowSensors).observe(eq("shellyplugsg3-28372f2f0460"), eq(215),
             argThat(status -> Boolean.TRUE.equals(status.getValue()) && status.getLastUpdatedTs() == 1792235311L));
+        assertThat(stored).isTrue();
     }
 
     //every other bthomesensor (the weather station, a battery) and every other topic is not read at all
