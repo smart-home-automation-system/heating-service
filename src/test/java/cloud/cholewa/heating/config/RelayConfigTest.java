@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,7 +26,7 @@ class RelayConfigTest {
 
     @Test
     void should_keep_the_schedules_of_a_radiator_left_to_another_service() {
-        sut.setScheduleOnly(java.util.List.of("sanctum"));
+        sut.setScheduleOnly(List.of("sanctum"));
 
         assertThat(sut.keepsSchedules(RoomName.SANCTUM, HeaterType.RADIATOR)).isTrue();
         assertThat(sut.drives(RoomName.SANCTUM, HeaterType.RADIATOR)).isFalse();

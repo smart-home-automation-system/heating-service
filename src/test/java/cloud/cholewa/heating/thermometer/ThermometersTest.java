@@ -15,6 +15,7 @@ import reactor.test.StepVerifier;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -96,7 +97,7 @@ class ThermometersTest {
         final Thermometers.Known read = Thermometers.read(List.of(sauna, cinema, eaton(10, RoomName.CINEMA, 54),
             shelly(104, RoomName.SANCTUM, SANCTUM_HT)));
 
-        assertThat(read.gen1()).containsExactly(java.util.Map.entry("192.0.2.42", RoomName.SAUNA));
+        assertThat(read.gen1()).containsExactly(Map.entry("192.0.2.42", RoomName.SAUNA));
         assertThat(read.wifi()).containsOnlyKeys(SANCTUM_HT);
     }
 

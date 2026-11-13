@@ -1,5 +1,6 @@
 package cloud.cholewa.heating.service;
 
+import cloud.cholewa.heating.config.RelayConfig;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.Home;
 import cloud.cholewa.heating.model.HomeStatus;
@@ -46,7 +47,7 @@ class HomeServiceTest {
     private FloorPumpService floorPumpService;
 
     @Mock
-    private cloud.cholewa.heating.config.RelayConfig relayConfig;
+    private RelayConfig relayConfig;
 
     @InjectMocks
     private HomeService sut;

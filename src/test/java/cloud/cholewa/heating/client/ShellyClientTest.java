@@ -5,6 +5,8 @@ import cloud.cholewa.heating.config.ShellyConfig;
 import cloud.cholewa.heating.infrastructure.error.BoilerException;
 import cloud.cholewa.heating.model.HeaterType;
 import cloud.cholewa.home.model.RoomName;
+import cloud.cholewa.shelly.http.ShellyGen1Client;
+import cloud.cholewa.shelly.http.ShellyTimeouts;
 import lombok.SneakyThrows;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -18,7 +20,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.test.StepVerifier;
 
+import java.time.Duration;
 import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 class ShellyClientTest {
 
@@ -47,9 +52,9 @@ class ShellyClientTest {
         ReflectionTestUtils.setField(shellyConfig, "SHELLY_PRO4_DOWN_RIGHT", mockWebServer.getHostName());
         ReflectionTestUtils.setField(shellyConfig, "SHELLY_PRO4_UP_LEFT", mockWebServer.getHostName());
 
-        sut = new ShellyClient(WebClient.create(), shellyConfig, relayConfig, new cloud.cholewa.shelly.http.ShellyGen1Client(
-            WebClient.builder(), new cloud.cholewa.shelly.http.ShellyTimeouts(java.time.Duration.ofSeconds(3),
-            java.time.Duration.ofSeconds(5))));
+        sut = new ShellyClient(WebClient.create(), shellyConfig, relayConfig, new ShellyGen1Client(
+            WebClient.builder(), new ShellyTimeouts(Duration.ofSeconds(3),
+            Duration.ofSeconds(5))));
     }
 
     @AfterEach
@@ -191,7 +196,7 @@ class ShellyClientTest {
             .expectNextMatches(status -> Boolean.TRUE.equals(status.getOutput()))
             .verifyComplete();
 
-        org.assertj.core.api.Assertions.assertThat(mockWebServer.takeRequest().getPath()).isEqualTo("/relay/0");
+        assertThat(mockWebServer.takeRequest().getPath()).isEqualTo("/relay/0");
     }
 
     @Test
@@ -206,7 +211,7 @@ class ShellyClientTest {
             .expectNextMatches(relay -> Boolean.FALSE.equals(relay.getIson()))
             .verifyComplete();
 
-        org.assertj.core.api.Assertions.assertThat(mockWebServer.takeRequest().getPath()).isEqualTo("/relay/0?turn=off");
+        assertThat(mockWebServer.takeRequest().getPath()).isEqualTo("/relay/0?turn=off");
     }
 
     //a plug that answers no state is a failed call, never read as off

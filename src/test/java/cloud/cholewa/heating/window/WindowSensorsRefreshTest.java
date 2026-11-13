@@ -2,16 +2,21 @@ package cloud.cholewa.heating.window;
 
 import cloud.cholewa.heating.thermometer.ThermometerReadings;
 import cloud.cholewa.heating.thermometer.Thermometers;
+import cloud.cholewa.shelly.model.ShellyComponent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -42,7 +47,7 @@ class WindowSensorsRefreshTest {
 
         sut.refresh().as(StepVerifier::create).verifyComplete();
 
-        final org.mockito.InOrder order = org.mockito.Mockito.inOrder(openingSensorMonitor, stuckOpenMonitor);
+        final InOrder order = inOrder(openingSensorMonitor, stuckOpenMonitor);
         order.verify(openingSensorMonitor).check();
         order.verify(stuckOpenMonitor).check();
     }
@@ -86,8 +91,8 @@ class WindowSensorsRefreshTest {
     //HAS-364: the values of the BLU thermometers the gateways answered, after the read of the gateways
     @Test
     void should_hand_the_components_the_gateways_answered_to_the_thermometers() {
-        final java.util.Map<String, java.util.List<cloud.cholewa.shelly.model.ShellyComponent>> read =
-            java.util.Map.of("shellydimmerg3-0892724f4e30", java.util.List.of());
+        final Map<String, List<ShellyComponent>> read =
+            Map.of("shellydimmerg3-0892724f4e30", List.of());
         when(windowSensors.refresh()).thenReturn(Mono.empty());
         when(windowSensors.gatewayComponents()).thenReturn(read);
         when(openingSensorMonitor.check()).thenReturn(Mono.empty());

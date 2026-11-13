@@ -5,11 +5,14 @@ import cloud.cholewa.heating.model.HeatingStatusReply;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+
+@Mapper(componentModel = "spring", imports = {LocalDateTime.class, ZoneId.class})
 public interface HeatingStatusMapper {
     
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "date", expression = "java(java.time.LocalDateTime.now())")
+    @Mapping(target = "date", expression = "java(LocalDateTime.now(ZoneId.systemDefault()))")
     @Mapping(target = "status", source = "isHeatingEnabled")
     HeatingStatusEntity toEntity(Boolean isHeatingEnabled);
     

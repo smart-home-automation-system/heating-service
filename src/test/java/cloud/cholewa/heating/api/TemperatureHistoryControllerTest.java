@@ -22,6 +22,7 @@ import reactor.core.publisher.Mono;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -135,7 +136,7 @@ class TemperatureHistoryControllerTest {
             .expectBody()
             .jsonPath("$.errors.length()").isEqualTo(1)
             .jsonPath("$.errors[0].message").value(String.class, message ->
-                org.assertj.core.api.Assertions.assertThat(message).contains("from must be before to"));
+                assertThat(message).contains("from must be before to"));
     }
 
     //the code is what tells "no such room" from a 404 of the routing, as for the room itself

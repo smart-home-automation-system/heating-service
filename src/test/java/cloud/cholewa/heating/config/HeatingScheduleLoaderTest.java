@@ -119,7 +119,7 @@ class HeatingScheduleLoaderTest {
     void should_not_read_the_calendar_when_the_schedules_fail() {
         when(service.load()).thenReturn(Mono.error(new IllegalStateException("database down")));
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(sut::start).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(sut::start).isInstanceOf(IllegalStateException.class);
         verify(houseCalendar, never()).refresh();
     }
 }
