@@ -43,10 +43,16 @@ alert of the window sensors (HAS-350) and the stored window readings (HAS-419).
   `rabbitmq-password`, `notification-rabbitmq-password` and `device-rabbitmq-password` - under
   `home` alone the start is refused without them (below).
 - Spring Boot **4.1.2** (HAS-303; 4.1.1 since HAS-151, 2026-10-03) with logbook 4.2.0; `cholewa-commons` 1.14.0,
-  `smart-home-sdk` 1.19.0 and `shelly-client` 2.7.0 since HAS-215 (1.14.0 brought `DomainExceptionProcessor`, the
+  `smart-home-sdk` 1.21.0 since HAS-433 (a no-op bump - the service reads the registry by `?kind=`, so the new kinds
+  of 1.20.0 do not reach it) and `shelly-client` 2.7.0 since HAS-215 (1.14.0 brought `DomainExceptionProcessor`, the
   others no-op bumps; `cholewa-commons` 1.13.0 since HAS-360; 2.4.0 brought the add-on
   sensors of a Gen1 status, HAS-368); own libraries on the
   latest releases, as the org rule asks of every service task.
+- **Imports, never a fully qualified class name in code** (owner, 2026-11-12; HAS-433 removed the last ones): a class
+  of another package is imported, also in tests - no `java.util.Map.entry(...)`, `org.assertj.core.api.Assertions.assertThat`
+  or `@org.junit.jupiter.api.BeforeEach` inline; a MapStruct `expression` names its classes through
+  `@Mapper(imports = ...)` (`HeatingStatusMapper`). Before a change is done, search the diff for a package path
+  followed by a class name outside the `import` and `package` lines.
 
 ## Specifics
 

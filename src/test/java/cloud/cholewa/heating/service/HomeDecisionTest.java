@@ -2,6 +2,7 @@ package cloud.cholewa.heating.service;
 
 import cloud.cholewa.heating.calendar.HouseCalendarFixture;
 import cloud.cholewa.heating.client.ShellyClient;
+import cloud.cholewa.heating.config.RelayConfig;
 import cloud.cholewa.heating.infrastructure.error.BoilerException;
 import cloud.cholewa.heating.model.HeaterActor;
 import cloud.cholewa.heating.model.HeaterType;
@@ -53,7 +54,7 @@ class HomeDecisionTest {
     private final ShellyClient shellyClient = mock(ShellyClient.class);
     private final WindowSensors windowSensors = mock(WindowSensors.class);
     //every heater of the test is driven here but the radiator of sanctum, as in application.yaml
-    private final cloud.cholewa.heating.config.RelayConfig relayConfig = mock(cloud.cholewa.heating.config.RelayConfig.class);
+    private final RelayConfig relayConfig = mock(RelayConfig.class);
     /** What each relay was last told, by room. */
     private final Map<RoomName, Boolean> relays = new HashMap<>();
     private final List<String> commands = new ArrayList<>();
